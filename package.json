@@ -1,0 +1,19 @@
+{
+  "name": "dch-attendance-system",
+  "version": "1.0.0",
+  "description": "Sistema de Control de Asistencia y Pagos (DCH)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "acorn": "^8.17.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "puppeteer": "^25.3.0",
+    "sqlite3": "^5.1.7"
+  },
+  "author": "Antigravity",
+  "license": "ISC"
+}

@@ -1,0 +1,136 @@
+<div class="card" style="margin-bottom: 20px;">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <button id="btn-back-to-quotes" class="btn-secondary" style="width: auto;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                                    <polyline points="12 19 5 12 12 5"></polyline>
+                                </svg>
+                                <span>Volver a Ventas</span>
+                            </button>
+                            <button id="btn-export-quote-pdf" class="btn-primary" style="width: auto; background-color: #dc3545; border-color: #dc3545; margin-right: 10px;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                                <span>Exportar PDF</span>
+                            </button>
+                        </div>
+                        
+                        <div style="padding: 20px;">
+                            <form id="quote-header-form">
+                                <h3 style="margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Datos del Cliente</h3>
+                                <div class="grid-2-col" style="gap: 15px;">
+                                    <div class="form-group">
+                                        <label>Nombre del Cliente</label>
+                                        <input type="text" id="quote-client-name" class="form-control" placeholder="Ej. Intelaf S.A.">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>NIT</label>
+                                        <input type="text" id="quote-client-nit" class="form-control" placeholder="Ej. 1234567-8">
+                                    </div>
+                                    <div class="form-group" style="grid-column: 1 / -1;">
+                                        <label>Dirección</label>
+                                        <input type="text" id="quote-client-address" class="form-control" placeholder="Dirección completa">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Teléfono</label>
+                                        <input type="text" id="quote-client-phone" class="form-control" placeholder="Ej. 1234-5678">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Email</label>
+                                        <input type="email" id="quote-client-email" class="form-control" placeholder="correo@empresa.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Válido Hasta</label>
+                                        <input type="date" id="quote-valid-until" class="form-control">
+                                    </div>
+                                </div>
+                                <div style="text-align: right; margin-top: 15px;">
+                                    <button type="submit" id="btn-save-quote-header" class="btn-primary" style="width: auto;">Guardar Cambios</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="grid-2-col" style="grid-template-columns: 300px 1fr; gap: 20px;">
+                        <!-- Formulario de Nuevo Ítem -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Añadir Ítem</h3>
+                            </div>
+                            <div style="padding: 20px;">
+                                <form id="form-add-quote-item">
+                                    <div class="form-group" style="display: flex; gap: 10px; align-items: flex-end;">
+                                        <div style="flex: 1;">
+                                            <label>Tipo de Ítem</label>
+                                            <select id="quote-item-type" class="form-control" required>
+                                                <option value="venta">Venta de producto</option>
+                                                <option value="libre">Libre</option>
+                                                <option value="renta">Renta</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" id="btn-search-product" class="btn-secondary" style="width: auto; height: 42px; display: flex; align-items: center; gap: 5px;">
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="11" cy="11" r="8"></circle>
+                                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                            </svg>
+                                            Buscar en Inventario
+                                        </button>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Descripción</label>
+                                        <textarea id="quote-item-desc" class="form-control" rows="3" required placeholder="Instalación de..."></textarea>
+                                    </div>
+                                    <div class="grid-2-col" style="gap: 10px;">
+                                        <div class="form-group">
+                                            <label>Cantidad</label>
+                                            <input type="number" id="quote-item-qty" class="form-control" value="1" min="1" step="1" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Unidad</label>
+                                            <input type="text" id="quote-item-unit" class="form-control" value="Unidad" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Precio Unitario (Q)</label>
+                                        <input type="number" id="quote-item-price" class="form-control" min="0" step="0.01" required>
+                                    </div>
+                                    <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Añadir Ítem</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Ítems -->
+                        <div class="card table-card">
+                            <div class="card-header">
+                                <h3>Lista de Ítems</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Descripción</th>
+                                            <th style="text-align: right;">Cant.</th>
+                                            <th style="text-align: right;">Unidad</th>
+                                            <th style="text-align: right;">Precio (Q)</th>
+                                            <th style="text-align: right;">Total (Q)</th>
+                                            <th style="text-align: center; width: 80px;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="quote-items-table-body">
+                                        <!-- Carga dinámica -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="4" style="text-align: right; font-weight: bold;">SUB-TOTAL:</td>
+                                            <td style="text-align: right; font-weight: bold; color: var(--primary);" id="quote-total-amount">Q0.00</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>

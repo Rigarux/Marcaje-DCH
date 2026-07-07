@@ -1,0 +1,93 @@
+<div class="user-dashboard-layout">
+                        <!-- Layout Superior: Dos Columnas -->
+                        <div class="grid-2-col">
+                            <!-- Columna Izquierda: Botón Play de Marcaje -->
+                            <div id="card-timer-control" class="card card-play-control centered-content">
+                                <div class="card-header-simple">
+                                    <h3>Control de Turno - USUARIO</h3>
+                                    <span id="user-status-tag" class="status-tag status-offline">Fuera de Turno</span>
+                                </div>
+                                
+                                <div class="play-button-wrapper">
+                                    <button id="btn-play-marcaje" class="btn-play check-in">
+                                        <div class="pulse-ring"></div>
+                                        <!-- Icono de Play -->
+                                        <svg id="play-icon-svg" class="play-icon" viewBox="0 0 24 24" fill="currentColor">
+                                            <polygon points="6 4 20 12 6 20 6 4"></polygon>
+                                        </svg>
+                                        <!-- Icono de Stop -->
+                                        <svg id="stop-icon-svg" class="stop-icon hidden" viewBox="0 0 24 24" fill="currentColor">
+                                            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <div class="timer-display" id="user-timer">00:00:00</div>
+                                <div class="time-details text-muted" id="user-checkin-details">
+                                    No has registrado entrada hoy.
+                                </div>
+                            </div>
+                            
+                            <!-- Columna Izquierda Alternativa: Control de Destajo -->
+                            <div id="card-piecework-control" class="card card-play-control centered-content hidden">
+                                <div class="card-header-simple">
+                                    <h3>Entrega de Trabajos</h3>
+                                    <span class="status-tag status-online">Modo Destajo</span>
+                                </div>
+                                <div style="margin-top: 20px; padding: 20px;">
+                                    <button id="btn-open-piecework-submit" class="btn-primary" style="font-size: 1.1rem; padding: 15px 30px;">
+                                        Entregar Trabajo
+                                    </button>
+                                </div>
+                                <div class="time-details text-muted" style="margin-top: 15px;">
+                                    Registra tus avances por tarea.
+                                </div>
+                            </div>
+
+                            <!-- Columna Izquierda Alternativa: Control de BUSES -->
+                            <div id="card-buses-control" class="card card-play-control centered-content hidden">
+                                <div class="card-header-simple">
+                                    <h3>Control de Efectivo</h3>
+                                    <span class="status-tag status-online">Modo BUSES</span>
+                                </div>
+                                <div style="margin-top: 20px; padding: 20px;">
+                                    <button id="btn-open-buses-submit" class="btn-primary" style="font-size: 1.1rem; padding: 15px 30px;">
+                                        Reportar Ingreso
+                                    </button>
+                                </div>
+                                <div class="time-details text-muted" style="margin-top: 15px;">
+                                    Registra ingresos y gastos de cada turno.
+                                </div>
+                            </div>
+
+                            <!-- Columna Derecha: Tarjetas Apiladas -->
+                            <div class="user-stats-stack">
+                                <!-- Tarjeta Monto Acumulado -->
+                                <div class="card summary-card bg-gradient-primary">
+                                    <div class="card-icon">
+                                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                        </svg>
+                                    </div>
+                                    <h4>Monto Acumulado</h4>
+                                    <div class="value" id="usr-stat-net">Q0.00</div>
+                                    <p class="desc">Pago Neto final estimado</p>
+                                </div>
+
+                                <!-- Tarjeta Descuento Actual -->
+                                <div class="card summary-card bg-card-danger-light" id="btn-view-penalties-detail" style="cursor: pointer;">
+                                    <div class="card-icon danger">
+                                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                                        </svg>
+                                    </div>
+                                    <h4>Descuento Actual</h4>
+                                    <div class="value text-danger" id="usr-stat-penalties">Q0.00</div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>

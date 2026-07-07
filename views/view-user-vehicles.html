@@ -1,0 +1,29 @@
+<div class="card" style="max-width: 600px; margin: 0 auto; padding: 25px;">
+                        <div class="card-header-simple" style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect>
+                                <path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>
+                            </svg>
+                            <h3 style="margin: 0; font-size: 1.3rem;">Encargados de Vehículos</h3>
+                        </div>
+
+                        <!-- Lista de Vehículos Asignados -->
+                        <div id="user-vehicles-container">
+                            <p id="user-vehicles-empty" class="text-muted text-center" style="margin-top: 20px;">No tienes vehículos asignados.</p>
+                            <div class="table-responsive hidden" id="user-vehicles-table-container" style="margin-top: 15px;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Placa</th>
+                                            <th>Marca</th>
+                                            <th>Modelo</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="user-vehicles-list">
+                                        <!-- Carga dinámica -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>

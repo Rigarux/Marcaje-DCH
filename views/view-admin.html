@@ -1,0 +1,589 @@
+<!-- Pestañas de Navegación del Panel RRHH -->
+                    <div class="tabs-container">
+                        <div class="tab-header hidden">
+                            <button class="tab-btn active" data-tab="tab-trabajadores-admin">Trabajadores</button>
+                            <button class="tab-btn" data-tab="tab-asistencia" style="color: #ffffff; font-weight: bold;">Día de Pago</button>
+                            <button class="tab-btn" data-tab="tab-descuentos">Deducciones y Extras</button>
+                            <button class="tab-btn" data-tab="tab-empresas">Empresas</button>
+                            <button class="tab-btn" data-tab="tab-tiendas">Tiendas</button>
+                            <button class="tab-btn" data-tab="tab-vehículos">Vehículos</button>
+                            <button class="tab-btn" data-tab="tab-préstamos">Préstamos</button>
+                            <button class="tab-btn" data-tab="tab-usuarios">Usuarios Raw</button>
+                            <button class="tab-btn" data-tab="tab-proyectos">Proyectos</button>
+                        </div>
+                        
+                        <!-- TAB 0: TRABAJADORES (GRID 3 COLUMNAS Y DETALLES CON BLUR) -->
+                        <div id="tab-trabajadores-admin" class="tab-content active">
+                            <!-- Tarjetas de Resumen (KPIs) del Boceto -->
+                            <div class="grid-4-col" style="margin-bottom: 20px;">
+                                <div class="card summary-card">
+                                    <h4>Horas Total</h4>
+                                    <div class="value text-primary" id="kpi-total-hours">0.00 h</div>
+                                    <p class="desc">Empresas</p>
+                                </div>
+                                <div class="card summary-card">
+                                    <h4>Total Pagar</h4>
+                                    <div class="value" id="kpi-total-pay">Q0.00</div>
+                                    <p class="desc text-muted">Monto neto consolidado</p>
+                                </div>
+                                <div class="card summary-card">
+                                    <h4>Descuentos / Descuento</h4>
+                                    <div class="value text-danger" id="kpi-total-discounts">Q0.00</div>
+                                    <p class="desc text-danger">Descuentos acumuladas</p>
+                                </div>
+                                <div class="card summary-card">
+                                    <h4>Pendientes</h4>
+                                    <div class="value text-warning" id="kpi-pending-approvals">0</div>
+                                    <p class="desc">Por aprobar</p>
+                                </div>
+                            </div>
+
+                            <!-- Listado/Cuadrícula de Empleados (3 Columnas) -->
+                            <div class="card grid-card" style="margin-bottom: 20px;">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;">
+                                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                        <h3 style="margin: 0;">Trabajadores</h3>
+                                        <select id="filter-empresa-trabajadores" class="form-control" style="width: auto; min-width: 150px; padding: 4px 8px; font-size: 0.9rem;">
+                                            <option value="">Todas las empresas</option>
+                                        </select>
+                                    </div>
+                                    <button id="btn-create-worker-grid" class="btn-primary" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                                        <span>+ Crear Trabajador</span>
+                                    </button>
+                                </div>
+                                <div class="workers-grid-layout" id="admin-workers-grid">
+                                    <!-- Carga dinámica en 3 columnas -->
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- TAB 1: ASISTENCIAS Y APROBACIONES (DÍA DE PAGO) -->
+                        <div id="tab-asistencia" class="tab-content">
+                            <!-- Resumen Global de RRHH -->
+                            <div class="grid-4-col" style="margin-bottom: 20px;">
+                                <div class="card summary-card">
+                                    <h4>Horas Registradas</h4>
+                                    <div class="value text-primary" id="admin-stat-hours">0.00 h</div>
+                                    <p class="desc">Total consolidado</p>
+                                </div>
+                                <div class="card summary-card">
+                                    <h4>Bruto Acumulado</h4>
+                                    <div class="value" id="admin-stat-gross">Q0.00</div>
+                                    <p class="desc">Monto total inicial</p>
+                                </div>
+                                <div class="card summary-card">
+                                    <h4>Descuentos Aplicados</h4>
+                                    <div class="value text-danger" id="admin-stat-penalties">Q0.00</div>
+                                    <p class="desc">Módulo de descuentos</p>
+                                </div>
+                                <div class="card summary-card">
+                                    <h4>Neto Pendiente</h4>
+                                    <div class="value text-warning" id="admin-stat-pending">Q0.00</div>
+                                    <p class="desc">Requiere Aprobación</p>
+                                </div>
+                            </div>
+
+                            <!-- Panel de Controles y Aprobaciones -->
+                            <div class="filter-bar" style="margin-bottom: 20px;">
+                                <div class="filter-group">
+                                    <label for="admin-group-filter">Filtrar por Grupo:</label>
+                                    <select id="admin-group-filter" class="form-control">
+                                        <!-- Cargado dinámicamente -->
+                                    </select>
+                                </div>
+                                <div class="filter-group" style="margin-left: 15px;">
+                                    <label for="admin-period-filter">Período de Planilla:</label>
+                                    <select id="admin-period-filter" class="form-control">
+                                        <option value="active_week">Semana de Pago Activa (Cierre Vie 23:59pm)</option>
+                                        <option value="active_quincena">Quincena de Pago Activa (Cierre Vie 23:59pm)</option>
+                                        <option value="all">Todo el Historial</option>
+                                    </select>
+                                </div>
+                                <div class="action-buttons" style="margin-left: auto; display: flex; gap: 10px;">
+                                    <!-- Botón de Historial -->
+                                    <button id="btn-open-history-modal" class="btn-secondary" style="width: auto;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                        <span>Historial</span>
+                                    </button>
+
+
+                                    <!-- Botón para aplicar bono general -->
+                                    <button id="btn-open-bonus-modal-trigger" class="btn-primary" style="width: auto; background-color: var(--success); border-color: var(--success);">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                                        </svg>
+                                        <span>Aplicar Bono / Extra</span>
+                                    </button>
+
+                                    <!-- Botón para aplicar descuento general -->
+                                    <button id="btn-open-penalize-modal" class="btn-danger">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        </svg>
+                                        <span>Aplicar Descuento</span>
+                                    </button>
+
+                                    <!-- Botón para realizar corte -->
+                                    <button id="btn-export-pdf" class="btn-danger" style="width: auto; background-color: #dc2626; border-color: #dc2626; color: white;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: white;">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg>
+                                        <span>Generar Planilla PDF y Cortar</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="card table-card card-inner">
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Colaborador</th>
+                                                <th>Grupo</th>
+                                                <th>H. Diurnas (Tot)</th>
+                                                <th>H. Nocturnas (Tot)</th>
+                                                <th>Bruto (Tot)</th>
+                                                <th>Bono (Tot)</th>
+                                                <th>Descuento (Tot)</th>
+                                                <th>Deducción Préstamo</th>
+                                                <th>Monto Neto Final</th>
+                                                <th>Acciones / Detalles</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-attendance-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- TAB 2: DETALLE DE DEDUCCIONES Y EXTRAS -->
+                        <div id="tab-descuentos" class="tab-content">
+                            <div class="card table-card card-inner">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
+                                    <h3>Historial de Deducciones y Descuentos</h3>
+                                    <button id="btn-open-penalize-modal-tab" class="btn-danger" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                                        <span>+ Aplicar Descuento</span>
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Colaborador</th>
+                                                <th>Fecha</th>
+                                                <th>Motivo de Descuento</th>
+                                                <th>Descuento (Q)</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-penalties-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="card table-card card-inner margin-top">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0;">
+                                    <h3>Historial de Bonificaciones y Extras</h3>
+                                </div>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Colaborador</th>
+                                                <th>Fecha</th>
+                                                <th>Motivo del Bono</th>
+                                                <th>Monto (Q)</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-bonuses-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: GESTIÓN DE USUARIOS (BACKUP RAW) -->
+                        <div id="tab-usuarios" class="tab-content">
+                            <div class="card table-card card-inner">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
+                                    <h3>Listado de Usuarios</h3>
+                                    <button id="btn-open-user-modal" class="btn-primary" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                                        <span>Crear Usuario</span>
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Nombre Completo</th>
+                                                <th>Usuario</th>
+                                                <th>Rol</th>
+                                                <th>Empresa</th>
+                                                <th>Grupo</th>
+                                                <th>Tarifa (D/N)</th>
+                                                <th>Frecuencia</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-users-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 4: GESTIÓN DE EMPRESAS -->
+                        <div id="tab-empresas" class="tab-content">
+                            <div class="card table-card card-inner">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
+                                    <h3>Listado de Empresas</h3>
+                                    <button id="btn-open-company-modal" class="btn-primary" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                                        <span>Crear Empresa</span>
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                 <th>Nombre de la Empresa</th>
+                                                 <th>Colaboradores Asociados</th>
+                                                 <th>Acciones</th>
+                                             </tr>
+                                        </thead>
+                                        <tbody id="admin-companies-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB: GESTIÓN DE TIENDAS -->
+                        <div id="tab-tiendas" class="tab-content">
+                            <div class="card table-card card-inner">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
+                                    <h3>Listado de Tiendas (Ventas)</h3>
+                                    <button id="btn-open-store-modal" class="btn-primary" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                                        <span>Crear Tienda</span>
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                 <th>Nombre de la Tienda</th>
+                                                 <th>Acciones</th>
+                                             </tr>
+                                        </thead>
+                                        <tbody id="admin-stores-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 5: GESTIÓN DE Vehículos -->
+                        <div id="tab-vehículos" class="tab-content">
+                            <div class="card table-card card-inner">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
+                                    <h3>Vehículos Registrados</h3>
+                                    <div style="display:flex; gap:10px;">
+                                        <button id="btn-open-vehicle-assignees" class="btn-secondary" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                                            <span>Encargados</span>
+                                        </button>
+                                        <button id="btn-open-vehicle-modal" class="btn-primary" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                                            <span>+ Registrar Vehículo</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Placa / Licencia</th>
+                                                <th>Marca</th>
+                                                <th>Modelo</th>
+                                                <th>Colaborador Asignado</th>
+                                                <th>Estado</th>
+                                                <th>Motivo de Uso</th>
+                                                <th>Fecha Asignación</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-vehicles-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 6: GESTIÓN DE PRÉSTAMOS -->
+                        <div id="tab-préstamos" class="tab-content">
+                            <div class="card table-card card-inner">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
+                                    <h3>Control de Préstamos y Adelantos</h3>
+                                    <button id="btn-open-loan-modal" class="btn-primary" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                                        <span>+ Brindar Préstamo</span>
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Colaborador</th>
+                                                <th>Fecha Solicitud</th>
+                                                <th>Monto</th>
+                                                <th>Cuotas</th>
+                                                <th>Estado</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-loans-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="card table-card card-inner margin-top">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0;">
+                                    <h3>Préstamos Activos (Control Semanal de Cuotas)</h3>
+                                </div>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Colaborador</th>
+                                                <th>Total Préstamo</th>
+                                                <th>Saldo Pendiente</th>
+                                                <th>Cuota Semanal</th>
+                                                <th>Estado de Cuota</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-active-loans-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB: PROYECTOS -->
+                        <div id="tab-proyectos" class="tab-content">
+                            <!-- VISTA 1: LISTADO DE PROYECTOS -->
+                            <div id="project-list-view" class="project-view-section">
+                                <div class="grid-2-col" style="grid-template-columns: 1fr 2fr; gap: 20px;">
+                                    <!-- Formulario Nuevo Proyecto -->
+                                    <div class="card card-inner">
+                                        <div class="card-header">
+                                            <h3 id="project-form-title">Registrar Proyecto</h3>
+                                        </div>
+                                        <form id="new-project-form" style="padding: 20px;" autocomplete="off">
+                                            <input type="hidden" id="edit-project-id" value="">
+                                            <div class="form-group">
+                                                <label for="project-name">Nombre del Proyecto *</label>
+                                                <input type="text" id="project-name" class="form-control" placeholder="ej: Proyecto Bodega Z.9" required style="padding-left:16px;">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="project-description">Descripción del Proyecto</label>
+                                                <textarea id="project-description" class="form-control" placeholder="ej: Remodelación de oficinas y tablayeso..." style="padding: 10px 16px; height: 60px; resize: none;"></textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="project-start-date">Fecha de Inicio Estimada *</label>
+                                                <input type="date" id="project-start-date" class="form-control" required style="padding-left:16px;">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="project-end-date">Fecha de Fin Estimada *</label>
+                                                <input type="date" id="project-end-date" class="form-control" required style="padding-left:16px;">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="project-budget">Presupuesto Estimado (Q) *</label>
+                                                <div class="currency-input-wrapper">
+                                                    <span class="currency-symbol">Q</span>
+                                                    <input type="number" id="project-budget" class="form-control" min="0" step="0.01" placeholder="0.00" required>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; gap: 10px;">
+                                                <button type="submit" id="btn-save-project" class="btn-primary" style="margin-top: 15px;">Guardar Proyecto</button>
+                                                <button type="button" id="btn-cancel-project-edit" class="btn-secondary hidden" style="margin-top: 15px;">Cancelar</button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <!-- Lista de Tarjetas (Cards) de Proyectos -->
+                                    <div class="card card-inner">
+                                        <div class="card-header">
+                                            <h3>Proyectos Registrados</h3>
+                                        </div>
+                                        <div id="projects-cards-container" class="grid-2-col" style="grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px;">
+                                            <!-- Se cargará dinámicamente -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- VISTA 2: DETALLES DEL PROYECTO -->
+                            <div id="project-detail-view" class="project-view-section hidden">
+                                <div style="margin-bottom: 20px;">
+                                    <button type="button" id="btn-back-to-projects" class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                        Volver a Proyectos
+                                    </button>
+                                </div>
+
+                                <div class="grid-3-col" style="margin-bottom: 20px;" id="project-financial-summary">
+                                    <!-- Tarjetas de KPIs del proyecto -->
+                                    <div class="card summary-card">
+                                        <h4>Presupuesto</h4>
+                                        <div class="value text-primary" id="detail-project-budget">Q0.00</div>
+                                        <p class="desc">Estimado Inicial</p>
+                                    </div>
+                                    <div class="card summary-card">
+                                        <h4>Gastos Totales</h4>
+                                        <div class="value text-danger" id="detail-project-expenses">Q0.00</div>
+                                        <p class="desc">Acumulado Registrado</p>
+                                    </div>
+                                    <div class="card summary-card">
+                                        <h4>Balance / Restante</h4>
+                                        <div class="value text-success" id="detail-project-balance">Q0.00</div>
+                                        <p class="desc">Disponible</p>
+                                    </div>
+                                </div>
+
+                                <div class="grid-2-col" style="grid-template-columns: 1fr 2fr; gap: 20px;">
+                                    <!-- Formulario Nuevo Gasto -->
+                                    <div class="card card-inner">
+                                        <div class="card-header">
+                                            <h3>Registrar Gasto</h3>
+                                        </div>
+                                        <form id="new-expense-form" style="padding: 20px;" autocomplete="off">
+                                            <!-- Motivo / Categoría -->
+                                            <div class="form-group">
+                                                <label for="expense-motivo">Motivo (Título) *</label>
+                                                <input type="text" id="expense-motivo" class="form-control" placeholder="ej: Compra de Materiales, Viáticos..." required style="padding-left:16px;">
+                                            </div>
+
+                                            <!-- Contenedor de Items (Descripción + Monto) -->
+                                            <div class="form-group">
+                                                <label>Items de Gasto *</label>
+                                                <div id="expense-items-container" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;">
+                                                    <!-- Primera fila por defecto -->
+                                                    <div class="expense-item-row" style="display: flex; gap: 10px; align-items: center;">
+                                                        <input type="text" class="form-control item-desc" placeholder="Descripción (ej: Cemento)" required style="padding-left:16px; flex: 2;">
+                                                        <div class="currency-input-wrapper" style="flex: 1; margin: 0;">
+                                                            <span class="currency-symbol">Q</span>
+                                                            <input type="number" class="form-control item-amount" min="0.01" step="0.01" placeholder="0.00" required>
+                                                        </div>
+                                                        <input type="number" class="form-control item-qty" min="1" value="1" placeholder="Cant." required style="padding-left:10px; flex: 0.5;">
+                                                        <button type="button" class="btn-delete-item-row btn-secondary" style="width: auto; padding: 10px; display: none;" title="Eliminar fila">�S"</button>
+                                                    </div>
+                                                </div>
+                                                <button type="button" id="btn-add-expense-item" class="btn-secondary" style="width: auto; font-size: 0.8rem; padding: 4px 10px; margin-bottom: 15px;">+ Agregar Item</button>
+                                            </div>
+
+                                            <!-- Fecha / Rango -->
+                                            <div class="form-group">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                    <label style="margin: 0;">Fecha *</label>
+                                                    <button type="button" id="btn-toggle-date-range" class="btn-secondary" style="width: auto; font-size: 0.75rem; padding: 2px 8px; height: auto;">Rango (De tal fecha a tal fecha)</button>
+                                                </div>
+                                                
+                                                <!-- Campo Fecha �anica -->
+                                                <div id="expense-single-date-container">
+                                                    <input type="date" id="expense-date" class="form-control" required style="padding-left:16px;">
+                                                </div>
+
+                                                <!-- Campo Rango de Fechas -->
+                                                <div id="expense-range-date-container" class="hidden" style="display: flex; gap: 10px; align-items: center;">
+                                                    <input type="date" id="expense-range-start" class="form-control" style="padding-left:16px;">
+                                                    <span style="font-size: 0.85rem; color: var(--text-muted);">al</span>
+                                                    <input type="date" id="expense-range-end" class="form-control" style="padding-left:16px;">
+                                                </div>
+                                            </div>
+
+                                            <button type="submit" class="btn-primary" style="margin-top: 15px; width: 100%;">Guardar Gastos</button>
+                                        </form>
+                                    </div>
+
+                                    <!-- Tabla de Gastos -->
+                                    <div class="card table-card card-inner">
+                                        <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
+                                            <h3>Historial de Gastos</h3>
+                                            <div style="display:flex; gap: 10px;">
+                                                <button type="button" id="btn-export-project-excel" class="btn-primary" style="width: auto; padding: 6px 12px; font-size: 0.8rem; background-color: var(--success); border-color: var(--success);">
+                                                    Exportar a Excel
+                                                </button>
+                                                <button type="button" id="btn-export-project-pdf" class="btn-primary" style="width: auto; padding: 6px 12px; font-size: 0.8rem; background-color: var(--primary); border-color: var(--primary);">
+                                                    Exportar a PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table id="project-expenses-table-element">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Fecha</th>
+                                                        <th>Descripción (Razón)</th>
+                                                        <th style="text-align: right;">Cantidad</th>
+                                                        <th style="text-align: right;">Monto (Q)</th>
+                                                        <th style="text-align: center;">Comprobante</th>
+                                                        <th style="text-align: center; width: 80px;">Acciones</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="project-expenses-table-body">
+                                                    <!-- Carga dinámica -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- PLANILLA Y PAGOS A EMPLEADOS -->
+                                    <div class="project-details-section margin-top">
+                                        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; margin-bottom: 15px;">
+                                            <h3 style="font-size: 1.1rem; color: var(--text-color); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--primary-color)" stroke-width="2" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                                Planilla y Pagos a Empleados
+                                            </h3>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table id="project-attendances-table-element">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Fecha</th>
+                                                        <th>Empleado</th>
+                                                        <th style="text-align: right;">Horas Trabajadas</th>
+                                                        <th style="text-align: right;">Pago Bruto (Q)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="project-attendances-table-body">
+                                                    <!-- Carga dinámica -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>

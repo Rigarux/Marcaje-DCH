@@ -1,0 +1,90 @@
+<!-- Resumen del subgrupo -->
+                    <div class="grid-3-col">
+                        <div class="card summary-card">
+                            <div class="card-icon success">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <h4>Miembros Activos Hoy</h4>
+                            <div class="value" id="leader-stat-active">0</div>
+                            <p class="desc">En el subgrupo de trabajo</p>
+                        </div>
+                        
+                        <div class="card summary-card">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <h4>Horas Totales del Grupo</h4>
+                            <div class="value" id="leader-stat-hours">0.00 h</div>
+                            <p class="desc">Acumulado del período</p>
+                        </div>
+
+                        <div class="card summary-card">
+                            <div class="card-icon warning">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <h4>Pago Acumulado Neto</h4>
+                            <div class="value text-success" id="leader-stat-earnings">Q0.00</div>
+                            <p class="desc">Tareas y turnos realizados</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Miembros del Equipo -->
+                    <div class="card table-card margin-top">
+                        <div class="card-header">
+                            <h3 id="leader-table-title">Miembros de mi Equipo</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Colaborador</th>
+                                        <th>Estado Actual</th>
+                                        <th>Tarifa</th>
+                                        <th>Horas Totales</th>
+                                        <th>Bruto Estimado</th>
+                                        <th>Descuentos</th>
+                                        <th>Neto Acumulado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leader-team-table">
+                                    <!-- Carga dinámica -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Detalle de Marcajes del Equipo -->
+                    <div class="card table-card margin-top">
+                        <div class="card-header">
+                            <h3>�altimos Marcajes del Turno (Equipo)</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Colaborador</th>
+                                        <th>Fecha</th>
+                                        <th>Entrada</th>
+                                        <th>Salida</th>
+                                        <th>Horas Trab.</th>
+                                        <th>Monto Neto</th>
+                                        <th>Estado de Pago</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leader-attendance-table">
+                                    <!-- Carga dinámica -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>

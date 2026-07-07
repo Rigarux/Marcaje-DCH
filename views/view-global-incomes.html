@@ -1,0 +1,64 @@
+<div class="grid-2-col margin-top">
+                        <!-- Panel Izquierdo: Formulario -->
+                        <div class="card">
+                            <div class="card-header" style="display: flex; flex-direction: column; gap: 10px;">
+                                <h3 id="form-income-title">Gestión de Movimientos</h3>
+                                <div class="tabs" style="display: flex; gap: 10px; margin-top: 10px;">
+                                    <button type="button" class="btn-primary" id="btn-tab-ingreso" style="flex: 1;">Registrar Ingreso</button>
+                                    <button type="button" class="btn-secondary" id="btn-tab-gasto" style="flex: 1; background: var(--surface); color: var(--text);">Registrar Gasto</button>
+                                </div>
+                            </div>
+                            <form id="global-income-form" data-mode="Ingreso">
+                                <div class="form-group margin-top">
+                                    <label id="label-motivo" for="global-income-motivo">Motivo del Ingreso *</label>
+                                    <input type="text" id="global-income-motivo" class="form-control" required placeholder="Ej: Pago de cheque, Venta de material, etc.">
+                                </div>
+                                <div class="form-group">
+                                    <label id="label-monto" for="global-income-monto">Monto del Ingreso (Q) *</label>
+                                    <div class="currency-input-wrapper">
+                                        <span class="currency-symbol">Q</span>
+                                        <input type="number" id="global-income-monto" class="form-control" step="0.01" min="0" required placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div class="form-group hidden" id="global-income-projects-group">
+                                    <label for="global-income-project-select">Asignar Gasto a Proyecto (Opcional)</label>
+                                    <select id="global-income-project-select" class="form-control">
+                                        <option value="">Cargando proyectos...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label id="label-foto" for="global-income-foto">Fotografía (Cheque o Efectivo) - Opcional</label>
+                                    <input type="file" id="global-income-foto" accept="image/*" class="form-control">
+                                    <div id="global-income-photo-preview-container" class="hidden" style="margin-top: 10px; text-align: center;">
+                                        <img id="global-income-photo-preview" src="" alt="Vista previa" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn-primary margin-top" id="btn-submit-global-income">ENVIAR INGRESO</button>
+                            </form>
+                        </div>
+                        
+                        <!-- Panel Derecho: Tabla de Ingresos/Gastos -->
+                        <div class="card table-card">
+                            <div class="card-header">
+                                <h3 id="global-incomes-table-title">Mis Movimientos Recientes (Últimas 24h)</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th class="global-income-user-col hidden">Colaborador</th>
+                                            <th>Fecha</th>
+                                            <th>Motivo</th>
+                                            <th>Tipo</th>
+                                            <th>Monto</th>
+                                            <th>Foto / Factura</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="global-incomes-table-body">
+                                        <tr><td colspan="7" class="text-center text-muted">Cargando movimientos...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>

@@ -1,0 +1,67 @@
+<div class="card summary-card bg-card-warning-light" style="max-width: 500px; margin: 0 auto; padding: 30px;">
+                        <div class="card-icon warning">
+                            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 8v8M9 12h6"></path>
+                            </svg>
+                        </div>
+                        <h3 style="font-size: 1.5rem; font-weight: 700; margin: 15px 0 5px 0; color: var(--warning);">Estado de mi Préstamo</h3>
+                        <p class="text-muted" style="margin-bottom: 25px;">Detalles del saldo pendiente y cuotas de amortización.</p>
+                        
+                        <div class="loan-details-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left; margin-bottom: 25px;">
+                            <div>
+                                <span class="text-muted" style="font-size: 0.85rem;">Préstamo Total Autorizado</span>
+                                <h4 style="font-size: 1.4rem; font-weight: 700; margin: 5px 0 0 0;" id="usr-loan-total-val">Q0.00</h4>
+                            </div>
+                            <div>
+                                <span class="text-muted" style="font-size: 0.85rem;">Saldo Pendiente</span>
+                                <h4 style="font-size: 1.4rem; font-weight: 700; margin: 5px 0 0 0; color: var(--warning);" id="usr-loan-saldo-val">Q0.00</h4>
+                            </div>
+                            <div>
+                                <span class="text-muted" style="font-size: 0.85rem;">Monto de Cuota</span>
+                                <h4 style="font-size: 1.2rem; font-weight: 600; margin: 5px 0 0 0;" id="usr-loan-cuota-val">Q0.00</h4>
+                            </div>
+                            <div>
+                                <span class="text-muted" style="font-size: 0.85rem;">Estado de la Cuota</span>
+                                <h4 style="font-size: 1.2rem; font-weight: 600; margin: 5px 0 0 0;" id="usr-loan-status-val">Ninguno</h4>
+                            </div>
+                        </div>
+                        <div class="card bg-gradient-primary" style="padding: 15px; border-radius: var(--radius-md); text-align: left;">
+                            <span class="text-muted" style="font-size: 0.8rem; opacity: 0.8;">Fecha de Finalización Estimada</span>
+                            <h4 id="usr-loan-end-date" style="margin: 5px 0 0 0; font-size: 1.1rem; font-weight: 600;">Cargando...</h4>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="max-width: 500px; margin: 20px auto; padding: 25px;">
+                        <h4>Solicitar Nuevo Préstamo</h4>
+                        <form id="form-request-loan" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="request-loan-amount">Monto (Q)</label>
+                                <input type="number" id="request-loan-amount" class="form-control" step="0.01" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="request-loan-installments">Cantidad de Cuotas (Semanas/Quincenas)</label>
+                                <input type="number" id="request-loan-installments" class="form-control" min="1" max="100" required>
+                            </div>
+                            <button type="submit" class="btn-primary" style="width: 100%;">Enviar Solicitud</button>
+                        </form>
+                    </div>
+
+                    <div class="card" style="max-width: 500px; margin: 20px auto; padding: 25px;">
+                        <h4>Mis Solicitudes</h4>
+                        <div class="table-responsive" style="margin-top: 15px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Monto</th>
+                                        <th>Cuotas</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="user-loans-table">
+                                    <tr><td colspan="4" class="text-center text-muted">Cargando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>

@@ -1,0 +1,38 @@
+<div class="card table-card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <h3>Gestión de Ventas</h3>
+                            <button id="btn-open-quote-modal" class="btn-primary" style="width: auto;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                <span>Ventas</span>
+                            </button>
+                        </div>
+                        <div class="tabs-container" style="margin-bottom: 15px; border-bottom: 1px solid var(--border);">
+                            <div class="tabs-scroll-wrapper">
+                                <div class="tabs-list" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px;">
+                                    <button class="tab-btn active" data-quote-filter="Borrador">Activas</button>
+                                    <button class="tab-btn" data-quote-filter="Aceptada">Historial Aceptadas</button>
+                                    <button class="tab-btn" data-quote-filter="Rechazada">Historial Rechazadas</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Cliente</th>
+                                        <th>NIT</th>
+                                        <th>Total Estimado</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="quotes-table-body">
+                                    <!-- Carga dinámica -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
