@@ -205,6 +205,11 @@
 
             // Render table for Attendances
             const tbodyAttendances = document.getElementById('project-attendances-table-body');
+            const payrollBadge = document.getElementById('project-total-payroll-badge');
+            if (payrollBadge) {
+                payrollBadge.textContent = 'Total: Q' + totalPlanilla.toFixed(2);
+            }
+
             if (tbodyAttendances) {
                 tbodyAttendances.innerHTML = '';
                 if (attendances.length === 0) {
@@ -216,15 +221,49 @@
                         </tr>
                     `;
                 } else {
+                    // Group attendances by date
+                    const attByDate = {};
                     attendances.forEach(a => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${a.fecha}</td>
-                            <td style="font-weight: 500;">${a.empleadoNombre}</td>
-                            <td style="text-align: right;">${Number(a.horasTrabajadas).toFixed(2)} hrs</td>
-                            <td style="text-align: right; font-weight: 500; color: var(--danger);">Q${Number(a.pago).toFixed(2)}</td>
+                        const date = a.fecha || 'Sin fecha';
+                        if (!attByDate[date]) attByDate[date] = { records: [], total: 0 };
+                        attByDate[date].records.push(a);
+                        attByDate[date].total += Number(a.pago) || 0;
+                    });
+
+                    // Sort dates (descending)
+                    const sortedDates = Object.keys(attByDate).sort((a,b) => {
+                        const parseDate = (dStr) => {
+                            if (!dStr) return 0;
+                            if (dStr.includes('/')) {
+                                const parts = dStr.split('/');
+                                return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+                            }
+                            return new Date(dStr).getTime();
+                        };
+                        return parseDate(b) - parseDate(a); // Descending
+                    });
+
+                    sortedDates.forEach(date => {
+                        // Add daily header
+                        const trHeader = document.createElement('tr');
+                        trHeader.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                        trHeader.innerHTML = `
+                            <td colspan="3" style="font-weight: 700; color: var(--primary-color);">Día: ${date}</td>
+                            <td style="text-align: right; font-weight: 700; color: var(--primary-color);">Total Día: Q${attByDate[date].total.toFixed(2)}</td>
                         `;
-                        tbodyAttendances.appendChild(tr);
+                        tbodyAttendances.appendChild(trHeader);
+
+                        // Add records for the day
+                        attByDate[date].records.forEach(a => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${a.fecha}</td>
+                                <td style="font-weight: 500;">${a.empleadoNombre}</td>
+                                <td style="text-align: right;">${Number(a.horasTrabajadas).toFixed(2)} hrs</td>
+                                <td style="text-align: right; font-weight: 500; color: var(--danger);">Q${Number(a.pago).toFixed(2)}</td>
+                            `;
+                            tbodyAttendances.appendChild(tr);
+                        });
                     });
                 }
             }
