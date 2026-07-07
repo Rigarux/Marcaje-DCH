@@ -518,31 +518,7 @@
             }
         }
 
-        // Cargar lista de trabajadores autorizados (Rol de Ventas)
-        const storeUsersList = document.getElementById('store-users-list');
-        const allUsers = window.AttendanceDB._state.users || [];
-        const authorizedUsers = allUsers.filter(u => u.hasVentasRole === 1);
 
-        if (storeUsersList) {
-            storeUsersList.innerHTML = '';
-            if (authorizedUsers.length === 0) {
-                storeUsersList.innerHTML = '<span class="text-muted" style="font-size:0.8rem;">No hay trabajadores con el Rol de Ventas activado.</span>';
-            } else {
-                authorizedUsers.forEach(u => {
-                    let isAssigned = false;
-                    if (id) {
-                        isAssigned = u.assignedStores && u.assignedStores.includes(parseInt(id));
-                    }
-                    const checked = isAssigned ? 'checked' : '';
-                    storeUsersList.innerHTML += `
-                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                            <input type="checkbox" class="store-user-checkbox" value="${u.id}" ${checked}>
-                            <span>${u.nombre} (@${u.username})</span>
-                        </label>
-                    `;
-                });
-            }
-        }
     }
 
     const closeStoreModal = () => {
@@ -863,19 +839,6 @@
             userModalTitle.textContent = 'Crear Usuario';
         }
 
-        // Ventas Role & Stores
-        // Ventas Role
-        const roleVentasCheckbox = document.getElementById('user-role-ventas');
-
-        if (roleVentasCheckbox) {
-            let isVentas = false;
-            if (userId) {
-                const user = window.AttendanceDB.getUserById(userId);
-                isVentas = (user.hasVentasRole === 1);
-            }
-            roleVentasCheckbox.checked = isVentas;
-        }
-
         toggleUserRateInputVisibility();
         if (userModal) {
             userModal.classList.remove('hidden');
@@ -927,8 +890,7 @@
             }
 
             // Recoger Ventas
-            const roleVentasCheckbox = document.getElementById('user-role-ventas');
-            const hasVentasRole = roleVentasCheckbox && roleVentasCheckbox.checked ? 1 : 0;
+            const hasVentasRole = 0;
             const assignedStores = []; // Ya no se asigna desde el perfil del usuario, pero se manda vacio para compatibilidad
 
             let result;

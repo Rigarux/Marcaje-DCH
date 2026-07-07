@@ -262,7 +262,6 @@
 
     // Confirmar marcaje y enviar ubicación
     btnConfirmLocation.addEventListener('click', async () => {
-        // Validar justificaciones
         let whereValue = locationWhereInput ? locationWhereInput.value.trim() : '';
         let whyValue = locationWhyInput ? locationWhyInput.value.trim() : '';
 

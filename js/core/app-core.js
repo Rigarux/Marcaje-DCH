@@ -249,15 +249,6 @@ function setupSidebarMenu() {
         menuItems.push({ id: 'nav-superadmin', label: 'Auditoría de Logs', icon: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>', subView: 'view-superadmin' });
     }
 
-    // Apartado Venta
-    if (currentUser.hasVentasRole === 1) {
-        menuItems.push({
-            id: 'nav-sales',
-            label: 'Ventas',
-            icon: '<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path>',
-            subView: 'view-sales'
-        });
-    }
 
     // Todos los roles tienen acceso a Ingresos Globales
     menuItems.push({ id: 'nav-global-incomes', label: 'Ingresos y Gastos', icon: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-global-incomes' });
@@ -416,51 +407,6 @@ function loadRoleView() {
         return;
     }
 
-    // Si la vista es Ventas
-    if (activeTab === 'view-sales' || activeTab === 'view-sales/Venta-productos' || activeTab === 'view-sales/venta-libre') {
-        document.getElementById('view-sales').classList.remove('hidden');
-        
-        // Inicializar vista genérica (lo cual muestra por defecto sales-companies-view)
-        setupSalesView();
-        
-        // Aplicar overrides específicos según subruta
-        if (activeTab === 'view-sales/Venta-productos') {
-            viewTitle.textContent = 'Punto de Venta';
-            viewSubtitle.textContent = 'Procesa una nueva venta.';
-            document.getElementById('sales-companies-view')?.classList.add('hidden');
-            document.getElementById('tab-unified-pos')?.classList.add('hidden');
-            document.getElementById('view-quote-detail')?.classList.add('hidden');
-            document.getElementById('tab-venta-libre')?.style.setProperty('display', 'none');
-            document.getElementById('sales-pos-view')?.classList.remove('hidden');
-        } else if (activeTab === 'view-sales/venta-libre') {
-            viewTitle.textContent = 'Historial de Venta Libre';
-            viewSubtitle.textContent = 'Historial y registro de ventas independientes a tiendas.';
-            document.getElementById('sales-companies-view')?.classList.add('hidden');
-            document.getElementById('tab-unified-pos')?.classList.add('hidden');
-            document.getElementById('view-quote-detail')?.classList.add('hidden');
-            document.getElementById('sales-pos-view')?.classList.add('hidden');
-            document.getElementById('tab-unified-history')?.classList.add('hidden');
-            document.getElementById('tab-venta-libre').style.display = 'block';
-            
-            // Reload the table
-            if (typeof window.renderVentaLibreView === 'function') {
-                window.renderVentaLibreView();
-            }
-        } else {
-            viewTitle.textContent = 'Ventas e Inventario';
-            viewSubtitle.textContent = 'Selecciona una empresa para gestionar y visualizar su inventario de venta.';
-            document.getElementById('sales-companies-view')?.classList.remove('hidden');
-            document.getElementById('tab-unified-pos')?.classList.remove('hidden');
-            document.getElementById('view-quote-detail')?.classList.add('hidden');
-            document.getElementById('sales-pos-view')?.classList.add('hidden');
-            document.getElementById('tab-venta-libre')?.style.setProperty('display', 'none');
-            
-            // Ensure unified history is hidden by default in main view
-            document.getElementById('tab-unified-history')?.classList.add('hidden');
-        }
-        
-        return;
-    }
 
     // Si la vista es caja chica
     if (activeTab === 'view-petty-cash') {
