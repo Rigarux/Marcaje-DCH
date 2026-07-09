@@ -20,7 +20,7 @@
             passwordInput.value = '';
             showDashboard();
 
-            if (user.rol === 'admin' || user.rol === 'superadmin') {
+            if (user.rol === 'admin') {
                 checkMaterialAlerts();
             }
         } else {
@@ -589,7 +589,7 @@
 
             const res = await window.AttendanceDB.submitBusRecord(currentUser.id, turno, ingreso, null, null, null, gastos);
             if (res.success) {
-                showToast('Registro Guardado', 'El registro de turno se ha enviado con éÉxito.', 'success');
+                showToast('Registro Guardado', 'El registro de turno se ha enviado con éxito.', 'success');
                 closeBusesModal();
                 setupUserView();
             } else {
@@ -622,21 +622,24 @@
             if (busRecords.length === 0) {
                 usrBusesTable.innerHTML = `<tr><td colspan="6" class="text-muted" style="text-align:center;">No hay reportes de efectivo.</td></tr>`;
             } else {
-                let html = '';
+                const fragmentBuses = document.createDocumentFragment();
                 busRecords.forEach(b => {
                     let statusClass = b.aprobado === 1 ? 'approved' : 'pending';
                     let statusText = b.aprobado === 1 ? 'Aprobado' : 'Pendiente';
                     let hasReceipt = b.fotoFacturaUrl ? `<br><a href="${b.fotoFacturaUrl}" target="_blank" style="font-size:0.8rem;">Ver Recibo</a>` : '';
-                    html += `<tr>
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
                         <td>${b.fecha}</td>
                         <td>${b.turno}</td>
                         <td>Q${b.ingresoDinero.toFixed(2)}</td>
                         <td>${b.tipoGasto}</td>
                         <td>Q${b.montoGasto.toFixed(2)}${hasReceipt}</td>
                         <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                    </tr>`;
+                    `;
+                    fragmentBuses.appendChild(tr);
                 });
-                usrBusesTable.innerHTML = html;
+                usrBusesTable.innerHTML = '';
+                usrBusesTable.appendChild(fragmentBuses);
             }
 
             busRecords.forEach(b => {
@@ -684,8 +687,9 @@
                         <td><strong>Q${rec.total.toFixed(2)}</strong></td>
                         <td>${statusBadge}</td>
                     `;
-                    usrPieceworkTable.appendChild(tr);
+                    fragmentPiecework.appendChild(tr);
                 });
+                usrPieceworkTable.appendChild(fragmentPiecework);
             }
         } else {
             if (usrAttendanceThead) usrAttendanceThead.classList.remove('hidden');
@@ -710,6 +714,7 @@
                     </tr>
                 `;
             } else {
+                const fragmentAttendance = document.createDocumentFragment();
                 history.forEach(rec => {
                     // Sumar solo si el marcaje ya se completó y no está archivado en un corte
                     if (rec.horaSalida && !rec.archivado) {
@@ -763,8 +768,9 @@
                     <td><strong>${netoText}</strong></td>
                     <td>${statusBadge}</td>
                 `;
-                    usrAttendanceTable.appendChild(tr);
+                    fragmentAttendance.appendChild(tr);
                 });
+                usrAttendanceTable.appendChild(fragmentAttendance);
             }
         }
 

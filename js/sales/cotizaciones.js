@@ -1,4 +1,4 @@
-// --- LÓGICA DE VentaES ---
+// --- LÓGICA DE VENTAS ---
 let currentDetailedQuoteId = null;
 let currentQuoteData = null;
 let currentQuoteItems = [];
@@ -143,7 +143,7 @@ if (formNewClient) {
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 
-            showToast('ÉÉxito', 'Cliente registrado eÉxitosamente.', 'success');
+            showToast('Éxito', 'Cliente registrado exitosamente.', 'success');
             newClientModal.classList.add('hidden');
 
             // Recargar el select de clientes
@@ -170,7 +170,7 @@ if (formNewClient) {
 
 let currentQuoteFilter = 'Borrador';
 
-// Interceptar clics en los filtros de Ventaes
+// Interceptar clics en los filtros de Ventas
 document.addEventListener('click', (e) => {
     if (e.target.matches('[data-quote-filter]')) {
         currentQuoteFilter = e.target.getAttribute('data-quote-filter');
@@ -192,7 +192,7 @@ async function renderQuotesView() {
     if (!quotesTableBody) return;
     viewQuotes.querySelector('.card.table-card').classList.remove('hidden');
     viewQuoteDetail.classList.add('hidden');
-    quotesTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Cargando Ventaes...</td></tr>';
+    quotesTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Cargando Ventas...</td></tr>';
 
     try {
         const res = await fetch('/api/quotes');
@@ -206,10 +206,11 @@ async function renderQuotesView() {
 
         quotesTableBody.innerHTML = '';
         if (quotes.length === 0) {
-            quotesTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">No hay Ventaes registradas en estado: ${currentQuoteFilter}.</td></tr>`;
+            quotesTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">No hay Ventas registradas en estado: ${currentQuoteFilter}.</td></tr>`;
             return;
         }
 
+        const fragmentQuotes = document.createDocumentFragment();
         quotes.forEach(q => {
             const tr = document.createElement('tr');
             let tagClass = 'status-online';
@@ -232,13 +233,14 @@ async function renderQuotesView() {
                             <button class="btn-primary btn-sm btn-accept-quote" data-id="${q.id}" data-total="${q.totalVenta}" title="Aceptar Venta" style="margin-left: 5px; background-color: var(--success); border-color: var(--success);">Aceptar</button>
                             <button class="btn-danger btn-sm btn-reject-quote" data-id="${q.id}" title="Rechazar Venta" style="margin-left: 5px;">Rechazar</button>
                         ` : ''}
-                        ${(currentUser.rol === 'admin' || currentUser.rol === 'superadmin') ? `
+                        ${(currentUser.rol === 'admin') ? `
                             <button class="btn-danger btn-sm btn-delete-quote" data-id="${q.id}" title="Eliminar" style="margin-left: 5px;">X</button>
                         ` : ''}
                     </td>
                 `;
-            quotesTableBody.appendChild(tr);
+            fragmentQuotes.appendChild(tr);
         });
+        quotesTableBody.appendChild(fragmentQuotes);
 
         // Listeners
         quotesTableBody.querySelectorAll('.btn-open-quote').forEach(btn => {
@@ -252,7 +254,7 @@ async function renderQuotesView() {
                 if (await appConfirm('Confirmación', '¿Estás seguro de eliminar esta venta?')) {
                     try {
                         await fetch(`/api/quotes/${id}`, { method: 'DELETE' });
-                        showToast('ÉÉxito', 'Venta eliminada.', 'success');
+                        showToast('Éxito', 'Venta eliminada.', 'success');
                         renderQuotesView();
                     } catch (err) {
                         showToast('Error', 'No se pudo eliminar.', 'danger');
@@ -268,7 +270,7 @@ async function renderQuotesView() {
                         const res = await fetch(`/api/quotes/${id}/reject`, { method: 'POST' });
                         const data = await res.json();
                         if (data.success) {
-                            showToast('ÉÉxito', 'Venta rechazada.', 'success');
+                            showToast('Éxito', 'Venta rechazada.', 'success');
                             renderQuotesView();
                         } else {
                             showToast('Error', data.message || 'No se pudo rechazar.', 'danger');
@@ -289,7 +291,7 @@ async function renderQuotesView() {
 
     } catch (err) {
         console.error(err); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger');
-        quotesTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Error al cargar Ventaes.</td></tr>';
+        quotesTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Error al cargar Ventas.</td></tr>';
     }
 }
 
@@ -360,6 +362,7 @@ async function renderVentaLibreView() {
             return;
         }
 
+        const fragmentVL = document.createDocumentFragment();
         quotes.forEach(q => {
             const tr = document.createElement('tr');
             let tagClass = 'status-online';
@@ -381,13 +384,14 @@ async function renderVentaLibreView() {
                             <button class="btn-primary btn-sm btn-accept-quote" data-id="${q.id}" data-total="${q.totalVenta}" title="Aceptar Venta" style="margin-left: 5px; background-color: var(--success); border-color: var(--success);">Aceptar</button>
                             <button class="btn-danger btn-sm btn-reject-quote" data-id="${q.id}" title="Rechazar Venta" style="margin-left: 5px;">Rechazar</button>
                         ` : ''}
-                        ${(currentUser.rol === 'admin' || currentUser.rol === 'superadmin') ? `
+                        ${(currentUser.rol === 'admin') ? `
                             <button class="btn-danger btn-sm btn-delete-quote" data-id="${q.id}" title="Eliminar" style="margin-left: 5px;">X</button>
                         ` : ''}
                     </td>
                 `;
-            ventaLibreTableBody.appendChild(tr);
+            fragmentVL.appendChild(tr);
         });
+        ventaLibreTableBody.appendChild(fragmentVL);
 
         // Listeners for actions in Venta Libre table
         ventaLibreTableBody.querySelectorAll('.btn-open-quote').forEach(btn => {
@@ -567,7 +571,7 @@ if (quoteHeaderForm) {
                 })
             });
             window.isNewQuote = false; // Quote is now explicitly saved
-            showToast('ÉÉxito', 'Datos del cliente actualizados.', 'success');
+            showToast('Éxito', 'Datos del cliente actualizados.', 'success');
             renderQuoteDetails(currentDetailedQuoteId); // recargar data
         } catch (err) {
             console.error(err); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger');
@@ -604,7 +608,7 @@ if (formAddQuoteItem) {
             document.getElementById('quote-item-qty').value = 1;
             document.getElementById('quote-item-unit').value = 'Unidad';
 
-            showToast('ÉÉxito', 'Ítem agregado.', 'success');
+            showToast('Éxito', 'Ítem agregado.', 'success');
             renderQuoteDetails(currentDetailedQuoteId);
         } catch (err) {
             console.error(err); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger');
@@ -756,7 +760,7 @@ if (btnExportQuotePdf) {
             };
 
             await html2pdf().set(opt).from(pdfContainer).save();
-            showToast('ÉÉxito', 'Venta exportada a PDF.', 'success');
+            showToast('Éxito', 'Venta exportada a PDF.', 'success');
         } catch (err) {
             console.error(err); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger');
             showToast('Error', 'No se pudo generar el PDF. Revisa la consola.', 'danger');
@@ -851,7 +855,7 @@ if (acceptQuoteForm) {
 
             const data = await res.json();
             if (data.success) {
-                showToast('ÉÉxito', 'Venta aceptada y asginada al proyecto eÉxitosamente.', 'success');
+                showToast('Éxito', 'Venta aceptada y asginada al proyecto exitosamente.', 'success');
                 closeAcceptQuoteModal();
                 // Refrescar vistas
                 renderQuotesView();

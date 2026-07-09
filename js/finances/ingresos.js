@@ -133,7 +133,7 @@
                     });
 
                     if (res.ok) {
-                        showToast('ÉÉxito', `${tipo} reportado correctamente.`, 'success');
+                        showToast('Éxito', `${tipo} reportado correctamente.`, 'success');
                         form.reset();
                         photoPreviewContainer.classList.add('hidden');
                         photoPreview.src = '';
@@ -160,7 +160,7 @@
         const titleEl = document.getElementById('global-incomes-table-title');
         if (!tbody) return;
 
-        const isAdmin = currentUser.rol === 'admin' || currentUser.rol === 'superadmin';
+        const isAdmin = currentUser.rol === 'admin';
         if (titleEl) {
             titleEl.textContent = isAdmin ? 'Historial de Ingresos' : 'Mis Ingresos Recientes (Últimas 24h)';
         }
@@ -244,7 +244,7 @@
                             try {
                                 const response = await fetch(`/api/global-incomes/${id}/pay`, { method: 'PUT' });
                                 if (response.ok) {
-                                    showToast('ÉÉxito', 'El ingreso ha sido marcado como pagado.', 'success');
+                                    showToast('Éxito', 'El ingreso ha sido marcado como pagado.', 'success');
                                     loadGlobalIncomesTable();
                                 } else {
                                     showToast('Error', 'No se pudo actualizar el estado.', 'danger');

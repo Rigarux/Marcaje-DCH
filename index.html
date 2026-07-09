@@ -786,12 +786,6 @@
                             <!-- Panel de Controles y Aprobaciones -->
                             <div class="filter-bar" style="margin-bottom: 20px;">
                                 <div class="filter-group">
-                                    <label for="admin-group-filter">Filtrar por Grupo:</label>
-                                    <select id="admin-group-filter" class="form-control">
-                                        <!-- Cargado dinámicamente -->
-                                    </select>
-                                </div>
-                                <div class="filter-group" style="margin-left: 15px;">
                                     <label for="admin-period-filter">Período de Planilla:</label>
                                     <select id="admin-period-filter" class="form-control">
                                         <option value="active_week">Semana de Pago Activa (Cierre Vie 23:59pm)</option>
@@ -839,7 +833,6 @@
                                         <thead>
                                             <tr>
                                                 <th>Colaborador</th>
-                                                <th>Grupo</th>
                                                 <th>H. Diurnas (Tot)</th>
                                                 <th>H. Nocturnas (Tot)</th>
                                                 <th>Bruto (Tot)</th>
@@ -925,7 +918,6 @@
                                                 <th>Usuario</th>
                                                 <th>Rol</th>
                                                 <th>Empresa</th>
-                                                <th>Grupo</th>
                                                 <th>Tarifa (D/N)</th>
                                                 <th>Frecuencia</th>
                                                 <th>Acciones</th>
@@ -1303,53 +1295,7 @@
 
 
 
-                <!-- ==================== VISTA: SUPER ADMIN (superadmin) ==================== -->
-                <section id="view-superadmin" class="role-view hidden">
-<div class="grid-3-col">
-                        <div class="card summary-card">
-                            <h4>Total Logs Registrados</h4>
-                            <div class="value" id="superadmin-stat-logs">0</div>
-                            <p class="desc">Historial de auditoría</p>
-                        </div>
-                        <div class="card summary-card">
-                            <h4>Base de Datos</h4>
-                            <div class="value text-success">Activa</div>
-                            <p class="desc">Guardado en LocalStorage</p>
-                        </div>
-                        <div class="card summary-card centered-content">
-                            <button id="btn-reset-db" class="btn-danger-outline">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-                                </svg>
-                                <span>Restablecer Datos Demo</span>
-                            </button>
-                        </div>
-                    </div>
 
-                    <!-- Tabla de Logs de Auditoría -->
-                    <div class="card table-card margin-top">
-                        <div class="card-header search-header">
-                            <h3>Registro de Auditoría (System Logs)</h3>
-                            <div class="search-wrapper">
-                                <input type="text" id="log-search-input" placeholder="Buscar por colaborador o acción..." class="form-control">
-                            </div>
-                        </div>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Fecha y Hora</th>
-                                        <th>Usuario</th>
-                                        <th>Acción Realizada</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="superadmin-logs-table">
-                                    <!-- Carga dinámica -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-</section>
 
             </div>
         </main>
@@ -1588,7 +1534,6 @@
                         <option value="usr">Usuario Operario</option>
                         <option value="leader">Líder de Grupo</option>
                         <option value="admin">Supervisor</option>
-                        <option value="superadmin">Super Admin</option>
                     </select>
                 </div>
 
@@ -1602,15 +1547,6 @@
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <label for="user-group-select" style="margin-bottom: 0;">Grupo / Servicio *</label>
-                        <button type="button" id="btn-add-group" class="btn-primary" style="width: auto; padding: 4px 8px; font-size: 0.75rem; line-height: 1; height: auto; margin: 0; border-radius: var(--radius-sm);">+ Nuevo</button>
-                    </div>
-                    <select id="user-group-select" class="form-control" required>
-                        <!-- Cargado dinámicamente -->
-                    </select>
-                </div>
 
                 <div class="form-group">
                     <label for="user-tipo-pago-select">Tipo de Pago *</label>
@@ -2258,7 +2194,6 @@
                 <div class="detail-info-pane">
                     <p><strong>Control del turno - </strong> <span id="detail-worker-username">-</span></p>
                     <p><strong>Empresa:</strong> <span id="detail-worker-company">-</span></p>
-                    <p><strong>Grupo:</strong> <span id="detail-worker-group">-</span></p>
                     <p><strong>Tarifa Diurna:</strong> Q<span id="detail-worker-rate-d">0.00</span></p>
                     <p><strong>Tarifa Nocturna:</strong> Q<span id="detail-worker-rate-n">0.00</span></p>
                     <p><strong>Frecuencia Pago:</strong> <span id="detail-worker-freq">-</span></p>
@@ -2349,7 +2284,7 @@
     <script src="js/views/vista-usuario.js?v=36" defer></script>
     <script src="js/views/vista-lider.js?v=35" defer></script>
     <script src="js/views/vista-admin.js?v=35" defer></script>
-    <script src="js/views/vista-superadmin.js?v=35" defer></script>
+
 
     <!-- ==================== MODAL NUEVA VENTA ==================== -->
     <div id="new-quote-modal" class="modal-overlay hidden">
@@ -2711,7 +2646,6 @@
                         <thead>
                             <tr>
                                 <th>Colaborador</th>
-                                <th>Grupo</th>
                                 <th>H. Totales</th>
                                 <th>Bruto</th>
                                 <th class="bonuses-col">Bonos</th>

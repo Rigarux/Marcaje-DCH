@@ -8,7 +8,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error("Error al abrir la base de datos SQLite:", err);
     } else {
-        console.log("Conectado con éÉxito a la base de datos SQLite: " + dbPath);
+        console.log("Conectado con éxito a la base de datos SQLite: " + dbPath);
     }
 });
 
@@ -55,10 +55,6 @@ async function initDb() {
                 tarifaDiurna REAL,
                 tarifaNocturna REAL,
                 frecuenciaPago TEXT
-            )`,
-            `CREATE TABLE IF NOT EXISTS groups (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE
             )`,
             `CREATE TABLE IF NOT EXISTS companies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -294,11 +290,6 @@ async function initDb() {
         }
 
         // Datos demo
-        const defaultGroups = ['N/A', 'Servicio 1', 'Servicio 2', 'Servicio 3'];
-        for (const g of defaultGroups) {
-            await dbRun(`INSERT OR IGNORE INTO groups (name) VALUES (?)`, [g]);
-        }
-
         const defaultCompanies = ['N/A', 'DCH', 'Empresa A', 'Empresa B'];
         for (const c of defaultCompanies) {
             await dbRun(`INSERT OR IGNORE INTO companies (name) VALUES (?)`, [c]);
@@ -315,10 +306,6 @@ async function initDb() {
             await dbRun(`
                 INSERT INTO users (id, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago)
                 VALUES (8, 'danielch', '123', 'Daniel CH', 'admin', 'N/A', 'DCH', 0.0, 0.0, 'semanal')
-            `);
-            await dbRun(`
-                INSERT INTO users (id, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago)
-                VALUES (9, 'admin', '123', 'Administrador General', 'superadmin', 'N/A', 'DCH', 0.0, 0.0, 'semanal')
             `);
 
             await dbRun(`

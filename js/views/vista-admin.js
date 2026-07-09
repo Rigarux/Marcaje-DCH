@@ -398,6 +398,7 @@
             }
         });
 
+        const fragment = document.createDocumentFragment();
         Object.values(grouped).forEach(group => {
             const user = allUsers.find(u => u.id === group.userId);
             const nombre = user ? user.nombre : 'Desconocido';
@@ -489,7 +490,7 @@
                     </div>
                 </td>
             `;
-            adminAttendanceTable.appendChild(trMain);
+            fragment.appendChild(trMain);
 
             // Subtabla Fila
             const trSub = document.createElement('tr');
@@ -743,8 +744,10 @@
                     </div>
                 </td>
             `;
-            adminAttendanceTable.appendChild(trSub);
+            fragment.appendChild(trSub);
         });
+
+        adminAttendanceTable.appendChild(fragment);
 
         // Registrar listeners para expandir/colapsar
         adminAttendanceTable.querySelectorAll('.main-grouped-row').forEach(row => {
@@ -807,7 +810,7 @@
 
                 const success = await window.AttendanceDB.approveBusRecord(recid, currentUser.id, metodoPago);
                 if (success) {
-                    showToast('ÉÉxito', 'Pago de turno aprobado correctamente.', 'success');
+                    showToast('Éxito', 'Pago de turno aprobado correctamente.', 'success');
                     setupAdminView();
                 } else {
                     showToast('Error', 'No se pudo aprobar el pago. Asegúrate de haber reiniciado el servidor.', 'danger');
@@ -940,6 +943,7 @@
             return;
         }
 
+        const fragmentPenalties = document.createDocumentFragment();
         penalizations.forEach(pen => {
             const user = allUsers.find(u => u.id === pen.usuarioId);
             const nombre = user ? user.nombre : 'Desconocido';
@@ -968,8 +972,9 @@
                 <td><strong class="text-danger">Q${pen.monto.toFixed(2)}</strong></td>
                 <td>${deleteButton}</td>
             `;
-            adminPenaltiesTable.appendChild(tr);
+            fragmentPenalties.appendChild(tr);
         });
+        adminPenaltiesTable.appendChild(fragmentPenalties);
 
         // Registrar listener para eliminar
         adminPenaltiesTable.querySelectorAll('.delete-penalty').forEach(btn => {
@@ -1003,6 +1008,7 @@
             return;
         }
 
+        const fragmentBonuses = document.createDocumentFragment();
         bonuses.forEach(bon => {
             const user = allUsers.find(u => u.id === bon.usuarioId);
             const nombre = user ? user.nombre : 'Desconocido';
@@ -1023,8 +1029,9 @@
                 <td><strong class="text-success">Q${bon.monto.toFixed(2)}</strong></td>
                 <td>${deleteButton}</td>
             `;
-            adminBonusesTable.appendChild(tr);
+            fragmentBonuses.appendChild(tr);
         });
+        adminBonusesTable.appendChild(fragmentBonuses);
 
         // Registrar listener para eliminar
         adminBonusesTable.querySelectorAll('.delete-bonus').forEach(btn => {

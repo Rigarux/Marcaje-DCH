@@ -69,7 +69,7 @@
                 const lId = parseInt(e.target.getAttribute('data-id'));
                 const success = await window.AttendanceDB.approveLoan(lId, currentUser.id);
                 if (success) {
-                    showToast('Préstamo Aprobado', 'La solicitud de préstamo fue aprobada con éÉxito.', 'success');
+                    showToast('Préstamo Aprobado', 'La solicitud de préstamo fue aprobada con éxito.', 'success');
                     renderAdminLoansTable();
                 } else {
                     showToast('Error', 'No se pudo aprobar la solicitud.', 'danger');

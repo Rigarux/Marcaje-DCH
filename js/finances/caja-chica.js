@@ -26,7 +26,7 @@
             const funds = await fundsRes.json();
             const users = await usersRes.json();
 
-            const isSupervisor = ['admin', 'superadmin', 'leader'].includes(currentUser.rol);
+            const isSupervisor = ['admin', 'leader'].includes(currentUser.rol);
 
             // Renderizar header actions
             headerActions.innerHTML = '';
@@ -107,7 +107,7 @@
                 try {
                     const res = await fetch(`/api/petty-cash-funds/${id}/submit`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({usuarioId: currentUser.id}) });
                     if ((await res.json()).success) {
-                        showToast('ÉÉxito', 'Caja chica enviada a revisión', 'success');
+                        showToast('Éxito', 'Caja chica enviada a revisión', 'success');
                         renderPettyCashView();
                     }
                 } catch(e) {}
@@ -118,7 +118,7 @@
                 try {
                     const res = await fetch(`/api/petty-cash-funds/${id}/close`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({usuarioId: currentUser.id}) });
                     if ((await res.json()).success) {
-                        showToast('ÉÉxito', 'Caja chica cerrada', 'success');
+                        showToast('Éxito', 'Caja chica cerrada', 'success');
                         renderPettyCashView();
                     }
                 } catch(e) {}
@@ -265,7 +265,7 @@
                                 });
                                 const data = await res.json();
                                 if (data.success) {
-                                    showToast('ÉÉxito', 'Gasto removido de Caja Chica. Se mantiene en los gastos del proyecto.', 'success');
+                                    showToast('Éxito', 'Gasto removido de Caja Chica. Se mantiene en los gastos del proyecto.', 'success');
                                     renderPettyCashView();
                                 } else {
                                     showToast('Error', 'No se pudo eliminar el gasto.', 'danger');
@@ -321,7 +321,7 @@
             });
             const data = await res.json();
             if (data.success) {
-                showToast('ÉÉxito', 'Fondo asignado correctamente', 'success');
+                showToast('Éxito', 'Fondo asignado correctamente', 'success');
                 document.getElementById('modal-assign-petty-cash').classList.add('hidden');
                 e.target.reset();
                 renderPettyCashView();
@@ -386,7 +386,7 @@
             });
             const data = await res.json();
             if (data.success) {
-                showToast('ÉÉxito', 'Gasto agregado correctamente', 'success');
+                showToast('Éxito', 'Gasto agregado correctamente', 'success');
                 document.getElementById('modal-expense-petty-cash').classList.add('hidden');
                 e.target.reset();
                 document.getElementById('expense-pc-invoice-name').textContent = 'Seleccionar archivos...';

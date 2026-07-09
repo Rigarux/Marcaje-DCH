@@ -201,7 +201,7 @@ router.post('/bus-records/submit', async (req, res) => {
                 await dbRun(`UPDATE users SET sueldoBusesAcumulado = sueldoBusesAcumulado + 200 WHERE id = ?`, [usuarioId]);
             }
 
-            res.json({ success: true, message: 'Registro de BUSES guardado con éÉxito.' });
+            res.json({ success: true, message: 'Registro de BUSES guardado con éxito.' });
         } catch (e) {
             res.status(500).json({ success: false, message: e.message });
         }

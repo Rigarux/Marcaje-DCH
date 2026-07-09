@@ -157,6 +157,7 @@
                     </tr>
                 `;
             } else {
+                const fragmentExpenses = document.createDocumentFragment();
                 expenses.forEach(e => {
                     const tr = document.createElement('tr');
 
@@ -185,14 +186,15 @@
                             </button>
                         </td>
                     `;
-                    tbody.appendChild(tr);
+                    fragmentExpenses.appendChild(tr);
                 });
+                tbody.appendChild(fragmentExpenses);
 
                 tbody.querySelectorAll('.delete-expense-btn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
                         const id = btn.getAttribute('data-id');
                         if (await appConfirm('Confirmación', '¿Estás seguro de eliminar este gasto?')) {
-                            const delRes = await fetch(`/api/projects/expenses/&id}`.replace('&', id), { method: 'DELETE' });
+                            const delRes = await fetch(`/api/projects/expenses/${id}`, { method: 'DELETE' });
                             const delData = await delRes.json();
                             if (delData.success) {
                                 showToast('Gasto Eliminado', 'El gasto fue de baja correctamente.', 'success');
@@ -243,6 +245,7 @@
                         return parseDate(b) - parseDate(a); // Descending
                     });
 
+                    const fragmentAttendances = document.createDocumentFragment();
                     sortedDates.forEach(date => {
                         // Add daily header
                         const trHeader = document.createElement('tr');
@@ -251,7 +254,7 @@
                             <td colspan="3" style="font-weight: 700; color: var(--primary-color);">Día: ${date}</td>
                             <td style="text-align: right; font-weight: 700; color: var(--primary-color);">Total Día: Q${attByDate[date].total.toFixed(2)}</td>
                         `;
-                        tbodyAttendances.appendChild(trHeader);
+                        fragmentAttendances.appendChild(trHeader);
 
                         // Add records for the day
                         attByDate[date].records.forEach(a => {
@@ -262,9 +265,10 @@
                                 <td style="text-align: right;">${Number(a.horasTrabajadas).toFixed(2)} hrs</td>
                                 <td style="text-align: right; font-weight: 500; color: var(--danger);">Q${Number(a.pago).toFixed(2)}</td>
                             `;
-                            tbodyAttendances.appendChild(tr);
+                            fragmentAttendances.appendChild(tr);
                         });
                     });
+                    tbodyAttendances.appendChild(fragmentAttendances);
                 }
             }
 

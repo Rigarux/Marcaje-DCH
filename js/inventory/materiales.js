@@ -61,7 +61,7 @@
         const photoPreview = document.getElementById('material-photo-preview');
 
         // Mostrar botón de añadir solo para administradores
-        if (currentUser.rol === 'admin' || currentUser.rol === 'superadmin') {
+        if (currentUser.rol === 'admin') {
             if (btnAddMaterial) btnAddMaterial.classList.remove('hidden');
         }
 
@@ -205,7 +205,7 @@
                         const data = await res.json();
 
                         if (data.success) {
-                            showToast('ÉÉxito', id ? 'Material actualizado' : 'Material registrado', 'success');
+                            showToast('Éxito', id ? 'Material actualizado' : 'Material registrado', 'success');
                             closeModal();
                             loadMaterialsGrid(companySelect.value);
                         } else {
@@ -286,7 +286,7 @@
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(0,0,0,0.15); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
                                 <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">Stock actual:</span>
                                 <div style="display: flex; align-items: center; gap: 6px;">
-                                    ${(currentUser.rol === 'admin' || currentUser.rol === 'superadmin') ? `
+                                    ${(currentUser.rol === 'admin') ? `
                                     <button class="btn-secondary" onclick="updateMaterialCantidad(${item.id}, -1)" style="padding: 0; width: 28px !important; height: 28px !important; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff;">-</button>
                                     <input type="number" id="qty-${item.id}" value="${item.cantidad}" onchange="saveMaterialCantidadSilent(${item.id})" class="form-control material-qty-input" style="text-align: center; margin: 0; font-weight: 700; width: 48px !important; height: 28px !important; background: rgba(0,0,0,0.2) !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 4px !important; color: #ffffff !important; padding: 0 !important; font-size: 0.9rem !important;">
                                     <button class="btn-secondary" onclick="updateMaterialCantidad(${item.id}, 1)" style="padding: 0; width: 28px !important; height: 28px !important; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff;">+</button>
@@ -296,7 +296,7 @@
                                 </div>
                             </div>
                         </div>
-                        ${(currentUser.rol === 'admin' || currentUser.rol === 'superadmin') ? `
+                        ${(currentUser.rol === 'admin') ? `
                         <div class="card-footer" style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding: 10px 15px; background: rgba(0,0,0,0.08); border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
                             <button class="btn-secondary btn-sm" onclick="editMaterial(${item.id}, '${item.nombre.replace(/'/g, "\\'")}', ${item.limite_alerta}, ${item.costo || 0}, ${item.precio || 0})" title="Editar" style="height: 28px !important; padding: 0 10px !important;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
                             <button class="btn-danger btn-sm" onclick="deleteMaterial(${item.id})" title="Eliminar" style="height: 28px !important; padding: 0 10px !important;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
@@ -395,7 +395,7 @@
             const res = await fetch(`/api/materials/${id}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
-                showToast('ÉÉxito', 'Insumo eliminado', 'success');
+                showToast('Éxito', 'Insumo eliminado', 'success');
                 loadMaterialsGrid(document.getElementById('materials-company-select').value);
             } else {
                 throw new Error(data.message || 'Error al eliminar');

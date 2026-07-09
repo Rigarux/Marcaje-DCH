@@ -49,6 +49,7 @@
                 </tr>
             `;
         } else {
+            const fragmentTeam = document.createDocumentFragment();
             teamUsers.forEach(user => {
                 const userRecs = teamRecords.filter(r => r.usuarioId === user.id && r.horaSalida);
                 const isActive = window.AttendanceDB.getActiveAttendanceByUser(user.id);
@@ -72,8 +73,9 @@
                     <td class="text-danger">${uPenalties > 0 ? `-Q${uPenalties.toFixed(2)}` : 'Q0.00'}</td>
                     <td><strong>Q${uNet.toFixed(2)}</strong></td>
                 `;
-                leaderTeamTable.appendChild(tr);
+                    fragmentTeam.appendChild(tr);
             });
+            leaderTeamTable.appendChild(fragmentTeam);
         }
 
         // 3. Renderizar tabla de Últimos Marcajes del Grupo
@@ -87,6 +89,7 @@
                 </tr>
             `;
         } else {
+            const fragmentAttendance = document.createDocumentFragment();
             teamRecords.slice(0, 10).forEach(rec => {
                 const user = allUsers.find(u => u.id === rec.usuarioId);
                 const nombre = user ? user.nombre : 'Desconocido';
@@ -111,8 +114,9 @@
                     <td><strong>${netoText}</strong></td>
                     <td>${statusBadge}</td>
                 `;
-                leaderAttendanceTable.appendChild(tr);
+                    fragmentAttendance.appendChild(tr);
             });
+            leaderAttendanceTable.appendChild(fragmentAttendance);
         }
     }
 

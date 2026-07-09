@@ -106,75 +106,6 @@
         }
     }
 
-    // --- MANEJO DINÁMICO DE GRUPOS ---
-    const btnAddGroup = document.getElementById('btn-add-group');
-
-    function renderGroupDropdowns() {
-        const groups = window.AttendanceDB.getGroups();
-
-        // Guardar valor seleccionado actual
-        const currentFilterValue = adminGroupFilter ? adminGroupFilter.value : 'all';
-        const currentModalValue = userGroupSelect ? userGroupSelect.value : 'N/A';
-
-        // 1. Población del filtro de administración
-        if (adminGroupFilter) {
-            adminGroupFilter.innerHTML = '<option value="all">Todos los Servicios</option>';
-            groups.forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g;
-                opt.textContent = g === 'N/A' ? 'Sin Grupo (N/A)' : g;
-                adminGroupFilter.appendChild(opt);
-            });
-
-            // Restablecer valor si sigue siendo válido
-            if (Array.from(adminGroupFilter.options).some(opt => opt.value === currentFilterValue)) {
-                adminGroupFilter.value = currentFilterValue;
-            } else {
-                adminGroupFilter.value = 'all';
-            }
-        }
-
-        // 2. Población de selección del modal de usuario
-        if (userGroupSelect) {
-            userGroupSelect.innerHTML = '';
-            groups.forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g;
-                opt.textContent = g === 'N/A' ? 'N/A (Ninguno)' : g;
-                userGroupSelect.appendChild(opt);
-            });
-
-            if (Array.from(userGroupSelect.options).some(opt => opt.value === currentModalValue)) {
-                userGroupSelect.value = currentModalValue;
-            } else {
-                userGroupSelect.value = 'N/A';
-            }
-        }
-    }
-
-    if (btnAddGroup) {
-        btnAddGroup.addEventListener('click', async () => {
-            const groupName = await appPrompt('Nuevo Grupo/Servicio', 'Ingrese el nombre del nuevo grupo/servicio:');
-            if (groupName === null) return; // Cancelado
-
-            const trimmed = groupName.trim();
-            if (!trimmed) {
-                showToast('Error', 'El nombre del grupo no puede estar vacío.', 'danger');
-                return;
-            }
-
-            const success = await window.AttendanceDB.createGroup(trimmed, currentUser.id);
-            if (success) {
-                renderGroupDropdowns();
-                if (userGroupSelect) {
-                    userGroupSelect.value = trimmed;
-                }
-                showToast('Grupo Creado', `El grupo "${trimmed}" ha sido registrado con éÉxito.`, 'success');
-            } else {
-                showToast('Error de Validación', 'El grupo ya existe o no se pudo registrar.', 'danger');
-            }
-        });
-    }
 
     // --- MANEJO DINÁMICO DE EMPRESAS ---
     const btnAddCompanyModal = document.getElementById('btn-add-company-modal');
@@ -294,7 +225,7 @@
         const allUsers = window.AttendanceDB.getUsers();
         if (companyManagerSelect) {
             companyManagerSelect.innerHTML = '<option value="">Ninguno</option>';
-            allUsers.filter(u => u.rol === 'admin' || u.rol === 'leader' || u.rol === 'superadmin').forEach(u => {
+            allUsers.filter(u => u.rol === 'admin' || u.rol === 'leader').forEach(u => {
                 const opt = document.createElement('option');
                 opt.value = u.id;
                 opt.textContent = `${u.nombre} (${u.rol === 'admin' ? 'Supervisor' : 'Líder'})`;
@@ -511,7 +442,7 @@
         // Show logo option ONLY for Supervisor, Admin, Leader
         const logoGroup = document.getElementById('store-logo-group');
         if (logoGroup) {
-            if (typeof currentUser !== 'undefined' && currentUser && ['Supervisor', 'superadmin', 'admin', 'leader'].includes(currentUser.rol)) {
+            if (typeof currentUser !== 'undefined' && currentUser && ['Supervisor', 'admin', 'leader'].includes(currentUser.rol)) {
                 logoGroup.style.display = 'block';
             } else {
                 logoGroup.style.display = 'none';
@@ -545,7 +476,7 @@
             
             const previewImg = document.getElementById('store-logo-preview');
             let logoBase64 = undefined; // undefined significa no modificar (en PUT) o null (en POST)
-            if (typeof currentUser !== 'undefined' && currentUser && ['Supervisor', 'superadmin', 'admin', 'leader'].includes(currentUser.rol)) {
+            if (typeof currentUser !== 'undefined' && currentUser && ['Supervisor', 'admin', 'leader'].includes(currentUser.rol)) {
                 if (previewImg.src && previewImg.src.startsWith('data:image')) {
                     logoBase64 = previewImg.src;
                 } else if (!previewImg.src || previewImg.src.endsWith('#')) {
@@ -640,8 +571,9 @@
             return;
         }
 
+        const fragment = document.createDocumentFragment();
+
         allUsers.forEach(user => {
-            const groupText = user.grupo || 'N/A';
             const companyText = user.empresa || 'N/A';
             const rateText = user.rol === 'usr'
                 ? `Q${(user.tarifaDiurna || 0).toFixed(2)} (D) / Q${(user.tarifaNocturna || 0).toFixed(2)} (N)`
@@ -654,14 +586,12 @@
             let roleLabel = 'Usuario';
             if (user.rol === 'leader') roleLabel = 'Líder de Grupo';
             if (user.rol === 'admin') roleLabel = 'Supervisor';
-            if (user.rol === 'superadmin') roleLabel = 'Super Admin';
 
             const editButton = `<button class="btn-table-action approve edit-user-btn" data-id="${user.id}">Editar</button>`;
 
-            // Botón de eliminar (deshabilitado para superadmin o sí mismo)
+            // Botón de eliminar (deshabilitado para sí mismo)
             const isSelf = user.id === currentUser.id;
-            const isSuper = user.rol === 'superadmin';
-            const deleteButton = (isSelf || isSuper)
+            const deleteButton = isSelf
                 ? `<button class="btn-table-action disabled" disabled title="No se puede eliminar">Eliminar</button>`
                 : `<button class="btn-table-action penalize delete-user-btn" data-id="${user.id}">Eliminar</button>`;
 
@@ -671,7 +601,6 @@
                 <td><code>@${user.username}</code></td>
                 <td><span class="role-badge ${user.rol}">${roleLabel}</span></td>
                 <td>${companyText}</td>
-                <td>${groupText}</td>
                 <td><strong style="font-size:0.8rem; white-space:nowrap;">${rateText}</strong></td>
                 <td><span class="role-badge ${user.frecuenciaPago || 'semanal'}">${frequencyText}</span></td>
                 <td>
@@ -679,8 +608,10 @@
                     ${deleteButton}
                 </td>
             `;
-            adminUsersTable.appendChild(tr);
+            fragment.appendChild(tr);
         });
+
+        adminUsersTable.appendChild(fragment);
 
         // Registrar click listeners para los botones de editar
         adminUsersTable.querySelectorAll('.edit-user-btn').forEach(btn => {
@@ -739,7 +670,6 @@
             userPasswordHelp.classList.remove('hidden');
             userRoleSelect.value = user.rol;
             userCompanySelect.value = user.empresa || 'N/A';
-            userGroupSelect.value = user.grupo || 'N/A';
             if (userRateDiurnaInput) userRateDiurnaInput.value = user.tarifaDiurna !== undefined ? user.tarifaDiurna : '';
             if (userRateNocturnaInput) userRateNocturnaInput.value = user.tarifaNocturna !== undefined ? user.tarifaNocturna : '';
             if (userFrequencySelect) userFrequencySelect.value = user.frecuenciaPago || 'semanal';
@@ -855,7 +785,7 @@
             const password = userPasswordInput.value;
             const rol = userRoleSelect.value;
             const empresa = userCompanySelect.value;
-            const grupo = userGroupSelect.value;
+            const grupo = 'N/A';
             const tarifaDiurna = parseFloat(userRateDiurnaInput.value) || 0;
             const tarifaNocturna = parseFloat(userRateNocturnaInput.value) || 0;
             const frecuenciaPago = userFrequencySelect.value;
@@ -903,7 +833,7 @@
             }
 
             if (result.success) {
-                showToast('Usuario Guardado', `El usuario "${nombre}" ha sido registrado/configurado con éÉxito.`, 'success');
+                showToast('Usuario Guardado', `El usuario "${nombre}" ha sido registrado/configurado con éxito.`, 'success');
                 closeUserModal();
 
                 // Actualizar según la pestaña en que nos encontremos
@@ -949,7 +879,7 @@
     function openPermitsExportModal() {
         if (!permitsExportModal) return;
         
-        const allUsers = window.AttendanceDB.getUsers().filter(u => u.rol !== 'superadmin' && u.rol !== 'admin');
+        const allUsers = window.AttendanceDB.getUsers().filter(u => u.rol !== 'admin');
         const allVehicles = window.AttendanceDB._state.vehicles || [];
 
         const empContainer = document.getElementById('permits-employees-list');
@@ -1290,7 +1220,6 @@
 
         document.getElementById('detail-worker-username').textContent = worker.nombre;
         document.getElementById('detail-worker-company').textContent = worker.empresa;
-        document.getElementById('detail-worker-group').textContent = worker.grupo;
         document.getElementById('detail-worker-rate-d').textContent = (worker.tarifaDiurna || 0).toFixed(2);
         document.getElementById('detail-worker-rate-n').textContent = (worker.tarifaNocturna || 0).toFixed(2);
         document.getElementById('detail-worker-freq').textContent = worker.frecuenciaPago === 'semanal' ? 'Semanal' : 'Quincenal';

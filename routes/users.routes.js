@@ -315,9 +315,7 @@ router.delete('/users/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
         }
 
-        if (user.rol === 'superadmin') {
-            return res.status(400).json({ success: false, message: 'No puedes eliminar al Super Administrador.' });
-        }
+
 
         const admin = await dbGet(`SELECT nombre FROM users WHERE id = ?`, [adminId]);
         const adminName = admin ? admin.nombre : 'Admin';
@@ -330,34 +328,7 @@ router.delete('/users/:id', async (req, res) => {
         res.status(500).json({ success: false, message: e.message });
     }
 });
-router.get('/groups', async (req, res) => {
-    try {
-        const rows = await dbAll(`SELECT name FROM groups ORDER BY name ASC`);
-        res.json(rows.map(r => r.name));
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-router.post('/groups', async (req, res) => {
-    const { name, adminId } = req.body;
-    try {
-        const trimName = name.trim();
-        if (!trimName) return res.status(400).json({ success: false, message: 'Nombre vacío.' });
 
-        const exists = await dbGet(`SELECT id FROM groups WHERE LOWER(name) = LOWER(?)`, [trimName]);
-        if (exists) return res.status(400).json({ success: false, message: 'El grupo ya existe.' });
-
-        await dbRun(`INSERT INTO groups (name) VALUES (?)`, [trimName]);
-
-        const admin = await dbGet(`SELECT nombre FROM users WHERE id = ?`, [parseInt(adminId)]);
-        const adminName = admin ? admin.nombre : 'Admin';
-
-        await addLog(adminId, `${adminName} creó el nuevo grupo/servicio: "${trimName}"`);
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
 router.get('/companies', async (req, res) => {
     try {
         const rows = await dbAll(`SELECT * FROM companies ORDER BY name ASC`);

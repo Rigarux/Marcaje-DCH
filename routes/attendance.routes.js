@@ -483,7 +483,7 @@ router.post('/piecework/submit', async (req, res) => {
                 VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')
             `, [usuarioId, fecha, trabajo, precio, cantidad, total]);
 
-        res.json({ success: true, message: 'Trabajo entregado con éÉxito.' });
+        res.json({ success: true, message: 'Trabajo entregado con éxito.' });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }

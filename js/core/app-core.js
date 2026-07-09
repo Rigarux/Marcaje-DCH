@@ -47,7 +47,6 @@ const bottomNavMenu = document.getElementById('bottom-nav-menu');
 const viewUser = document.getElementById('view-user');
 const viewLeader = document.getElementById('view-leader');
 const viewAdmin = document.getElementById('view-admin');
-const viewSuperAdmin = document.getElementById('view-superadmin');
 
 // Botones Globales
 const btnResetDb = document.getElementById('btn-reset-db');
@@ -192,7 +191,6 @@ function showDashboard() {
     let roleText = 'Usuario';
     if (currentUser.rol === 'leader') roleText = 'Líder de Grupo';
     if (currentUser.rol === 'admin') roleText = 'Supervisor';
-    if (currentUser.rol === 'superadmin') roleText = 'Super Admin';
     userRoleBadge.textContent = roleText;
     userRoleBadge.className = `role-badge ${currentUser.rol}`;
 
@@ -203,7 +201,6 @@ function showDashboard() {
     let defaultTab = 'view-user';
     if (currentUser.rol === 'leader') defaultTab = 'view-leader';
     else if (currentUser.rol === 'admin') defaultTab = 'tab-trabajadores-admin';
-    else if (currentUser.rol === 'superadmin') defaultTab = 'view-superadmin';
 
     if (!window.location.hash || window.location.hash === '#') {
         window.location.hash = defaultTab;
@@ -211,9 +208,7 @@ function showDashboard() {
         handleHashChange();
     }
 
-    // Inicializar dropdowns de grupos y empresas
     if (currentUser.rol === 'admin') {
-        renderGroupDropdowns();
         renderCompanyDropdowns();
     }
 }
@@ -245,8 +240,6 @@ function setupSidebarMenu() {
         menuItems.push({ id: 'nav-admin-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
         // Botón de Día de Pago destacado
         menuItems.push({ id: 'nav-admin-diapago', label: 'Día de Pago', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M12 14l2 2 4-4"></path>', subView: 'tab-asistencia', isSpecial: true });
-    } else if (currentUser.rol === 'superadmin') {
-        menuItems.push({ id: 'nav-superadmin', label: 'Auditoría de Logs', icon: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>', subView: 'view-superadmin' });
     }
 
 
@@ -443,7 +436,7 @@ function loadRoleView() {
             const targetTabContent = document.getElementById('tab-tiendas');
             if (targetTabContent) targetTabContent.classList.add('active');
             viewTitle.textContent = 'Gestión de Tiendas';
-            viewSubtitle.textContent = 'Administra tiendas, asigna personal y gestióna el inventario principal.';
+            viewSubtitle.textContent = 'Administra tiendas, asigna personal y gestiona el inventario principal.';
             const tabHeader = document.querySelector('.tab-header');
             if (tabHeader) tabHeader.style.display = 'none'; // Ocultar barra superior del admin
             renderAdminStoresTable();
@@ -518,11 +511,6 @@ function loadRoleView() {
         }
 
         setupAdminView();
-    } else if (currentUser.rol === 'superadmin') {
-        viewSuperAdmin.classList.remove('hidden');
-        viewTitle.textContent = 'Consola de Seguridad y Auditoría';
-        viewSubtitle.textContent = 'Registro de logs del sistema de solo lectura.';
-        setupSuperAdminView();
     }
 }
 

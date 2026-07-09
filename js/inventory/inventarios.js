@@ -73,6 +73,7 @@
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">El empleado no tiene herramientas asignadas.</td></tr>';
             return;
         }
+        const fragment = document.createDocumentFragment();
         currentInventories.forEach(item => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -85,8 +86,9 @@
                     <button class="btn-icon btn-delete-inventory text-danger" data-id="${item.id}" title="Eliminar">Eliminar</button>
                 </td>
             `;
-            tbody.appendChild(tr);
+            fragment.appendChild(tr);
         });
+        tbody.appendChild(fragment);
 
         document.querySelectorAll('.btn-edit-inventory').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -103,7 +105,7 @@
                     try {
                         const res = await fetch(`/api/inventories/${id}`, { method: 'DELETE' });
                         if (res.ok) {
-                            showToast('ÉÉxito', 'Artículo eliminado', 'success');
+                            showToast('Éxito', 'Artículo eliminado', 'success');
                             fetchAdminUserInventory(window.currentToolUserId);
                         } else {
                             const err = await res.json();
@@ -242,7 +244,7 @@
                     body: JSON.stringify(payload)
                 });
                 if (res.ok) {
-                    showToast('ÉÉxito', `Artículo ${id ? 'actualizado' : 'guardado'}`, 'success');
+                    showToast('Éxito', `Artículo ${id ? 'actualizado' : 'guardado'}`, 'success');
                     inventoryModal.classList.remove('hidden');
                     loadInventoriesView();
                 } else {
@@ -487,7 +489,7 @@
                     body: JSON.stringify(payload)
                 });
                 if (res.ok) {
-                    showToast('ÉÉxito', 'Fotografía enviada correctamente', 'success');
+                    showToast('Éxito', 'Fotografía enviada correctamente', 'success');
                     userSubmitPhotoModal.classList.add('hidden');
                 } else {
                     throw new Error('Error de servidor');
@@ -530,6 +532,7 @@ async function fetchUserAudits(userId) {
         }
         
         tbody.innerHTML = '';
+        const fragmentPhotos = document.createDocumentFragment();
         data.forEach(audit => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -539,8 +542,9 @@ async function fetchUserAudits(userId) {
                     <a href="${audit.fotoUrl}" target="_blank" style="color: var(--primary);">Ver Foto</a>
                 </td>
             `;
-            tbody.appendChild(tr);
+            fragmentPhotos.appendChild(tr);
         });
+        tbody.appendChild(fragmentPhotos);
     } catch (e) {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error al cargar fotos</td></tr>';
     }
