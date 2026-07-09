@@ -99,6 +99,27 @@
         return { start, end };
     }
 
+    function renderGroupDropdowns() {
+        if (!adminGroupFilter) return;
+        const groups = window.AttendanceDB.getGroups() || [];
+        const currentModalValue = adminGroupFilter.value || 'all';
+
+        adminGroupFilter.innerHTML = '<option value="all">Todos los grupos</option>';
+        groups.forEach(g => {
+            const name = typeof g === 'string' ? g : g.name;
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            adminGroupFilter.appendChild(opt);
+        });
+
+        if (Array.from(adminGroupFilter.options).some(opt => opt.value === currentModalValue)) {
+            adminGroupFilter.value = currentModalValue;
+        } else {
+            adminGroupFilter.value = 'all';
+        }
+    }
+
     function setupAdminView() {
         renderGroupDropdowns();
         renderCompanyDropdowns();

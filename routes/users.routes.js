@@ -50,6 +50,16 @@ router.post('/reset-db', async (req, res) => {
         res.status(500).json({ success: false, message: e.message });
     }
 });
+
+router.get('/groups', async (req, res) => {
+    try {
+        const rows = await dbAll(`SELECT DISTINCT grupo as name FROM users WHERE grupo IS NOT NULL AND grupo != '' ORDER BY grupo ASC`);
+        res.json(rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 router.get('/users', async (req, res) => {
     try {
         const rows = await dbAll(`SELECT * FROM users ORDER BY nombre ASC`);
