@@ -123,7 +123,7 @@
     function setupAdminView() {
         renderGroupDropdowns();
         renderCompanyDropdowns();
-        const filterGroup = adminGroupFilter.value;
+        const filterGroup = adminGroupFilter ? adminGroupFilter.value : 'all';
         const filterPeriod = adminPeriodFilter ? adminPeriodFilter.value : 'closed_week';
         const allUsers = window.AttendanceDB.getUsers();
         let attendance = window.AttendanceDB.getAttendance();
