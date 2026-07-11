@@ -54,7 +54,8 @@ async function initDb() {
                 empresa TEXT,
                 tarifaDiurna REAL,
                 tarifaNocturna REAL,
-                frecuenciaPago TEXT
+                frecuenciaPago TEXT,
+                permisos TEXT
             )`,
             `CREATE TABLE IF NOT EXISTS companies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -360,7 +361,8 @@ async function initDb() {
         "ALTER TABLE quote_items ADD COLUMN costo REAL DEFAULT 0",
         "ALTER TABLE quote_items ADD COLUMN material_id INTEGER",
         "ALTER TABLE attendance ADD COLUMN corteId INTEGER",
-        "ALTER TABLE bus_records ADD COLUMN corteId INTEGER"
+        "ALTER TABLE bus_records ADD COLUMN corteId INTEGER",
+        "ALTER TABLE users ADD COLUMN permisos TEXT"
 ];
         for (const query of migrations) {
             try {
