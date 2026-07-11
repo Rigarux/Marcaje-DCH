@@ -219,13 +219,20 @@ function setupSidebarMenu() {
     if (bottomNavMenu) bottomNavMenu.innerHTML = '';
     const menuItems = [];
 
+    let userPerms = {};
+    if (currentUser && currentUser.permisos) {
+        try {
+            userPerms = typeof currentUser.permisos === 'string' ? JSON.parse(currentUser.permisos) : currentUser.permisos;
+        } catch(e) {}
+    }
+
     if (currentUser.rol === 'usr' || currentUser.rol === 'leader') {
-        menuItems.push({ id: 'nav-control-asistencia', label: 'Control de Asistencia', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-user' });
-        menuItems.push({ id: 'nav-user-history', label: 'Mi Historial', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>', subView: 'view-user-history' });
-        menuItems.push({ id: 'nav-user-loan', label: 'Mi Préstamo', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'view-user-loan' });
-        menuItems.push({ id: 'nav-user-vehicles', label: 'Encargados de Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'view-user-vehicles' });
-        menuItems.push({ id: 'nav-user-inventory', label: 'Mi Inventario', icon: '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>', subView: 'view-user-inventory' });
-        menuItems.push({ id: 'nav-user-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
+        if (userPerms.control_asistencia !== false) menuItems.push({ id: 'nav-control-asistencia', label: 'Control de Asistencia', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-user' });
+        if (userPerms.mi_historial !== false) menuItems.push({ id: 'nav-user-history', label: 'Mi Historial', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>', subView: 'view-user-history' });
+        if (userPerms.prestamos !== false) menuItems.push({ id: 'nav-user-loan', label: 'Mi Préstamo', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'view-user-loan' });
+        if (userPerms.vehiculos !== false) menuItems.push({ id: 'nav-user-vehicles', label: 'Encargados de Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'view-user-vehicles' });
+        if (userPerms.inventario !== false) menuItems.push({ id: 'nav-user-inventory', label: 'Mi Inventario', icon: '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>', subView: 'view-user-inventory' });
+        if (userPerms.caja_chica !== false) menuItems.push({ id: 'nav-user-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
 
         if (currentUser.rol === 'leader') {
             menuItems.push({ id: 'nav-leader', label: 'Mi Subgrupo', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>', subView: 'view-leader' });
@@ -234,17 +241,16 @@ function setupSidebarMenu() {
         menuItems.push({ id: 'nav-admin-trabajadores', label: 'Trabajadores', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>', subView: 'tab-trabajadores-admin' });
         menuItems.push({ id: 'nav-admin-descuentos', label: 'Descuentos', icon: '<circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line>', subView: 'tab-descuentos' });
         menuItems.push({ id: 'nav-admin-empresas', label: 'Empresas', icon: '<rect x="2" y="2" width="20" height="20" rx="2" ry="2"></rect><path d="M10 22V14h4v8"></path><path d="M8 6h2v2H8V6zm8 0h2v2H8V6zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2z"></path>', subView: 'tab-empresas' });
-        menuItems.push({ id: 'nav-admin-vehículos', label: 'Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'tab-vehículos' });
-        menuItems.push({ id: 'nav-admin-préstamos', label: 'Préstamos', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'tab-préstamos' });
-        menuItems.push({ id: 'nav-admin-proyectos', label: 'Proyectos', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>', subView: 'tab-proyectos' });
-        menuItems.push({ id: 'nav-admin-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
+        if (userPerms.vehiculos !== false) menuItems.push({ id: 'nav-admin-vehículos', label: 'Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'tab-vehículos' });
+        if (userPerms.prestamos !== false) menuItems.push({ id: 'nav-admin-préstamos', label: 'Préstamos', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'tab-préstamos' });
+        if (userPerms.proyectos !== false) menuItems.push({ id: 'nav-admin-proyectos', label: 'Proyectos', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>', subView: 'tab-proyectos' });
+        if (userPerms.caja_chica !== false) menuItems.push({ id: 'nav-admin-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
         // Botón de Día de Pago destacado
         menuItems.push({ id: 'nav-admin-diapago', label: 'Día de Pago', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M12 14l2 2 4-4"></path>', subView: 'tab-asistencia', isSpecial: true });
     }
 
-
     // Todos los roles tienen acceso a Ingresos Globales
-    menuItems.push({ id: 'nav-global-incomes', label: 'Ingresos y Gastos', icon: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-global-incomes' });
+    if (userPerms.ingresos_gastos !== false) menuItems.push({ id: 'nav-global-incomes', label: 'Ingresos y Gastos', icon: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-global-incomes' });
 
     const maxBottomItems = 4;
     let bottomItemsAdded = 0;
@@ -450,14 +456,14 @@ function loadRoleView() {
             const loanView = document.getElementById('view-user-loan');
             if (loanView) loanView.classList.remove('hidden');
             viewTitle.textContent = 'Mi Préstamo';
-            viewSubtitle.textContent = 'Estado de amortizaciÃƒÂ³n y saldo pendiente de tu préstamo.';
-            setupUserLoanView();
+            viewSubtitle.textContent = 'Estado de amortización y saldo pendiente de tu préstamo.';
+            if (typeof setupUserLoanView === 'function') setupUserLoanView();
         } else if (activeTab === 'view-user-vehicles') {
             const vehiclesView = document.getElementById('view-user-vehicles');
             if (vehiclesView) vehiclesView.classList.remove('hidden');
             viewTitle.textContent = 'Encargados de Vehículos';
             viewSubtitle.textContent = 'Asignación de vehículos de la flotilla y motivos de uso.';
-            setupUserVehiclesView();
+            if (typeof setupUserVehiclesView === 'function') setupUserVehiclesView();
         } else if (activeTab === 'view-user-penalties') {
             const penaltiesView = document.getElementById('view-user-penalties');
             if (penaltiesView) penaltiesView.classList.remove('hidden');

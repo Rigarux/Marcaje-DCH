@@ -712,6 +712,21 @@
             if (loanSaldoEl) loanSaldoEl.value = user.préstamosaldo !== undefined && user.préstamosaldo !== null ? user.préstamosaldo : '';
             if (loanStatusEl) loanStatusEl.value = user.préstamoEstadoCuota || 'Ninguno';
 
+            // Cargar Permisos
+            let userPerms = {};
+            if (user.permisos) {
+                try {
+                    userPerms = typeof user.permisos === 'string' ? JSON.parse(user.permisos) : user.permisos;
+                } catch(e) { console.error("Error parsing permisos:", e); }
+            }
+            const permsKeys = ['control_asistencia', 'mi_historial', 'prestamos', 'vehiculos', 'inventario', 'caja_chica', 'proyectos', 'ingresos_gastos'];
+            permsKeys.forEach(key => {
+                const chk = document.getElementById('perm-' + key.replace('_', '-'));
+                if (chk) {
+                    chk.checked = userPerms[key] !== undefined ? userPerms[key] : true;
+                }
+            });
+
             userModalTitle.textContent = 'Editar Usuario';
 
             // Impedir que se cambie el rol a sí mismo para evitar bloqueos
@@ -764,6 +779,13 @@
             if (loanCuotaEl) loanCuotaEl.value = '';
             if (loanSaldoEl) loanSaldoEl.value = '';
             if (loanStatusEl) loanStatusEl.value = 'Ninguno';
+
+            // Limpiar Permisos (por defecto todos true)
+            const permsKeys = ['control_asistencia', 'mi_historial', 'prestamos', 'vehiculos', 'inventario', 'caja_chica', 'proyectos', 'ingresos_gastos'];
+            permsKeys.forEach(key => {
+                const chk = document.getElementById('perm-' + key.replace('_', '-'));
+                if (chk) chk.checked = true;
+            });
 
             userRoleSelect.disabled = false;
             userModalTitle.textContent = 'Crear Usuario';
@@ -819,6 +841,18 @@
                 });
             }
 
+            // Recoger permisos
+            const permisos = {
+                control_asistencia: document.getElementById('perm-control-asistencia') ? document.getElementById('perm-control-asistencia').checked : true,
+                mi_historial: document.getElementById('perm-mi-historial') ? document.getElementById('perm-mi-historial').checked : true,
+                prestamos: document.getElementById('perm-prestamos') ? document.getElementById('perm-prestamos').checked : true,
+                vehiculos: document.getElementById('perm-vehiculos') ? document.getElementById('perm-vehiculos').checked : true,
+                inventario: document.getElementById('perm-inventario') ? document.getElementById('perm-inventario').checked : true,
+                caja_chica: document.getElementById('perm-caja-chica') ? document.getElementById('perm-caja-chica').checked : true,
+                proyectos: document.getElementById('perm-proyectos') ? document.getElementById('perm-proyectos').checked : true,
+                ingresos_gastos: document.getElementById('perm-ingresos-gastos') ? document.getElementById('perm-ingresos-gastos').checked : true
+            };
+
             // Recoger Ventas
             const hasVentasRole = 0;
             const assignedStores = []; // Ya no se asigna desde el perfil del usuario, pero se manda vacio para compatibilidad
@@ -826,10 +860,10 @@
             let result;
             if (id) {
                 // Guardar edicion
-                result = await window.AttendanceDB.updateUser(id, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, currentUser.id, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, 44.0, 0.0, dpi, dpiFotoBase64, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado);
+                result = await window.AttendanceDB.updateUser(id, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, currentUser.id, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, 44.0, 0.0, dpi, dpiFotoBase64, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos);
             } else {
                 // Guardar creacion
-                result = await window.AttendanceDB.createUser(username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, currentUser.id, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, 44.0, 0.0, dpi, dpiFotoBase64, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado);
+                result = await window.AttendanceDB.createUser(username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, currentUser.id, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, 44.0, 0.0, dpi, dpiFotoBase64, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos);
             }
 
             if (result.success) {

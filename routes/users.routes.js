@@ -93,7 +93,7 @@ router.get('/users/:id', async (req, res) => {
     }
 });
 router.post('/users', async (req, res) => {
-    const { username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado } = req.body;
+    const { username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos } = req.body;
     try {
         const existing = await dbGet(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`, [username.trim()]);
         if (existing) {
@@ -127,8 +127,8 @@ router.post('/users', async (req, res) => {
         }
 
         const result = await dbRun(`
-            INSERT INTO users (username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFotoUrl, hasVentasRole, precioDieselBuses, sueldoBusesAcumulado)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFotoUrl, hasVentasRole, precioDieselBuses, sueldoBusesAcumulado, permisos)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             username.toLowerCase().trim(),
             password,
@@ -151,7 +151,8 @@ router.post('/users', async (req, res) => {
             dpiFotoUrl,
             hasVentasRole ? 1 : 0,
             parseFloat(precioDieselBuses) || 30.0,
-            parseFloat(sueldoBusesAcumulado) || 0.0
+            parseFloat(sueldoBusesAcumulado) || 0.0,
+            typeof permisos === 'object' ? JSON.stringify(permisos) : (permisos || null)
         ]);
 
         if (assignedStores && Array.isArray(assignedStores)) {
@@ -170,7 +171,7 @@ router.post('/users', async (req, res) => {
 });
 router.put('/users/:id', async (req, res) => {
     const userId = parseInt(req.params.id);
-    const { username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado } = req.body;
+    const { username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos } = req.body;
     try {
         const existing = await dbGet(`SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id != ?`, [username.trim(), userId]);
         if (existing) {
@@ -242,7 +243,7 @@ router.put('/users/:id', async (req, res) => {
 
         let updateQuery = `
             UPDATE users 
-            SET username = ?, nombre = ?, rol = ?, grupo = ?, empresa = ?, tarifaDiurna = ?, tarifaNocturna = ?, frecuenciaPago = ?, préstamoTotal = ?, préstamoCuota = ?, préstamosaldo = ?, préstamoEstadoCuota = ?, tipoPago = ?, horasNormalesMax = ?, rangoMaximoHoras = ?, tarifaHoraExtra = ?, dpi = ?, dpiFotoUrl = ?, hasVentasRole = ?, precioDieselBuses = ?, sueldoBusesAcumulado = ?
+            SET username = ?, nombre = ?, rol = ?, grupo = ?, empresa = ?, tarifaDiurna = ?, tarifaNocturna = ?, frecuenciaPago = ?, préstamoTotal = ?, préstamoCuota = ?, préstamosaldo = ?, préstamoEstadoCuota = ?, tipoPago = ?, horasNormalesMax = ?, rangoMaximoHoras = ?, tarifaHoraExtra = ?, dpi = ?, dpiFotoUrl = ?, hasVentasRole = ?, precioDieselBuses = ?, sueldoBusesAcumulado = ?, permisos = ?
         `;
         let params = [
             username.toLowerCase().trim(),
@@ -265,7 +266,8 @@ router.put('/users/:id', async (req, res) => {
             dpiFotoUrl,
             hasVentasRole ? 1 : 0,
             parseFloat(precioDieselBuses) || 30.0,
-            parseFloat(sueldoBusesAcumulado) || 0.0
+            parseFloat(sueldoBusesAcumulado) || 0.0,
+            typeof permisos === 'object' ? JSON.stringify(permisos) : (permisos || null)
         ];
 
         if (password) {

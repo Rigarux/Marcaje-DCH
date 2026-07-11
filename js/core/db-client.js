@@ -310,11 +310,11 @@ window.AttendanceDB = {
         return false;
     },
 
-    async createUser(username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal = 0, préstamoCuota = 0, préstamosaldo = 0, préstamoEstadoCuota = 'Ninguno', tipoPago = 'Por Horas', horasNormalesMax = 8.0, rangoMaximoHoras = 44.0, tarifaHoraExtra = 0.0, dpi = '', dpiFoto = null, hasVentasRole = 0, assignedStores = [], precioDieselBuses = 30.0, sueldoBusesAcumulado = 0.0) {
+    async createUser(username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal = 0, préstamoCuota = 0, préstamosaldo = 0, préstamoEstadoCuota = 'Ninguno', tipoPago = 'Por Horas', horasNormalesMax = 8.0, rangoMaximoHoras = 44.0, tarifaHoraExtra = 0.0, dpi = '', dpiFoto = null, hasVentasRole = 0, assignedStores = [], precioDieselBuses = 30.0, sueldoBusesAcumulado = 0.0, permisos = null) {
         const res = await fetch('/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado })
+            body: JSON.stringify({ username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos })
         });
         const data = await res.json();
         if (data.success) {
@@ -324,11 +324,11 @@ window.AttendanceDB = {
         return { success: false, message: data.message || 'Error al crear usuario' };
     },
 
-    async updateUser(userId, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal = 0, préstamoCuota = 0, préstamosaldo = 0, préstamoEstadoCuota = 'Ninguno', tipoPago = 'Por Horas', horasNormalesMax = 8.0, rangoMaximoHoras = 44.0, tarifaHoraExtra = 0.0, dpi = '', dpiFoto = null, hasVentasRole = 0, assignedStores = [], precioDieselBuses = 30.0, sueldoBusesAcumulado = 0.0) {
+    async updateUser(userId, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal = 0, préstamoCuota = 0, préstamosaldo = 0, préstamoEstadoCuota = 'Ninguno', tipoPago = 'Por Horas', horasNormalesMax = 8.0, rangoMaximoHoras = 44.0, tarifaHoraExtra = 0.0, dpi = '', dpiFoto = null, hasVentasRole = 0, assignedStores = [], precioDieselBuses = 30.0, sueldoBusesAcumulado = 0.0, permisos = null) {
         const res = await fetch('/api/users/'+userId, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado })
+            body: JSON.stringify({ username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos })
         });
         const data = await res.json();
         if (data.success) {

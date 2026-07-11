@@ -1620,6 +1620,39 @@
                      </select>
                   </div>
  
+                  <!-- SECCIÓN DE PERMISOS -->
+                  <div class="form-group" style="border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius-md); background: rgba(0,0,0,0.1); margin-top: 15px;">
+                      <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 0.95rem;">Permisos de Acceso</h4>
+                      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Selecciona los módulos a los que este usuario tendrá acceso:</p>
+                      
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem;">
+                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
+                              <input type="checkbox" id="perm-control-asistencia" checked> Control de Asistencia
+                          </label>
+                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
+                              <input type="checkbox" id="perm-mi-historial" checked> Mi Historial
+                          </label>
+                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
+                              <input type="checkbox" id="perm-prestamos" checked> Préstamos
+                          </label>
+                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
+                              <input type="checkbox" id="perm-vehiculos" checked> Encargados Vehículos
+                          </label>
+                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
+                              <input type="checkbox" id="perm-inventario" checked> Inventario
+                          </label>
+                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
+                              <input type="checkbox" id="perm-caja-chica" checked> Caja Chica
+                          </label>
+                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
+                              <input type="checkbox" id="perm-proyectos" checked> Proyectos
+                          </label>
+                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
+                              <input type="checkbox" id="perm-ingresos-gastos" checked> Ingresos y Gastos
+                          </label>
+                      </div>
+                  </div>
+ 
                  <div class="modal-footer">
                     <button type="button" id="btn-cancel-user" class="btn-secondary">Cancelar</button>
                     <button type="submit" class="btn-primary" style="width: auto;">Guardar Usuario</button>
