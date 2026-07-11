@@ -313,23 +313,11 @@
     const btnCancelPiecework = document.getElementById('btn-cancel-piecework');
     const pieceworkForm = document.getElementById('piecework-form');
     const pieceworkDesc = document.getElementById('piecework-desc');
-    const pieceworkPrice = document.getElementById('piecework-price');
     const pieceworkQuantity = document.getElementById('piecework-quantity');
-    const pieceworkTotal = document.getElementById('piecework-total');
-
-    const updatePieceworkTotal = () => {
-        const price = parseFloat(pieceworkPrice.value) || 0;
-        const qty = parseInt(pieceworkQuantity.value) || 0;
-        pieceworkTotal.textContent = (price * qty).toFixed(2);
-    };
-
-    if (pieceworkPrice) pieceworkPrice.addEventListener('input', updatePieceworkTotal);
-    if (pieceworkQuantity) pieceworkQuantity.addEventListener('input', updatePieceworkTotal);
 
     if (btnOpenPieceworkSubmit) {
         btnOpenPieceworkSubmit.addEventListener('click', () => {
             pieceworkForm.reset();
-            pieceworkTotal.textContent = '0.00';
             pieceworkModal.classList.remove('hidden');
         });
     }
@@ -348,12 +336,12 @@
         pieceworkForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const desc = pieceworkDesc.value.trim();
-            const price = parseFloat(pieceworkPrice.value) || 0;
+            const price = 0; // El supervisor define el precio
             const qty = parseInt(pieceworkQuantity.value) || 0;
-            const total = price * qty;
+            const total = 0;
 
-            if (!desc || price <= 0 || qty <= 0) {
-                showToast('Datos inválidos', 'Revisa la descripción, precio y cantidad.', 'warning');
+            if (!desc || qty <= 0) {
+                showToast('Datos inválidos', 'Revisa la descripción y cantidad.', 'warning');
                 return;
             }
 
@@ -671,12 +659,21 @@
                     </tr>
                 `;
             } else {
+                const loggedInUserStr = sessionStorage.getItem('dch_current_user');
+                const loggedInUser = loggedInUserStr ? JSON.parse(loggedInUserStr) : null;
+                const isLoggedAdmin = loggedInUser && (loggedInUser.rol === 'admin' || loggedInUser.rol === 'lider');
+
                 history.forEach(rec => {
                     if (rec.estado === 'Confirmado' && !rec.archivado) totalNet += rec.total;
 
-                    const statusBadge = rec.estado === 'Confirmado'
-                        ? '<span class="table-badge approved">Confirmado</span>'
-                        : '<span class="table-badge pending">Pendiente</span>';
+                    let statusBadge = '';
+                    if (rec.estado === 'Confirmado') {
+                        statusBadge = '<span class="table-badge approved">Confirmado</span>';
+                    } else {
+                        statusBadge = isLoggedAdmin 
+                            ? `<button class="btn-table-action approve approve-piecework-btn" data-id="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto;">Autorizar</button>` 
+                            : '<span class="table-badge pending">Pendiente</span>';
+                    }
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
@@ -690,6 +687,33 @@
                     fragmentPiecework.appendChild(tr);
                 });
                 usrPieceworkTable.appendChild(fragmentPiecework);
+
+                if (isLoggedAdmin) {
+                    usrPieceworkTable.querySelectorAll('.approve-piecework-btn').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const id = e.target.getAttribute('data-id');
+                            const price = prompt('Ingrese el precio unitario para autorizar este trabajo:', '');
+                            if (price !== null && price.trim() !== '') {
+                                const parsedPrice = parseFloat(price);
+                                if (!isNaN(parsedPrice) && parsedPrice > 0) {
+                                    const confirmId = loggedInUser.id;
+                                    const res = await window.AttendanceDB.approvePiecework(id, confirmId, parsedPrice);
+                                    if (res.success) {
+                                        showToast('Autorizado', 'El trabajo ha sido autorizado con el nuevo precio.', 'success');
+                                        window.AttendanceDB.fetchInitialData().then(() => {
+                                            if (typeof setupAdminView === 'function') setupAdminView();
+                                            if (typeof updateHistoryUI === 'function') updateHistoryUI();
+                                        });
+                                    } else {
+                                        showToast('Error', res.message, 'danger');
+                                    }
+                                } else {
+                                    alert('Precio inválido.');
+                                }
+                            }
+                        });
+                    });
+                }
             }
         } else {
             if (usrAttendanceThead) usrAttendanceThead.classList.remove('hidden');

@@ -549,6 +549,10 @@ window.AttendanceDB = {
     },
 
     // --- DESTAJO (PIECEWORK) ---
+    getPiecework() {
+        return this._state.piecework || [];
+    },
+
     getPieceworkByUser(userId) {
         return this._state.piecework.filter(p => p.usuarioId === userId);
     },
@@ -567,11 +571,11 @@ window.AttendanceDB = {
         return { success: false, message: data.message };
     },
 
-    async approvePiecework(id, confirmadoPor) {
+    async approvePiecework(id, confirmadoPor, precio) {
         const res = await fetch(`/api/piecework/approve/${id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ confirmadoPor })
+            body: JSON.stringify({ confirmadoPor, precio })
         });
         const data = await res.json();
         if (data.success) {

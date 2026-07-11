@@ -4,6 +4,7 @@
     const leaderStatEarnings = document.getElementById('leader-stat-earnings');
     const leaderTeamTable = document.getElementById('leader-team-table');
     const leaderAttendanceTable = document.getElementById('leader-attendance-table');
+    const leaderPieceworkTable = document.getElementById('leader-piecework-table');
 
     function setupLeaderView() {
         const group = currentUser.grupo;
@@ -12,8 +13,11 @@
         const allUsers = window.AttendanceDB.getUsers();
         const teamUsers = allUsers.filter(u => u.grupo === group && u.rol === 'usr');
 
-        // Obtener registros de asistencia del subgrupo
         const teamRecords = window.AttendanceDB.getAttendanceByGroup(group);
+
+        // Obtener trabajos entregados (Por Trato) del subgrupo
+        const allPiecework = window.AttendanceDB.getPiecework ? window.AttendanceDB.getPiecework() : [];
+        const teamPiecework = allPiecework.filter(p => teamUsers.some(u => u.id === p.usuarioId));
 
         // 1. Calcular estadísticas consolidadas del grupo
         let activeCount = 0;
@@ -31,6 +35,12 @@
             if (rec.horaSalida) {
                 totalHours += rec.horasTrabajadas;
                 totalNet += rec.montoNeto;
+            }
+        });
+
+        teamPiecework.forEach(rec => {
+            if (rec.estado === 'Confirmado' && !rec.archivado) {
+                totalNet += rec.total || 0;
             }
         });
 
@@ -53,15 +63,19 @@
             teamUsers.forEach(user => {
                 const userRecs = teamRecords.filter(r => r.usuarioId === user.id && r.horaSalida);
                 const isActive = window.AttendanceDB.getActiveAttendanceByUser(user.id);
+                const userPiecework = teamPiecework.filter(r => r.usuarioId === user.id && r.estado === 'Confirmado');
 
                 const statusTag = isActive
                     ? '<span class="status-tag status-online">Jornada Activa</span>'
                     : '<span class="status-tag status-offline">Inactivo</span>';
 
                 const uHours = userRecs.reduce((acc, curr) => acc + curr.horasTrabajadas, 0);
-                const uGross = userRecs.reduce((acc, curr) => acc + curr.montoBruto, 0);
+                const uGrossAtt = userRecs.reduce((acc, curr) => acc + curr.montoBruto, 0);
+                const uGrossPw = userPiecework.reduce((acc, curr) => acc + curr.total, 0);
+                const uGross = uGrossAtt + uGrossPw;
                 const uPenalties = userRecs.reduce((acc, curr) => acc + curr.descuento, 0);
-                const uNet = userRecs.reduce((acc, curr) => acc + curr.montoNeto, 0);
+                const uNetAtt = userRecs.reduce((acc, curr) => acc + curr.montoNeto, 0);
+                const uNet = uNetAtt + uGrossPw;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -117,6 +131,46 @@
                     fragmentAttendance.appendChild(tr);
             });
             leaderAttendanceTable.appendChild(fragmentAttendance);
+        }
+
+        // 4. Renderizar tabla de Últimos Trabajos Entregados
+        if (leaderPieceworkTable) {
+            leaderPieceworkTable.innerHTML = '';
+            if (teamPiecework.length === 0) {
+                leaderPieceworkTable.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-muted" style="text-align: center; padding: 20px;">
+                            No existen trabajos por trato registrados en este subgrupo.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                const fragmentPiecework = document.createDocumentFragment();
+                teamPiecework.slice(0, 15).forEach(rec => {
+                    const user = allUsers.find(u => u.id === rec.usuarioId);
+                    const nombre = user ? user.nombre : 'Desconocido';
+
+                    let statusBadge = '';
+                    if (rec.estado === 'Confirmado') {
+                        statusBadge = '<span class="table-badge approved">Aprobado</span>';
+                    } else {
+                        statusBadge = '<span class="table-badge pending">Pendiente</span>';
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${nombre}</strong></td>
+                        <td>${rec.fecha}</td>
+                        <td>${rec.trabajo}</td>
+                        <td>Q${(rec.precio || 0).toFixed(2)}</td>
+                        <td>${rec.cantidad}</td>
+                        <td><strong>Q${(rec.total || 0).toFixed(2)}</strong></td>
+                        <td>${statusBadge}</td>
+                    `;
+                    fragmentPiecework.appendChild(tr);
+                });
+                leaderPieceworkTable.appendChild(fragmentPiecework);
+            }
         }
     }
 

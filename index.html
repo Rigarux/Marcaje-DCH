@@ -681,6 +681,31 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Tabla de Detalle de Trabajos Entregados (Por Trato) -->
+                    <div class="card table-card margin-top">
+                        <div class="card-header">
+                            <h3>Últimos Trabajos Entregados (Equipo Por Trato)</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Colaborador</th>
+                                        <th>Fecha</th>
+                                        <th>Trabajo</th>
+                                        <th>Precio Unit.</th>
+                                        <th>Cantidad</th>
+                                        <th>Total</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leader-piecework-table">
+                                    <!-- Carga dinámica -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 </section>
 
                 <!-- ==================== VISTA: ADMINISTRADOR RRHH (admin) ==================== -->
@@ -791,6 +816,14 @@
                                         <option value="active_week">Semana de Pago Activa (Cierre Vie 23:59pm)</option>
                                         <option value="active_quincena">Quincena de Pago Activa (Cierre Vie 23:59pm)</option>
                                         <option value="all">Todo el Historial</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label for="admin-payment-type-filter">Tipo de Pago:</label>
+                                    <select id="admin-payment-type-filter" class="form-control">
+                                        <option value="all">Todos</option>
+                                        <option value="horas">Por Horas / Fijo</option>
+                                        <option value="trato">Por Trato / Destajo</option>
                                     </select>
                                 </div>
                                 <div class="action-buttons" style="margin-left: auto; display: flex; gap: 10px;">
@@ -2032,19 +2065,10 @@
                     <label for="piecework-desc">Trabajo Realizado *</label>
                     <input type="text" id="piecework-desc" class="form-control" placeholder="Ej: Camisas M/C" required>
                 </div>
-                <div class="form-group">
-                    <label for="piecework-price">Precio Unitario (Q) *</label>
-                    <input type="number" id="piecework-price" class="form-control" min="0.01" step="0.01" required>
-                </div>
+
                 <div class="form-group">
                     <label for="piecework-quantity">Cantidad *</label>
                     <input type="number" id="piecework-quantity" class="form-control" min="1" step="1" required>
-                </div>
-                <div class="form-group">
-                    <label>Total Estimado</label>
-                    <div style="font-size: 1.2rem; font-weight: bold; color: var(--success); margin-top: 5px;">
-                        Q<span id="piecework-total">0.00</span>
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="btn-cancel-piecework" class="btn-secondary">Cancelar</button>

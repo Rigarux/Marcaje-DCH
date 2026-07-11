@@ -6,6 +6,7 @@
 
     const adminGroupFilter = document.getElementById('admin-group-filter');
     const adminPeriodFilter = document.getElementById('admin-period-filter');
+    const adminPaymentTypeFilter = document.getElementById('admin-payment-type-filter');
     const adminAttendanceTable = document.getElementById('admin-attendance-table');
     const adminPenaltiesTable = document.getElementById('admin-penalties-table');
 
@@ -125,6 +126,7 @@
         renderCompanyDropdowns();
         const filterGroup = adminGroupFilter ? adminGroupFilter.value : 'all';
         const filterPeriod = adminPeriodFilter ? adminPeriodFilter.value : 'closed_week';
+        const filterPaymentType = adminPaymentTypeFilter ? adminPaymentTypeFilter.value : 'all';
         const allUsers = window.AttendanceDB.getUsers();
         let attendance = window.AttendanceDB.getAttendance();
         let penalizations = window.AttendanceDB.getPenalizations();
@@ -196,6 +198,18 @@
             targetUserIds = allUsers.filter(u => u.frecuenciaPago === 'quincenal').map(u => u.id);
         }
 
+        if (filterPaymentType === 'horas') {
+            targetUserIds = targetUserIds.filter(id => {
+                const u = allUsers.find(user => user.id === id);
+                return u && u.tipoPago !== 'Por Trato' && u.tipoPago !== 'Destajo';
+            });
+        } else if (filterPaymentType === 'trato') {
+            targetUserIds = targetUserIds.filter(id => {
+                const u = allUsers.find(user => user.id === id);
+                return u && (u.tipoPago === 'Por Trato' || u.tipoPago === 'Destajo');
+            });
+        }
+
         attendance = attendance.filter(rec => {
             if (filterPeriod !== 'all' && rec.archivado) return false;
             if (!targetUserIds.includes(rec.usuarioId)) return false;
@@ -211,6 +225,23 @@
             if (!targetUserIds.includes(rec.usuarioId)) return false;
             if (!rec.fecha) return false;
             const fechaStr = rec.fecha.split(' ')[0]; // "DD/MM/YYYY" format expected from Date.toLocaleDateString
+            const parts = fechaStr.split('/');
+            if (parts.length === 3) {
+                const dy = parseInt(parts[0], 10);
+                const mo = parseInt(parts[1], 10);
+                const yr = parseInt(parts[2], 10);
+                const recDate = new Date(yr, mo - 1, dy);
+                return recDate >= periodStart && recDate < periodEnd;
+            }
+            return false;
+        });
+
+        let pieceworkRecords = window.AttendanceDB.getPiecework();
+        pieceworkRecords = pieceworkRecords.filter(rec => {
+            if (filterPeriod !== 'all' && rec.archivado) return false;
+            if (!targetUserIds.includes(rec.usuarioId)) return false;
+            if (!rec.fecha) return false;
+            const fechaStr = rec.fecha.split(' ')[0]; // "DD/MM/YYYY" format expected
             const parts = fechaStr.split('/');
             if (parts.length === 3) {
                 const dy = parseInt(parts[0], 10);
@@ -245,6 +276,7 @@
             penalizations = penalizations.filter(p => usersInGroup.includes(p.usuarioId));
             bonuses = bonuses.filter(b => usersInGroup.includes(b.usuarioId));
             busRecords = busRecords.filter(rec => usersInGroup.includes(rec.usuarioId));
+            pieceworkRecords = pieceworkRecords.filter(rec => usersInGroup.includes(rec.usuarioId));
         }
 
         // 4. Calcular Estadísticas Consolidadas RRHH (Día de Pago)
@@ -276,6 +308,13 @@
             }
         });
 
+        pieceworkRecords.forEach(rec => {
+            totalGross += rec.total;
+            if (rec.estado !== 'Confirmado') {
+                totalPending += rec.total;
+            }
+        });
+
         if (adminStatHours) adminStatHours.textContent = `${totalHours.toFixed(2)} h`;
         if (adminStatGross) adminStatGross.textContent = `Q${totalGross.toFixed(2)}`;
         if (adminStatPenalties) adminStatPenalties.textContent = `Q${totalPenalties.toFixed(2)}`;
@@ -284,7 +323,7 @@
         if (activeTab === 'tab-trabajadores-admin') {
             renderAdminWorkersGrid(allUsers, overallAttendance);
         } else if (activeTab === 'tab-asistencia') {
-            renderAdminAttendanceTable(attendance, allUsers, busRecords); // <- SE PASAN AQUI
+            renderAdminAttendanceTable(attendance, allUsers, busRecords, pieceworkRecords);
         } else if (activeTab === 'tab-descuentos') {
             renderAdminPenaltiesTable(penalizations, allUsers);
             renderAdminBonusesTable(bonuses, allUsers);
@@ -326,18 +365,25 @@
             setupAdminView();
         });
     }
+    
+    if (adminPaymentTypeFilter) {
+        adminPaymentTypeFilter.addEventListener('change', () => {
+            setupAdminView();
+        });
+    }
 
     // Renderizar tabla de aprobaciones
-    function renderAdminAttendanceTable(attendance, allUsers, busRecords = []) {
+    function renderAdminAttendanceTable(attendance, allUsers, busRecords = [], pieceworkRecords = []) {
         attendance = attendance.filter(a => !a.archivado);
         busRecords = busRecords.filter(b => !b.archivado);
+        pieceworkRecords = pieceworkRecords.filter(p => !p.archivado);
         adminAttendanceTable.innerHTML = '';
 
-        if (attendance.length === 0 && busRecords.length === 0) {
+        if (attendance.length === 0 && busRecords.length === 0 && pieceworkRecords.length === 0) {
             adminAttendanceTable.innerHTML = `
                 <tr>
                     <td colspan="10" class="text-muted" style="text-align: center; padding: 30px;">
-                        No existen registros de marcajes en el filtro seleccionado.
+                        No existen registros en el filtro seleccionado.
                     </td>
                 </tr>
             `;
@@ -353,6 +399,7 @@
                     userId: uid,
                     records: [],
                     busRecords: [],
+                    pieceworkRecords: [],
                     totalDiurnas: 0,
                     totalNocturnas: 0,
                     totalBruto: 0,
@@ -419,12 +466,46 @@
             }
         });
 
+        pieceworkRecords.forEach(rec => {
+            const uid = rec.usuarioId;
+            if (!grouped[uid]) {
+                grouped[uid] = {
+                    userId: uid,
+                    records: [],
+                    busRecords: [],
+                    pieceworkRecords: [],
+                    totalDiurnas: 0,
+                    totalNocturnas: 0,
+                    totalBruto: 0,
+                    totalBono: 0,
+                    totalDescuento: 0,
+                    totalNeto: 0,
+                    ingresoTotal: 0,
+                    gastoTotal: 0,
+                    allApproved: true,
+                    anyPending: false
+                };
+            } else if (!grouped[uid].pieceworkRecords) {
+                grouped[uid].pieceworkRecords = [];
+            }
+            grouped[uid].pieceworkRecords.push(rec);
+
+            grouped[uid].totalBruto += rec.total || 0;
+            grouped[uid].totalNeto += rec.total || 0;
+
+            if (rec.estado !== 'Confirmado') {
+                grouped[uid].allApproved = false;
+                grouped[uid].anyPending = true;
+            }
+        });
+
         const fragment = document.createDocumentFragment();
         Object.values(grouped).forEach(group => {
             const user = allUsers.find(u => u.id === group.userId);
             const nombre = user ? user.nombre : 'Desconocido';
             const grupo = user ? user.grupo : 'N/A';
             const isBuses = user && user.empresa && user.empresa.toUpperCase().includes('BUSES');
+            const isPiecework = user && (user.tipoPago === 'Por Trato' || user.tipoPago === 'Destajo');
 
             // Deducción de préstamo
             const prestamoSaldo = user ? (parseFloat(user.préstamosaldo) || 0) : 0;
@@ -458,6 +539,12 @@
 
                 diurnasText = `${group.totalDiurnas} Das`;
                 nocturnasText = `<div style="font-size:0.75rem;">I: Q${group.ingresoTotal.toFixed(2)}<br>G: Q${ganancia.toFixed(2)}</div>`;
+                brutoText = `Q${group.totalBruto.toFixed(2)}`;
+                netText = `Q${netFinal.toFixed(2)}`;
+            } else if (isPiecework) {
+                const netFinal = Math.max(0, group.totalNeto - loanDeduction);
+                diurnasText = 'N/A';
+                nocturnasText = 'N/A';
                 brutoText = `Q${group.totalBruto.toFixed(2)}`;
                 netText = `Q${netFinal.toFixed(2)}`;
             } else {
@@ -561,6 +648,30 @@
                             <td><strong>${rNeto}</strong></td>
                             <td>${subAction}</td>
                             <td>${tipoPagoCell}</td>
+                        </tr>
+                    `;
+                });
+            } else if (isPiecework) {
+                group.pieceworkRecords.forEach(rec => {
+                    let subAction = '';
+                    if (rec.estado === 'Confirmado') {
+                        subAction = '<span class="table-badge approved" style="font-size:0.7rem; padding: 2px 6px;">Aprobado</span>';
+                    } else {
+                        subAction = `
+                            <div style="display:flex; gap:4px;">
+                                <button class="btn-table-action approve approve-single-piecework-admin" data-recid="${rec.id}" data-uid="${group.userId}" style="padding: 2px 6px; font-size: 0.7rem; width: auto;">Aprobar</button>
+                            </div>
+                        `;
+                    }
+
+                    subrowsHtml += `
+                        <tr>
+                            <td>${rec.fecha}</td>
+                            <td>${rec.trabajo}</td>
+                            <td>Q${(rec.precio || 0).toFixed(2)}</td>
+                            <td>${rec.cantidad}</td>
+                            <td><strong>Q${(rec.total || 0).toFixed(2)}</strong></td>
+                            <td>${subAction}</td>
                         </tr>
                     `;
                 });
@@ -729,6 +840,17 @@
                         <th>Tipo de pago</th>
                     </tr>
                 `;
+            } else if (isPiecework) {
+                tableHeadersHtml = `
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Trabajo</th>
+                        <th>Costo por unidad</th>
+                        <th>Cantidad</th>
+                        <th>Cantidad total</th>
+                        <th>Estado/Acción</th>
+                    </tr>
+                `;
             } else {
                 tableHeadersHtml = `
                     <tr>
@@ -750,7 +872,7 @@
                 <td colspan="10" style="background: rgba(0,0,0,0.15); padding: 15px;">
                     <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; background: var(--bg-card);">
                         <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
-                            <span>Desglose de turnos de ${nombre}</span>
+                            <span>Desglose de ${isPiecework ? 'trabajos' : 'turnos'} de ${nombre}</span>
                         </h4>
                         <div class="table-responsive">
                             <table style="width: 100%; font-size: 0.85rem;">
@@ -818,6 +940,28 @@
                 const success = await window.AttendanceDB.approvePayment(recid, currentUser.id);
                 if (success) {
                     setupAdminView();
+                }
+            });
+        });
+
+        adminAttendanceTable.querySelectorAll('.approve-single-piecework-admin').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const recid = e.target.getAttribute('data-recid');
+                const price = prompt('Ingrese el precio unitario para autorizar este trabajo:', '');
+                if (price !== null && price.trim() !== '') {
+                    const parsedPrice = parseFloat(price);
+                    if (!isNaN(parsedPrice) && parsedPrice > 0) {
+                        const confirmId = currentUser.id;
+                        const res = await window.AttendanceDB.approvePiecework(recid, confirmId, parsedPrice);
+                        if (res.success) {
+                            showToast('Autorizado', 'El trabajo ha sido autorizado con el nuevo precio.', 'success');
+                            setupAdminView();
+                        } else {
+                            showToast('Error', res.message, 'danger');
+                        }
+                    } else {
+                        alert('Precio inválido.');
+                    }
                 }
             });
         });

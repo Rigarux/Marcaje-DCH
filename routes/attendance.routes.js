@@ -491,15 +491,24 @@ router.post('/piecework/submit', async (req, res) => {
 router.post('/piecework/approve/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { confirmadoPor } = req.body;
+        const { confirmadoPor, precio } = req.body;
         const fecha = new Date().toLocaleDateString('es-GT', { timeZone: 'America/Guatemala' }) + ' ' +
             new Date().toLocaleTimeString('es-GT', { timeZone: 'America/Guatemala', hour12: false });
 
+        if (!precio || isNaN(precio) || precio <= 0) {
+            return res.status(400).json({ success: false, message: 'El precio unitario es requerido para autorizar.' });
+        }
+
+        const record = await dbGet('SELECT cantidad FROM piecework_records WHERE id = ?', [id]);
+        if (!record) return res.status(404).json({ success: false, message: 'Registro no encontrado' });
+
+        const total = parseFloat(precio) * record.cantidad;
+
         const result = await dbRun(`
                 UPDATE piecework_records 
-                SET estado = 'Confirmado', confirmadoPor = ?, confirmadoFecha = ? 
+                SET estado = 'Confirmado', confirmadoPor = ?, confirmadoFecha = ?, precio = ?, total = ?
                 WHERE id = ?
-            `, [confirmadoPor, fecha, id]);
+            `, [confirmadoPor, fecha, parseFloat(precio), total, id]);
 
         if (result.changes === 0) return res.status(404).json({ success: false, message: 'Registro no encontrado' });
         res.json({ success: true, message: 'Trabajo confirmado.' });
