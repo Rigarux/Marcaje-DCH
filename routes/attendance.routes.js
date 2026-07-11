@@ -151,7 +151,7 @@ router.post('/attendance/checkout', async (req, res) => {
         const tarifaNocturna = user.tarifaNocturna !== undefined ? user.tarifaNocturna : 0;
 
         let bruto = 0;
-        if (user.tipoPago === 'Destajo') {
+        if (user.tipoPago === 'Destajo' || user.tipoPago === 'Por Trato') {
             bruto = parseFloat(tarifaDiurna.toFixed(2));
         } else {
             const horasNormalesLimit = parseFloat(user.horasNormalesMax) || 8.0;

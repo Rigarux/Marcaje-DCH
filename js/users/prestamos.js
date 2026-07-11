@@ -216,4 +216,71 @@
         });
     }
 
+    window.setupUserLoanView = function() {
+        if (!currentUser) return;
+        
+        const loans = window.AttendanceDB.getLoans().filter(l => l.empleadoId === currentUser.id);
+        const activeLoan = loans.find(l => l.estado === 'Aprobado');
+        
+        const usrLoanTotalVal = document.getElementById('usr-loan-total-val');
+        const usrLoanSaldoVal = document.getElementById('usr-loan-saldo-val');
+        const usrLoanCuotaVal = document.getElementById('usr-loan-cuota-val');
+        const usrLoanStatusVal = document.getElementById('usr-loan-status-val');
+        const usrLoanEndDate = document.getElementById('usr-loan-end-date');
+        const userLoansTable = document.getElementById('user-loans-table');
+        
+        if (activeLoan) {
+            if (usrLoanTotalVal) usrLoanTotalVal.textContent = `Q${(activeLoan.monto || 0).toFixed(2)}`;
+            if (usrLoanSaldoVal) usrLoanSaldoVal.textContent = `Q${(activeLoan.saldoPendiente || 0).toFixed(2)}`;
+            if (usrLoanCuotaVal) usrLoanCuotaVal.textContent = `Q${(activeLoan.montoCuota || 0).toFixed(2)}`;
+            if (usrLoanStatusVal) usrLoanStatusVal.textContent = 'Activo';
+            if (usrLoanEndDate) usrLoanEndDate.textContent = 'Pendiente';
+        } else {
+            if (usrLoanTotalVal) usrLoanTotalVal.textContent = 'Q0.00';
+            if (usrLoanSaldoVal) usrLoanSaldoVal.textContent = 'Q0.00';
+            if (usrLoanCuotaVal) usrLoanCuotaVal.textContent = 'Q0.00';
+            if (usrLoanStatusVal) usrLoanStatusVal.textContent = 'Ninguno';
+            if (usrLoanEndDate) usrLoanEndDate.textContent = '-';
+        }
+        
+        if (userLoansTable) {
+            userLoansTable.innerHTML = '';
+            if (loans.length === 0) {
+                userLoansTable.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No tienes solicitudes de préstamo.</td></tr>';
+            } else {
+                loans.forEach(l => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${l.fecha}</td>
+                        <td>Q${(l.monto || 0).toFixed(2)}</td>
+                        <td>${l.cuotas}</td>
+                        <td>${l.estado}</td>
+                    `;
+                    userLoansTable.appendChild(tr);
+                });
+            }
+        }
+        
+        const formRequestLoan = document.getElementById('form-request-loan');
+        if (formRequestLoan && !formRequestLoan.hasAttribute('data-listener-attached')) {
+            formRequestLoan.setAttribute('data-listener-attached', 'true');
+            formRequestLoan.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const amountInput = document.getElementById('request-loan-amount');
+                const installmentsInput = document.getElementById('request-loan-installments');
+                const amount = parseFloat(amountInput.value);
+                const installments = parseInt(installmentsInput.value);
+                
+                const success = await window.AttendanceDB.createLoan(currentUser.id, amount, installments);
+                if (success) {
+                    showToast('Solicitud Enviada', 'Tu solicitud de préstamo ha sido enviada.', 'success');
+                    amountInput.value = '';
+                    installmentsInput.value = '';
+                    window.setupUserLoanView();
+                } else {
+                    showToast('Error', 'Hubo un error al enviar tu solicitud.', 'danger');
+                }
+            });
+        }
+    };
 

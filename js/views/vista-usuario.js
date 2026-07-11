@@ -90,11 +90,11 @@
             // Cargar tablas y estadísticas de buses
             renderUserStatsAndTable();
             return;
-        } else if (currentUser.tipoPago === 'Destajo') {
+        } else if (currentUser.tipoPago === 'Destajo' || currentUser.tipoPago === 'Por Trato') {
             if (cardTimerControl) cardTimerControl.classList.add('hidden');
             if (cardPieceworkControl) cardPieceworkControl.classList.remove('hidden');
 
-            // Cargar tablas y estadísticas de destajo
+            // Cargar tablas y estadísticas de por trato
             renderUserStatsAndTable();
             return;
         } else {
@@ -306,7 +306,7 @@
         }
     });
 
-    // --- FLUJO DE MODAL DE ENTREGAR TRABAJO (DESTAJO) ---
+    // --- FLUJO DE MODAL DE ENTREGAR TRABAJO (POR TRATO) ---
     const btnOpenPieceworkSubmit = document.getElementById('btn-open-piecework-submit');
     const pieceworkModal = document.getElementById('piecework-modal');
     const btnClosePieceworkModal = document.getElementById('btn-close-piecework-modal');
@@ -651,7 +651,7 @@
             if (usrStatNet) usrStatNet.textContent = `Q${totalNet.toFixed(2)}`;
             if (usrStatPenalties) usrStatPenalties.textContent = `Q0.00`;
 
-        } else if (currentUser.tipoPago === 'Destajo') {
+        } else if (currentUser.tipoPago === 'Destajo' || currentUser.tipoPago === 'Por Trato') {
             if (usrAttendanceThead) usrAttendanceThead.classList.add('hidden');
             if (usrPieceworkThead) usrPieceworkThead.classList.remove('hidden');
             if (usrBusesThead) usrBusesThead.classList.add('hidden');

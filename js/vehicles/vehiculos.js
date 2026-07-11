@@ -258,4 +258,34 @@
             }
         });
     }
+
+    window.setupUserVehiclesView = function() {
+        if (!currentUser) return;
+        
+        const vehicles = window.AttendanceDB.getVehicles().filter(v => v.empleadoId === currentUser.id);
+        const userVehiclesEmpty = document.getElementById('user-vehicles-empty');
+        const userVehiclesTableContainer = document.getElementById('user-vehicles-table-container');
+        const userVehiclesList = document.getElementById('user-vehicles-list');
+        
+        if (vehicles.length === 0) {
+            if (userVehiclesEmpty) userVehiclesEmpty.classList.remove('hidden');
+            if (userVehiclesTableContainer) userVehiclesTableContainer.classList.add('hidden');
+        } else {
+            if (userVehiclesEmpty) userVehiclesEmpty.classList.add('hidden');
+            if (userVehiclesTableContainer) userVehiclesTableContainer.classList.remove('hidden');
+            if (userVehiclesList) {
+                userVehiclesList.innerHTML = '';
+                vehicles.forEach(v => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${v.placa}</strong></td>
+                        <td>${v.marca}</td>
+                        <td>${v.modelo}</td>
+                        <td><span class="table-badge ${v.estado === 'Disponible' ? 'approved' : 'pending'}">${v.estado}</span></td>
+                    `;
+                    userVehiclesList.appendChild(tr);
+                });
+            }
+        }
+    };
 

@@ -2686,8 +2686,11 @@ input[type="number"] {
         position: absolute;
         bottom: 0;
         animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        max-height: 90vh;
+        max-height: 85vh;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding-bottom: 30px; /* Extra padding for bottom reachability */
     }
     
     @keyframes slideUp {
