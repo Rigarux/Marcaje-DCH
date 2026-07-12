@@ -173,13 +173,19 @@
             // Toggle HTML for Confirmations
             let confirmationHtml = '';
             if (estado === 'Finalizado') {
-                confirmationHtml = '<span class="text-success">✅ Confirmado</span>';
+                confirmationHtml = `
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="text-success">✅ Confirmado</span>
+                        <button class="btn-table-action penalize" onclick="window.openPenalizeModal(${group.userId});" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--danger); border-color: var(--danger); display: inline-block;">Descuento</button>
+                    </div>
+                `;
             } else {
                 confirmationHtml = `
-                    <label class="switch" style="display: flex; align-items: center; gap: 5px;">
+                    <label class="switch" style="display: flex; align-items: center; gap: 5px; margin-bottom: 5px;">
                         <input type="checkbox" class="chk-confirm-user" data-uid="${group.userId}" ${group.allApproved ? 'checked' : ''}>
                         <span style="font-size: 12px;">Confirmar</span>
                     </label>
+                    <button class="btn-table-action penalize" onclick="window.openPenalizeModal(${group.userId});" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--danger); border-color: var(--danger); display: inline-block;">Descuento</button>
                 `;
             }
 
@@ -216,12 +222,13 @@
                             <th style="font-size: 0.8rem; padding: 6px;">Salida</th>
                             <th style="font-size: 0.8rem; padding: 6px;">Horas</th>
                             <th style="font-size: 0.8rem; padding: 6px;">Monto Bruto</th>
+                            <th style="font-size: 0.8rem; padding: 6px; text-align: center;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>`;
             
             if (group.attendanceRecords.length === 0 && group.busRecords.length === 0) {
-                subHtml += `<tr><td colspan="5" style="text-align:center; padding: 10px; font-size: 0.8rem; color: var(--text-muted);">Sin registros individuales.</td></tr>`;
+                subHtml += `<tr><td colspan="6" style="text-align:center; padding: 10px; font-size: 0.8rem; color: var(--text-muted);">Sin registros individuales.</td></tr>`;
             } else {
                 group.attendanceRecords.forEach(a => {
                     subHtml += `<tr>
@@ -230,6 +237,7 @@
                         <td style="font-size: 0.8rem; padding: 6px;">${a.horaSalida || '-'}</td>
                         <td style="font-size: 0.8rem; padding: 6px;">${(a.horasTrabajadas || 0).toFixed(2)} h</td>
                         <td style="font-size: 0.8rem; padding: 6px;">Q${(a.montoBruto || 0).toFixed(2)}</td>
+                        <td style="font-size: 0.8rem; padding: 6px; text-align: center;"><button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${a.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button></td>
                     </tr>`;
                 });
                 group.busRecords.forEach(a => {
@@ -237,6 +245,7 @@
                         <td style="font-size: 0.8rem; padding: 6px;">${a.fecha ? a.fecha.split(' ')[0] : '-'}</td>
                         <td style="font-size: 0.8rem; padding: 6px;" colspan="3">Registro de Bus - Turnos: ${a.turno ? a.turno.split(',').length : 1}</td>
                         <td style="font-size: 0.8rem; padding: 6px;">Q${((a.ingresoDinero || 0) - (a.montoGasto || 0)).toFixed(2)} (Neto)</td>
+                        <td style="font-size: 0.8rem; padding: 6px;"></td>
                     </tr>`;
                 });
             }

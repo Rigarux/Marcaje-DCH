@@ -1298,6 +1298,8 @@ fragment.appendChild(trMain);
             });
         }
     }
+    
+    window.openPenalizeModal = openModal;
 
     function closeModal() {
         penalizeModal.classList.add('hidden');
