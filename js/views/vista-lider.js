@@ -120,7 +120,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${nombre}</strong></td>
-                    <td>${rec.fecha}</td>
+                    <td>${formatDateDDMMYYYY(rec.fecha)}</td>
                     <td>${rec.horaEntrada}</td>
                     <td>${outTimeText}</td>
                     <td>${horasDiurnasText}</td>
@@ -160,7 +160,7 @@
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td><strong>${nombre}</strong></td>
-                        <td>${rec.fecha}</td>
+                        <td>${formatDateDDMMYYYY(rec.fecha)}</td>
                         <td>${rec.trabajo}</td>
                         <td>Q${(rec.precio || 0).toFixed(2)}</td>
                         <td>${rec.cantidad}</td>

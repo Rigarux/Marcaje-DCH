@@ -444,19 +444,20 @@ router.post('/users/:id/loans/authorize-cuota', async (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
         
         const cuota = parseFloat(user.préstamoCuota) || 0;
-        const nuevoSaldo = Math.max(0, (parseFloat(user.préstamosaldo) || 0) - cuota);
+        // Do NOT reduce the balance here. The balance is reduced ONLY when payroll is finalized.
+        const saldoActual = parseFloat(user.préstamosaldo) || 0;
         
         await dbRun(`
             UPDATE users 
-            SET préstamoEstadoCuota = 'Autorizado', préstamosaldo = ?
+            SET préstamoEstadoCuota = 'Autorizado'
             WHERE id = ?
-        `, [nuevoSaldo, userId]);
+        `, [userId]);
         
         const admin = await dbGet(`SELECT nombre FROM users WHERE id = ?`, [parseInt(adminId)]);
         const adminName = admin ? admin.nombre : 'Admin';
         
-        await addLog(adminId, `${adminName} autorizó el cobro de la cuota semanal de préstamo de Q${cuota.toFixed(2)} para ${user.nombre}. Nuevo saldo: Q${nuevoSaldo.toFixed(2)}`);
-        res.json({ success: true, préstamosaldo: nuevoSaldo, préstamoEstadoCuota: 'Autorizado' });
+        await addLog(adminId, `${adminName} autorizó el cobro de la cuota semanal de préstamo de Q${cuota.toFixed(2)} para ${user.nombre}. (Pendiente de finalización de planilla)`);
+        res.json({ success: true, préstamosaldo: saldoActual, préstamoEstadoCuota: 'Autorizado' });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }

@@ -247,8 +247,28 @@ window.AttendanceDB = {
                 await this.loadStateFromServer();
                 return true;
             }
-        } catch (e) { console.error(e); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger'); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger'); }
+        } catch (e) { console.error(e); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger'); }
         return false;
+    },
+
+    async adjustAttendanceHours(asistenciaId, horasAprobadas, adminId) {
+        try {
+            const res = await fetch('/api/attendance/adjust/'+asistenciaId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ horasAprobadas, adminId })
+            });
+            if (!res.ok) return false;
+            const data = await res.json();
+            if (data && data.success) {
+                await this.loadStateFromServer();
+                return true;
+            }
+            return false;
+        } catch(e) {
+            console.error(e);
+            return false;
+        }
     },
 
     async approveBusRecord(busRecordId, adminId, metodoPago) {
@@ -264,8 +284,23 @@ window.AttendanceDB = {
                 await this.loadStateFromServer();
                 return true;
             }
-        } catch (e) { console.error(e); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger'); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger'); }
+        } catch (e) { console.error(e); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger'); }
         return false;
+    },
+
+    async rejectBusRecord(busRecordId) {
+        try {
+            const res = await fetch('/api/bus-records/'+busRecordId, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                await this.loadStateFromServer();
+                return true;
+            }
+            return false;
+        } catch (e) {
+            console.error(e);
+            return false;
+        }
     },
 
     async authorizeLoanCuota(userId, adminId) {
@@ -585,6 +620,21 @@ window.AttendanceDB = {
         return { success: false, message: data.message };
     },
 
+    async deletePiecework(id) {
+        try {
+            const res = await fetch(`/api/piecework/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                await this.loadStateFromServer();
+                return true;
+            }
+            return false;
+        } catch (e) {
+            console.error(e);
+            return false;
+        }
+    },
+
     async rejectLoan(id, adminId) {
         const res = await fetch(`/api/loans/reject/${id}`, {
             method: 'POST',
@@ -617,6 +667,12 @@ window.AttendanceDB = {
         return this._state.busRecords;
     },
 
+
+    // --- BUSES ---
+    getBusRecords() {
+        return this._state.busRecords;
+    },
+
     getBusRecordsByUser(userId) {
         return this._state.busRecords.filter(b => b.usuarioId === userId);
     },
@@ -633,6 +689,42 @@ window.AttendanceDB = {
             return { success: true };
         }
         return { success: false, message: data.message };
+    },
+
+    // --- CORRECCIONES ---
+    async correctAttendanceRecord(id, updateData) {
+        try {
+            const res = await fetch(`/api/attendance/correction/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            });
+            const data = await res.json();
+            if (data.success) {
+                await this.loadStateFromServer();
+            }
+            return data;
+        } catch (e) {
+            console.error(e);
+            return { success: false, message: e.message };
+        }
+    },
+
+    async correctPieceworkRecord(id, updateData) {
+        try {
+            const res = await fetch(`/api/piecework/correction/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            });
+            const data = await res.json();
+            if (data.success) {
+                await this.loadStateFromServer();
+            }
+            return data;
+        } catch (e) {
+            console.error(e);
+            return { success: false, message: e.message };
+        }
     }
 };
-

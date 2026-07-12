@@ -233,7 +233,7 @@ async function renderQuotesView() {
                             <button class="btn-primary btn-sm btn-accept-quote" data-id="${q.id}" data-total="${q.totalVenta}" title="Aceptar Venta" style="margin-left: 5px; background-color: var(--success); border-color: var(--success);">Aceptar</button>
                             <button class="btn-danger btn-sm btn-reject-quote" data-id="${q.id}" title="Rechazar Venta" style="margin-left: 5px;">Rechazar</button>
                         ` : ''}
-                        ${(currentUser.rol === 'admin') ? `
+                        ${((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) ? `
                             <button class="btn-danger btn-sm btn-delete-quote" data-id="${q.id}" title="Eliminar" style="margin-left: 5px;">X</button>
                         ` : ''}
                     </td>
@@ -384,7 +384,7 @@ async function renderVentaLibreView() {
                             <button class="btn-primary btn-sm btn-accept-quote" data-id="${q.id}" data-total="${q.totalVenta}" title="Aceptar Venta" style="margin-left: 5px; background-color: var(--success); border-color: var(--success);">Aceptar</button>
                             <button class="btn-danger btn-sm btn-reject-quote" data-id="${q.id}" title="Rechazar Venta" style="margin-left: 5px;">Rechazar</button>
                         ` : ''}
-                        ${(currentUser.rol === 'admin') ? `
+                        ${((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) ? `
                             <button class="btn-danger btn-sm btn-delete-quote" data-id="${q.id}" title="Eliminar" style="margin-left: 5px;">X</button>
                         ` : ''}
                     </td>

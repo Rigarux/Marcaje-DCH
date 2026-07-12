@@ -35,59 +35,44 @@
     function getPeriodRange(filterValue) {
         const now = new Date();
 
-        // Buscar el viernes de la semana actual
-        const cutoffFriday = new Date(now);
-        const day = cutoffFriday.getDay();
-        const diff = 5 - day; // Diferencia para llegar a viernes
-        cutoffFriday.setDate(cutoffFriday.getDate() + diff);
-        cutoffFriday.setHours(23, 59, 59, 999);
+        // Una semana activa empieza el Sábado a las 00:00:00 y termina el Viernes a las 23:59:59.
+        const currentDay = now.getDay(); // 0=Dom, 1=Lun... 5=Vie, 6=Sab
+        const daysUntilFriday = (currentDay === 6) ? 6 : (5 - currentDay);
+        
+        const activeFriday = new Date(now);
+        activeFriday.setDate(activeFriday.getDate() + daysUntilFriday);
+        activeFriday.setHours(23, 59, 59, 999);
 
-        let end;
-        let start;
+        const activeSaturday = new Date(activeFriday);
+        activeSaturday.setDate(activeFriday.getDate() - 6);
+        activeSaturday.setHours(0, 0, 0, 0);
+
+        let start, end;
 
         switch (filterValue) {
-            case 'closed_week':
-                if (now >= cutoffFriday) {
-                    end = new Date(cutoffFriday);
-                } else {
-                    end = new Date(cutoffFriday);
-                    end.setDate(end.getDate() - 7);
-                }
-                start = new Date(end);
-                start.setDate(start.getDate() - 7);
-                break;
-
             case 'active_week':
-                if (now >= cutoffFriday) {
-                    end = new Date(cutoffFriday);
-                    end.setDate(end.getDate() + 7);
-                } else {
-                    end = new Date(cutoffFriday);
-                }
-                start = new Date(end);
-                start.setDate(start.getDate() - 7);
+                start = new Date(activeSaturday);
+                end = new Date(activeFriday);
                 break;
 
-            case 'closed_quincena':
-                if (now >= cutoffFriday) {
-                    end = new Date(cutoffFriday);
-                } else {
-                    end = new Date(cutoffFriday);
-                    end.setDate(end.getDate() - 7);
-                }
-                start = new Date(end);
-                start.setDate(start.getDate() - 14);
+            case 'closed_week':
+                start = new Date(activeSaturday);
+                start.setDate(start.getDate() - 7);
+                end = new Date(activeFriday);
+                end.setDate(end.getDate() - 7);
                 break;
 
             case 'active_quincena':
-                if (now >= cutoffFriday) {
-                    end = new Date(cutoffFriday);
-                    end.setDate(end.getDate() + 7);
-                } else {
-                    end = new Date(cutoffFriday);
-                }
-                start = new Date(end);
-                start.setDate(start.getDate() - 14);
+                start = new Date(activeSaturday);
+                start.setDate(start.getDate() - 7);
+                end = new Date(activeFriday);
+                break;
+
+            case 'closed_quincena':
+                start = new Date(activeSaturday);
+                start.setDate(start.getDate() - 21);
+                end = new Date(activeFriday);
+                end.setDate(end.getDate() - 14);
                 break;
 
             case 'all':
@@ -135,16 +120,19 @@
         // 1. Calcular KPIs Globales (Consolidado Histórico o filtrado por Grupo) para tab-trabajadores-admin
         let overallAttendance = window.AttendanceDB.getAttendance();
         let overallBusRecords = window.AttendanceDB.getBusRecords();
+        let overallPiecework = window.AttendanceDB.getPiecework();
         if (filterGroup !== 'all') {
             const usersInGroup = allUsers.filter(u => u.grupo === filterGroup).map(u => u.id);
             overallAttendance = overallAttendance.filter(a => usersInGroup.includes(a.usuarioId));
             overallBusRecords = overallBusRecords.filter(a => usersInGroup.includes(a.usuarioId));
+            overallPiecework = overallPiecework.filter(p => usersInGroup.includes(p.usuarioId));
         }
 
         // Filtramos para que los KPIs solo muestren lo "Activo" (No archivado) a menos que vean "Todo el historial"
         if (filterPeriod !== 'all') {
             overallAttendance = overallAttendance.filter(a => !a.archivado);
             overallBusRecords = overallBusRecords.filter(a => !a.archivado);
+            overallPiecework = overallPiecework.filter(p => !p.archivado);
         }
 
         let kpiHours = 0;
@@ -174,6 +162,12 @@
             kpiBruto += bruto;
             kpiNeto += bruto;
             if (!rec.aprobado) {
+                kpiPendingCount++;
+            }
+        });
+
+        overallPiecework.forEach(rec => {
+            if (rec.estado === 'Pendiente') {
                 kpiPendingCount++;
             }
         });
@@ -337,6 +331,8 @@
             renderAdminVehiclesTable();
         } else if (activeTab === 'tab-préstamos') {
             renderAdminLoansTable();
+        } else if (activeTab === 'tab-finanzas') {
+            renderAdminFinances();
         } else if (activeTab === 'tab-proyectos') {
             renderProjectsView();
         }
@@ -510,7 +506,7 @@
             // Deducción de préstamo
             const prestamoSaldo = user ? (parseFloat(user.préstamosaldo) || 0) : 0;
             const userPréstamoEstado = user ? user.préstamoEstadoCuota : 'Ninguno';
-            const hasLoan = user && (prestamoSaldo > 0 || userPréstamoEstado === 'Autorizado');
+            const hasLoan = user && prestamoSaldo > 0;
 
             let loanRequestHtml = '';
             if (!hasLoan && userPréstamoEstado === 'Ninguno') {
@@ -598,7 +594,7 @@
                     </div>
                 </td>
             `;
-            fragment.appendChild(trMain);
+fragment.appendChild(trMain);
 
             // Subtabla Fila
             const trSub = document.createElement('tr');
@@ -608,8 +604,35 @@
             // Construir registros individuales para subtabla
             let subrowsHtml = '';
 
+            const generateGroupedRows = (records, dateFieldFunc, renderFunc, colSpan) => {
+                let html = '';
+                const grouped = {};
+                records.forEach(rec => {
+                    const dateStr = dateFieldFunc(rec);
+                    const day = getDayName(dateStr);
+                    if(!grouped[day]) grouped[day] = [];
+                    grouped[day].push(rec);
+                });
+                
+                // Orden de dias
+                const dayOrder = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+                const sortedDays = Object.keys(grouped).sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+                
+                sortedDays.forEach(day => {
+                    html += `<tr class="day-group-header hide-on-mobile" style="background-color: rgba(255, 255, 255, 0.05); font-weight: bold; color: var(--primary-color); border-bottom: 1px solid var(--border-color);"><td colspan="${colSpan}" style="padding: 4px 10px;">${day}</td></tr>`;
+                    grouped[day].forEach((rec, index) => {
+                        let rowHtml = renderFunc(rec).replace('<tr>', '<tr class="day-group-row">');
+                        if (index === 0) {
+                            rowHtml = rowHtml.replace('<td>', `<td class="mobile-first-td" data-day="${day}">`);
+                        }
+                        html += rowHtml;
+                    });
+                });
+                return html;
+            };
+
             if (isBuses) {
-                group.busRecords.forEach(rec => {
+                subrowsHtml = generateGroupedRows(group.busRecords, (rec) => rec.fecha, (rec) => {
                     const pagoDiario = parseFloat(user.tarifaDiurna) || 0;
                     const gananciaLocal = (rec.ingresoDinero || 0) - (rec.montoGasto || 0);
                     const rNeto = `Ganancia: Q${gananciaLocal.toFixed(2)}`;
@@ -640,9 +663,9 @@
 
                     const diasLaborados = rec.turno ? rec.turno.split(',').length : 1;
 
-                    subrowsHtml += `
+                    return `
                         <tr>
-                            <td>${rec.fecha}</td>
+                            <td>${formatDateDDMMYYYY(rec.fecha)}</td>
                             <td>Q${pagoDiario.toFixed(2)}</td>
                             <td>${diasLaborados}</td>
                             <td><strong>${rNeto}</strong></td>
@@ -650,23 +673,29 @@
                             <td>${tipoPagoCell}</td>
                         </tr>
                     `;
-                });
+                }, 6);
             } else if (isPiecework) {
-                group.pieceworkRecords.forEach(rec => {
+                subrowsHtml = generateGroupedRows(group.pieceworkRecords, (rec) => rec.fecha.split(' ')[0], (rec) => {
                     let subAction = '';
                     if (rec.estado === 'Confirmado') {
-                        subAction = '<span class="table-badge approved" style="font-size:0.7rem; padding: 2px 6px;">Aprobado</span>';
+                        subAction = `
+                            <div style="display:flex; gap:4px; align-items:center;">
+                                <span class="table-badge approved" style="font-size:0.7rem; padding: 2px 6px;">Aprobado</span>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                            </div>
+                        `;
                     } else {
                         subAction = `
-                            <div style="display:flex; gap:4px;">
+                            <div style="display:flex; gap:4px; align-items:center;">
                                 <button class="btn-table-action approve approve-single-piecework-admin" data-recid="${rec.id}" data-uid="${group.userId}" style="padding: 2px 6px; font-size: 0.7rem; width: auto;">Aprobar</button>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
                             </div>
                         `;
                     }
 
-                    subrowsHtml += `
+                    return `
                         <tr>
-                            <td>${rec.fecha}</td>
+                            <td>${formatDateDDMMYYYY(rec.fecha)}</td>
                             <td>${rec.trabajo}</td>
                             <td>Q${(rec.precio || 0).toFixed(2)}</td>
                             <td>${rec.cantidad}</td>
@@ -674,9 +703,9 @@
                             <td>${subAction}</td>
                         </tr>
                     `;
-                });
+                }, 6);
             } else {
-                group.records.forEach(rec => {
+                subrowsHtml = generateGroupedRows(group.records, (rec) => rec.fecha, (rec) => {
                     const outTime = rec.horaSalida ? rec.horaSalida : '<span class="text-warning">En curso...</span>';
                     const rDiurnas = rec.horaSalida ? formatDecimalHours(rec.horasDiurnas) : '-';
                     const rNocturnas = rec.horaSalida ? formatDecimalHours(rec.horasNocturnas) : '-';
@@ -687,15 +716,26 @@
 
                     let subAction = '';
                     if (!rec.horaSalida) {
-                        subAction = '<span class="text-muted" style="font-size:0.75rem;">Jornada en Curso</span>';
+                        subAction = `
+                            <div style="display:flex; gap:4px; align-items:center;">
+                                <span class="text-muted" style="font-size:0.75rem;">Jornada en Curso</span>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                            </div>
+                        `;
                     } else if (rec.aprobado) {
-                        subAction = '<span class="table-badge approved" style="font-size:0.7rem; padding: 2px 6px;">Aprobado</span>';
+                        subAction = `
+                            <div style="display:flex; gap:4px; align-items:center;">
+                                <span class="table-badge approved" style="font-size:0.7rem; padding: 2px 6px;">Aprobado</span>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                            </div>
+                        `;
                     } else {
                         subAction = `
-                            <div style="display:flex; gap:4px;">
+                            <div style="display:flex; gap:4px; align-items:center;">
                                 <button class="btn-table-action approve approve-single-rec" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto;">Aprobar</button>
                                 <button class="btn-table-action approve-row-bonus-btn" data-recid="${rec.id}" style="background-color: var(--success); border-color: var(--success); padding: 2px 6px; font-size: 0.7rem; width: auto;">+ Bono</button>
                                 <button class="btn-table-action penalize penalize-single-rec" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto;">Penalizar</button>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
                             </div>
                         `;
                     }
@@ -714,9 +754,9 @@
                         </div>`;
                     }
 
-                    subrowsHtml += `
+                    return `
                         <tr>
-                            <td>${rec.fecha}</td>
+                            <td>${formatDateDDMMYYYY(rec.fecha)}</td>
                             <td>${rec.horaEntrada} ${inJustification}</td>
                             <td>${outTime} ${outJustification}</td>
                             <td>${rDiurnas}</td>
@@ -728,7 +768,7 @@
                             <td>${subAction}</td>
                         </tr>
                     `;
-                });
+                }, 10);
             }
 
             // Resumen de préstamo html / fila adicional
@@ -1132,7 +1172,7 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${nombre}</strong></td>
-                <td>${pen.fecha}</td>
+                <td>${formatDateDDMMYYYY(pen.fecha)}</td>
                 <td>${pen.motivo}${fotoLink}</td>
                 <td><strong class="text-danger">Q${pen.monto.toFixed(2)}</strong></td>
                 <td>${deleteButton}</td>
@@ -1189,7 +1229,7 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${nombre}</strong></td>
-                <td>${bon.fecha}</td>
+                <td>${formatDateDDMMYYYY(bon.fecha)}</td>
                 <td>${bon.motivo}</td>
                 <td><strong class="text-success">Q${bon.monto.toFixed(2)}</strong></td>
                 <td>${deleteButton}</td>
@@ -1344,7 +1384,7 @@
         } else {
             pendingRecords.forEach(rec => {
                 const user = allUsers.find(u => u.id === rec.usuarioId);
-                const label = `${user ? user.nombre : 'Usuario'} - Fecha: ${rec.fecha} (Bruto: Q${rec.montoBruto.toFixed(2)}, Neto: Q${rec.montoNeto.toFixed(2)})`;
+                const label = `${user ? user.nombre : 'Usuario'} - Fecha: ${formatDateDDMMYYYY(rec.fecha)} (Bruto: Q${rec.montoBruto.toFixed(2)}, Neto: Q${rec.montoNeto.toFixed(2)})`;
 
                 const option = document.createElement('option');
                 option.value = rec.id;
@@ -1387,4 +1427,416 @@
         });
     }
 
-
+
+    // --- Lógica del Modal "Por Aprobar" ---
+    const pendingCard = document.getElementById('card-pending-approvals');
+    if (pendingCard) {
+        pendingCard.addEventListener('click', () => {
+            openPendingApprovalsModal();
+        });
+    }
+
+    function getDayName(dateString) {
+        if (!dateString) return 'Desconocido';
+        let year, month, day;
+        if (dateString.includes('/')) {
+            [day, month, year] = dateString.split('/');
+        } else {
+            [year, month, day] = dateString.split('-');
+        }
+        const date = new Date(year, month - 1, day);
+        if (isNaN(date.getTime())) return 'Desconocido';
+        const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        return days[date.getDay()];
+    }
+
+    let allProjects = [];
+
+    window.openPendingApprovalsModal = async function() {
+        const modal = document.getElementById('pending-approvals-modal');
+        const listContainer = document.getElementById('pending-approvals-list');
+        if (!modal || !listContainer) return;
+
+        if (allProjects.length === 0) {
+            try {
+                const res = await fetch('/api/projects');
+                const pData = await res.json();
+                allProjects = pData;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        const getProjectName = (id) => {
+            if (!id) return 'Ninguno';
+            const p = allProjects.find(x => x.id == id);
+            return p ? p.nombre : 'Desconocido';
+        };
+
+        const allUsers = window.AttendanceDB.getUsers();
+        let pendingAttendance = window.AttendanceDB.getAttendance().filter(a => a.horaSalida && !a.aprobado && !a.archivado);
+        let pendingPiecework = window.AttendanceDB.getPiecework().filter(p => p.estado === 'Pendiente' && !p.archivado);
+        let pendingBuses = window.AttendanceDB.getBusRecords().filter(b => !b.aprobado && !b.archivado);
+
+        // Group by user
+        let grouped = {};
+        allUsers.forEach(u => {
+            grouped[u.id] = { user: u, attendance: {}, piecework: {}, buses: {} };
+        });
+
+        pendingAttendance.forEach(a => {
+            if (grouped[a.usuarioId]) {
+                const day = getDayName(a.fecha);
+                if (!grouped[a.usuarioId].attendance[day]) grouped[a.usuarioId].attendance[day] = [];
+                grouped[a.usuarioId].attendance[day].push(a);
+            }
+        });
+        pendingPiecework.forEach(p => {
+            if (grouped[p.usuarioId]) {
+                const day = getDayName(p.fecha.split(' ')[0]);
+                if (!grouped[p.usuarioId].piecework[day]) grouped[p.usuarioId].piecework[day] = [];
+                grouped[p.usuarioId].piecework[day].push(p);
+            }
+        });
+        pendingBuses.forEach(b => {
+            if (grouped[b.usuarioId]) {
+                const day = getDayName(b.fecha);
+                if (!grouped[b.usuarioId].buses[day]) grouped[b.usuarioId].buses[day] = [];
+                grouped[b.usuarioId].buses[day].push(b);
+            }
+        });
+
+        listContainer.innerHTML = '';
+        let hasPendings = false;
+
+        Object.values(grouped).forEach(group => {
+            const hasAtt = Object.keys(group.attendance).length > 0;
+            const hasPiece = Object.keys(group.piecework).length > 0;
+            const hasBuses = Object.keys(group.buses).length > 0;
+
+            if (hasAtt || hasPiece || hasBuses) {
+                hasPendings = true;
+                const userCard = document.createElement('div');
+                userCard.className = 'card';
+                userCard.style.padding = '15px';
+                userCard.style.marginBottom = '15px';
+                userCard.style.border = '1px solid var(--border-color)';
+                userCard.style.boxShadow = 'none';
+
+                let detailsHtml = `<h4 style="margin: 0 0 15px 0; font-size: 1.2rem; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">${group.user.nombre}</h4>`;
+                
+                // Por Horas
+                if (hasAtt) {
+                    detailsHtml += `<h5 style="margin: 10px 0 5px 0; color: #555;">Por Horas</h5>`;
+                    Object.keys(group.attendance).forEach(day => {
+                        detailsHtml += `<div style="font-weight: bold; margin-top: 5px; margin-bottom: 5px; font-size: 0.95rem;">${day}</div>`;
+                        group.attendance[day].forEach(a => {
+                            const pName = getProjectName(a.proyectoId);
+                            const just = a.justificacionMotivoSalida || a.justificacionLugarSalida || 'Sin justificación';
+                            detailsHtml += `
+                                <div style="font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; background: var(--bg-color); padding: 8px 10px; border-radius: 6px; margin-bottom: 5px;">
+                                    <div style="flex: 1; padding-right: 10px;">
+                                        <div><strong>Fecha:</strong> ${formatDateDDMMYYYY(a.fecha)} (${a.horaEntrada} - ${a.horaSalida})</div>
+                                        <div><strong>Horas:</strong> ${a.horasTrabajadas}h - <strong>Neto:</strong> Q${a.montoNeto.toFixed(2)}</div>
+                                        <div style="font-size: 0.85rem; color: #666;"><strong>Proyecto:</strong> ${pName} | <strong>Justif:</strong> ${just}</div>
+                                    </div>
+                                    <div style="display: flex; gap: 5px;">
+                                        <button class="btn-primary" style="border-radius: 4px; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background-color: var(--success); border: none; color: white; font-size: 15px; font-weight: bold; cursor: pointer; padding: 0;" onclick="approveSingleAttendance(${a.id})" title="Aprobar">
+                                            &#10004;
+                                        </button>
+                                        <button class="btn-danger" style="border-radius: 4px; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; color: white; font-size: 15px; font-weight: bold; cursor: pointer; padding: 0;" onclick="denySingleAttendance(${a.id}, ${a.horasTrabajadas})" title="Denegar/Ajustar">
+                                            &#10006;
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    });
+                }
+
+                // Por Trato (Piecework)
+                if (hasPiece) {
+                    detailsHtml += `<h5 style="margin: 15px 0 5px 0; color: #555;">Por Trato</h5>`;
+                    Object.keys(group.piecework).forEach(day => {
+                        detailsHtml += `<div style="font-weight: bold; margin-top: 5px; margin-bottom: 5px; font-size: 0.95rem;">${day}</div>`;
+                        group.piecework[day].forEach(p => {
+                            const dateOnly = p.fecha.split(' ')[0];
+                            detailsHtml += `
+                                <div style="font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; background: var(--bg-color); padding: 8px 10px; border-radius: 6px; margin-bottom: 5px;">
+                                    <div style="flex: 1; padding-right: 10px;">
+                                        <div><strong>Fecha:</strong> ${formatDateDDMMYYYY(dateOnly)}</div>
+                                        <div><strong>Trabajo:</strong> ${p.trabajo} (${p.cantidad} unidades)</div>
+                                    </div>
+                                    <div style="display: flex; gap: 5px;">
+                                        <button class="btn-primary" style="border-radius: 4px; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background-color: var(--success); border: none; color: white; font-size: 15px; font-weight: bold; cursor: pointer; padding: 0;" onclick="approveSinglePiecework(${p.id})" title="Aprobar">
+                                            &#10004;
+                                        </button>
+                                        <button class="btn-danger" style="border-radius: 4px; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; color: white; font-size: 15px; font-weight: bold; cursor: pointer; padding: 0;" onclick="denySinglePiecework(${p.id})" title="Denegar">
+                                            &#10006;
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    });
+                }
+                
+                // Buses
+                if (hasBuses) {
+                    detailsHtml += `<h5 style="margin: 15px 0 5px 0; color: #555;">Buses</h5>`;
+                    Object.keys(group.buses).forEach(day => {
+                        detailsHtml += `<div style="font-weight: bold; margin-top: 5px; margin-bottom: 5px; font-size: 0.95rem;">${day}</div>`;
+                        group.buses[day].forEach(b => {
+                            const tarifaDia = parseFloat(group.user.tarifaDiurna) || 0;
+                            const shifts = b.turno ? b.turno.split(',').length : 1;
+                            const bruto = shifts * tarifaDia;
+                            detailsHtml += `
+                                <div style="font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; background: var(--bg-color); padding: 8px 10px; border-radius: 6px; margin-bottom: 5px;">
+                                    <div style="flex: 1; padding-right: 10px;">
+                                        <div><strong>Fecha:</strong> ${formatDateDDMMYYYY(b.fecha)}</div>
+                                        <div><strong>Turnos:</strong> ${b.turno}</div>
+                                        <div><strong>Monto:</strong> Q${bruto.toFixed(2)}</div>
+                                    </div>
+                                    <div style="display: flex; gap: 5px;">
+                                        <button class="btn-primary" style="border-radius: 4px; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background-color: var(--success); border: none; color: white; font-size: 15px; font-weight: bold; cursor: pointer; padding: 0;" onclick="approveSingleBus(${b.id})" title="Aprobar">
+                                            &#10004;
+                                        </button>
+                                        <button class="btn-danger" style="border-radius: 4px; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; color: white; font-size: 15px; font-weight: bold; cursor: pointer; padding: 0;" onclick="denySingleBus(${b.id}, '${group.user.nombre.replace(/'/g, "\\'")}')" title="Denegar">
+                                            &#10006;
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    });
+                }
+
+                userCard.innerHTML = detailsHtml;
+                listContainer.appendChild(userCard);
+            }
+        });
+
+        if (!hasPendings) {
+            listContainer.innerHTML = '<p style="text-align:center; color: var(--text-color);">No hay aprobaciones pendientes.</p>';
+        }
+
+        modal.classList.remove('hidden');
+    };
+
+    window.approveSingleAttendance = async function(recordId) {
+        const ok = await window.AttendanceDB.approvePayment(recordId, currentUser.id);
+        if (ok) {
+            showToast('Aprobado', 'Asistencia aprobada.', 'success');
+            setupAdminView();
+            openPendingApprovalsModal();
+        } else {
+            showToast('Error', 'No se pudo aprobar', 'danger');
+        }
+    };
+
+    window.denySingleAttendance = async function(recordId, currentHours) {
+        const { value: newHours } = await Swal.fire({
+            title: 'Ajustar Horas',
+            text: '¿Cuántas horas SÍ se tomarán en cuenta para este registro?',
+            input: 'number',
+            inputValue: currentHours,
+            inputAttributes: { min: 0, step: 0.1 },
+            showCancelButton: true,
+            confirmButtonText: 'Aprobar con ajuste',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (newHours !== undefined) {
+            const ok = await window.AttendanceDB.adjustAttendanceHours(recordId, parseFloat(newHours), currentUser.id);
+            if (ok) {
+                showToast('Aprobado', 'Horas ajustadas y registro aprobado.', 'success');
+                setupAdminView();
+                openPendingApprovalsModal();
+            } else {
+                showToast('Error', 'No se pudo ajustar', 'danger');
+            }
+        }
+    };
+
+    window.approveSinglePiecework = async function(recordId) {
+        try {
+            const { value: newPrice } = await Swal.fire({
+                title: 'Fijar Precio',
+                text: 'Ingresar precio por trabajo trabajado (Unidad)',
+                input: 'number',
+                inputPlaceholder: '0.00',
+                inputAttributes: { min: '0', step: '0.01' },
+                showCancelButton: true,
+                confirmButtonText: 'Aprobar',
+                cancelButtonText: 'Cancelar',
+                buttonsStyling: false,
+                background: '#1e293b',
+                color: '#ffffff',
+                customClass: {
+                    confirmButton: 'btn-primary',
+                    cancelButton: 'btn-secondary text-black',
+                    actions: 'swal-custom-actions-gap'
+                },
+                preConfirm: (val) => {
+                    if (!val || parseFloat(val) <= 0) {
+                        Swal.showValidationMessage('Debe ingresar un precio mayor a 0');
+                        return false;
+                    }
+                    return val;
+                }
+            });
+
+            if (newPrice !== undefined) {
+                const ok = await window.AttendanceDB.approvePiecework(recordId, currentUser.id, parseFloat(newPrice));
+                if (ok) {
+                    showToast('Aprobado', 'Trabajo por trato aprobado.', 'success');
+                    setupAdminView();
+                    openPendingApprovalsModal();
+                } else {
+                    showToast('Error', 'No se pudo aprobar', 'danger');
+                }
+            }
+        } catch (error) {
+            console.error("Error in approveSinglePiecework:", error);
+            alert("Error: " + error.message);
+        }
+    };
+
+    window.denySinglePiecework = async function(recordId) {
+        if (!confirm('¿Estás seguro de querer denegar y eliminar este trabajo por trato?')) return;
+        const ok = await window.AttendanceDB.deletePiecework(recordId);
+        if (ok) {
+            showToast('Rechazado', 'Trabajo rechazado.', 'success');
+            setupAdminView();
+            openPendingApprovalsModal();
+        } else {
+            showToast('Error', 'No se pudo rechazar', 'danger');
+        }
+    };
+
+    window.approveSingleBus = async function(recordId) {
+        const ok = await window.AttendanceDB.approveBusRecord(recordId, currentUser.id, 'Efectivo');
+        if (ok) {
+            showToast('Aprobado', 'Turno aprobado.', 'success');
+            setupAdminView();
+            openPendingApprovalsModal();
+        } else {
+            showToast('Error', 'No se pudo aprobar', 'danger');
+        }
+    };
+
+    window.denySingleBus = async function(recordId, userName) {
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: `¿Estás seguro de querer descontar el día de trabajo a ${userName}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, descontar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            const ok = await window.AttendanceDB.rejectBusRecord(recordId);
+            if (ok) {
+                showToast('Descontado', 'Día de trabajo descontado.', 'success');
+                setupAdminView();
+                openPendingApprovalsModal();
+            } else {
+                showToast('Error', 'No se pudo descontar', 'danger');
+            }
+        }
+    };
+
+    // LOGICA CORRECCION MODAL
+    document.addEventListener('click', async (e) => {
+        if(e.target.closest('.btn-correct-record')){
+            const btn = e.target.closest('.btn-correct-record');
+            const type = btn.getAttribute('data-rectype');
+            const id = btn.getAttribute('data-recid');
+            
+            document.getElementById('correction-record-id').value = id;
+            document.getElementById('correction-record-type').value = type;
+            
+            if(type === 'piecework'){
+                document.getElementById('correction-form-piecework').classList.remove('hidden');
+                document.getElementById('correction-form-attendance').classList.add('hidden');
+                
+                const records = window.AttendanceDB._state?.piecework || [];
+                const rec = records.find(r => r.id === parseInt(id));
+                if(rec){
+                    document.getElementById('corr-pw-fecha').value = rec.fecha ? rec.fecha.split(' ')[0] : '';
+                    document.getElementById('corr-pw-trabajo').value = rec.trabajo || '';
+                    document.getElementById('corr-pw-precio').value = rec.precio || 0;
+                    document.getElementById('corr-pw-cantidad').value = rec.cantidad || 0;
+                }
+            } else if (type === 'attendance') {
+                document.getElementById('correction-form-piecework').classList.add('hidden');
+                document.getElementById('correction-form-attendance').classList.remove('hidden');
+                
+                const records = window.AttendanceDB._state?.attendance || [];
+                const rec = records.find(r => r.id === parseInt(id));
+                if(rec){
+                    document.getElementById('corr-att-fecha').value = rec.fecha ? rec.fecha.split(' ')[0] : '';
+                    document.getElementById('corr-att-entrada').value = rec.horaEntrada || '';
+                    document.getElementById('corr-att-salida').value = rec.horaSalida || '';
+                    document.getElementById('corr-att-justin').value = rec.justificacionMotivoEntrada || rec.justificacionLugarEntrada || '';
+                    document.getElementById('corr-att-justout').value = rec.justificacionMotivoSalida || rec.justificacionLugarSalida || '';
+                    document.getElementById('corr-att-bono').value = rec.bono || 0;
+                    document.getElementById('corr-att-descuento').value = rec.descuento || 0;
+                }
+            }
+            document.getElementById('correction-modal').classList.remove('hidden');
+        }
+    });
+
+    const btnSaveCorrection = document.getElementById('btn-save-correction');
+    if(btnSaveCorrection){
+        btnSaveCorrection.addEventListener('click', async () => {
+            const id = document.getElementById('correction-record-id').value;
+            const type = document.getElementById('correction-record-type').value;
+            
+            btnSaveCorrection.disabled = true;
+            btnSaveCorrection.textContent = 'Guardando...';
+            
+            if(type === 'piecework'){
+                const data = {
+                    fecha: document.getElementById('corr-pw-fecha').value,
+                    trabajo: document.getElementById('corr-pw-trabajo').value,
+                    precio: document.getElementById('corr-pw-precio').value,
+                    cantidad: document.getElementById('corr-pw-cantidad').value,
+                    adminId: currentUser?.id || 0
+                };
+                const res = await window.AttendanceDB.correctPieceworkRecord(id, data);
+                if(res.success){
+                    showToast('Éxito', res.message, 'success');
+                    document.getElementById('correction-modal').classList.add('hidden');
+                    setupAdminView();
+                } else {
+                    showToast('Error', res.message, 'danger');
+                }
+            } else if(type === 'attendance'){
+                const data = {
+                    fecha: document.getElementById('corr-att-fecha').value,
+                    horaEntrada: document.getElementById('corr-att-entrada').value,
+                    horaSalida: document.getElementById('corr-att-salida').value,
+                    justificacionMotivoEntrada: document.getElementById('corr-att-justin').value,
+                    justificacionMotivoSalida: document.getElementById('corr-att-justout').value,
+                    bono: document.getElementById('corr-att-bono').value,
+                    descuento: document.getElementById('corr-att-descuento').value,
+                    adminId: currentUser?.id || 0
+                };
+                const res = await window.AttendanceDB.correctAttendanceRecord(id, data);
+                if(res.success){
+                    showToast('Éxito', res.message, 'success');
+                    document.getElementById('correction-modal').classList.add('hidden');
+                    setupAdminView();
+                } else {
+                    showToast('Error', res.message, 'danger');
+                }
+            }
+            btnSaveCorrection.disabled = false;
+            btnSaveCorrection.textContent = 'Guardar Cambios';
+        });
+    }

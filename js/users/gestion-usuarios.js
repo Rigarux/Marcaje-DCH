@@ -225,10 +225,10 @@
         const allUsers = window.AttendanceDB.getUsers();
         if (companyManagerSelect) {
             companyManagerSelect.innerHTML = '<option value="">Ninguno</option>';
-            allUsers.filter(u => u.rol === 'admin' || u.rol === 'leader').forEach(u => {
+            allUsers.filter(u => (u.rol === 'admin' || u.rol === 'superadmin') || u.rol === 'leader').forEach(u => {
                 const opt = document.createElement('option');
                 opt.value = u.id;
-                opt.textContent = `${u.nombre} (${u.rol === 'admin' ? 'Supervisor' : 'Líder'})`;
+                opt.textContent = `${u.nombre} (${(u.rol === 'admin' || u.rol === 'superadmin') ? 'Supervisor' : 'Líder'})`;
                 companyManagerSelect.appendChild(opt);
             });
         }
@@ -1164,7 +1164,7 @@
 
         const btnExportPermits = document.getElementById('btn-export-permits');
         if (btnExportPermits) {
-            if (typeof currentUser !== 'undefined' && currentUser && currentUser.rol === 'admin') {
+            if (typeof currentUser !== 'undefined' && currentUser && (currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
                 btnExportPermits.classList.remove('hidden');
             } else {
                 btnExportPermits.classList.add('hidden');

@@ -160,7 +160,7 @@
         const titleEl = document.getElementById('global-incomes-table-title');
         if (!tbody) return;
 
-        const isAdmin = currentUser.rol === 'admin';
+        const isAdmin = (currentUser.rol === 'admin' || currentUser.rol === 'superadmin');
         if (titleEl) {
             titleEl.textContent = isAdmin ? 'Historial de Ingresos' : 'Mis Ingresos Recientes (Últimas 24h)';
         }

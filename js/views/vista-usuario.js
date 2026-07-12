@@ -20,7 +20,7 @@
             passwordInput.value = '';
             showDashboard();
 
-            if (user.rol === 'admin') {
+            if ((user.rol === 'admin' || user.rol === 'superadmin')) {
                 checkMaterialAlerts();
             }
         } else {
@@ -36,6 +36,7 @@
             showToast('Sesión Cerrada', 'Has salido del sistema de forma segura.', 'info');
         }
         showLogin();
+        window.location.reload();
     });
 
     // --- VISTA 1: USUARIO OPERATIVO (usr) ---
@@ -117,7 +118,7 @@
             stopIconSvg.classList.remove('hidden');
 
             // Mostrar hora de entrada
-            userCheckinDetails.innerHTML = `Entrada registrada a las <strong>${activeRecord.horaEntrada}</strong> del ${activeRecord.fecha}`;
+            userCheckinDetails.innerHTML = `Entrada registrada a las <strong>${activeRecord.horaEntrada}</strong> del ${formatDateDDMMYYYY(activeRecord.fecha)}`;
 
             // Iniciar temporizador activo
             startActiveTimer(activeRecord.fecha, activeRecord.horaEntrada);
@@ -137,7 +138,7 @@
             const history = window.AttendanceDB.getAttendanceByUser(currentUser.id);
             const lastRecord = history.find(a => a.horaSalida);
             if (lastRecord) {
-                userCheckinDetails.innerHTML = `Último turno: ${lastRecord.fecha} (${lastRecord.horaEntrada} a ${lastRecord.horaSalida})`;
+                userCheckinDetails.innerHTML = `Último turno: ${formatDateDDMMYYYY(lastRecord.fecha)} (${lastRecord.horaEntrada} a ${lastRecord.horaSalida})`;
             } else {
                 userCheckinDetails.textContent = 'No has registrado entrada hoy.';
             }
@@ -617,7 +618,7 @@
                     let hasReceipt = b.fotoFacturaUrl ? `<br><a href="${b.fotoFacturaUrl}" target="_blank" style="font-size:0.8rem;">Ver Recibo</a>` : '';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${b.fecha}</td>
+                        <td>${formatDateDDMMYYYY(b.fecha)}</td>
                         <td>${b.turno}</td>
                         <td>Q${b.ingresoDinero.toFixed(2)}</td>
                         <td>${b.tipoGasto}</td>
@@ -661,7 +662,8 @@
             } else {
                 const loggedInUserStr = sessionStorage.getItem('dch_current_user');
                 const loggedInUser = loggedInUserStr ? JSON.parse(loggedInUserStr) : null;
-                const isLoggedAdmin = loggedInUser && (loggedInUser.rol === 'admin' || loggedInUser.rol === 'lider');
+                const isLoggedAdmin = loggedInUser && ((loggedInUser.rol === 'admin' || loggedInUser.rol === 'superadmin') || loggedInUser.rol === 'lider');
+                const fragmentPiecework = document.createDocumentFragment();
 
                 history.forEach(rec => {
                     if (rec.estado === 'Confirmado' && !rec.archivado) totalNet += rec.total;
@@ -677,7 +679,7 @@
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><strong>${rec.fecha}</strong></td>
+                        <td><strong>${formatDateDDMMYYYY(rec.fecha)}</strong></td>
                         <td>${rec.trabajo}</td>
                         <td>Q${rec.precio.toFixed(2)}</td>
                         <td>${rec.cantidad}</td>
@@ -780,7 +782,7 @@
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                    <td><strong>${rec.fecha}</strong></td>
+                    <td><strong>${formatDateDDMMYYYY(rec.fecha)}</strong></td>
                     <td>${rec.horaEntrada}</td>
                     <td>${outTimeText}</td>
                     <td>${horasDiurnasText}</td>
@@ -870,7 +872,7 @@
             li.innerHTML = `
                 <div class="penalty-list-info">
                     <span class="penalty-list-title">${pen.motivo}</span>
-                    <span class="penalty-list-date">${pen.fecha}</span>
+                    <span class="penalty-list-date">${formatDateDDMMYYYY(pen.fecha)}</span>
                 </div>
                 <span class="penalty-list-value">-Q${pen.monto.toFixed(2)}</span>
             `;
@@ -904,7 +906,7 @@
                         </div>
                         <div class="penalty-detail-row">
                             <span>Fecha de Aplicación</span>
-                            <span>${pen.fecha}</span>
+                            <span>${formatDateDDMMYYYY(pen.fecha)}</span>
                         </div>
                         <div class="penalty-detail-row">
                             <span>Monto Descontado</span>

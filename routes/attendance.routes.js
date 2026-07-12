@@ -197,6 +197,80 @@ router.post('/attendance/checkout', async (req, res) => {
         res.status(500).json({ success: false, message: e.message });
     }
 });
+router.post('/attendance/adjust/:id', async (req, res) => {
+    const asistenciaId = parseInt(req.params.id);
+    const { horasAprobadas, adminId } = req.body;
+    try {
+        const record = await dbGet('SELECT * FROM attendance WHERE id = ?', [asistenciaId]);
+        if (!record) return res.status(404).json({ success: false, message: 'Marcaje no encontrado.' });
+        
+        const user = await dbGet('SELECT * FROM users WHERE id = ?', [record.usuarioId]);
+        if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+
+        const horasOrig = record.horasTrabajadas || 0;
+        const newHoras = parseFloat(horasAprobadas);
+        if (isNaN(newHoras) || newHoras < 0) return res.status(400).json({ success: false, message: 'Horas invalidas.' });
+
+        let horasDiurnas = record.horasDiurnas || 0;
+        let horasNocturnas = record.horasNocturnas || 0;
+
+        if (horasOrig > 0) {
+            const propDiurna = horasDiurnas / horasOrig;
+            const propNocturna = horasNocturnas / horasOrig;
+            horasDiurnas = newHoras * propDiurna;
+            horasNocturnas = newHoras * propNocturna;
+        } else {
+            horasDiurnas = newHoras;
+        }
+
+        const tarifaDiurna = user.tarifaDiurna !== undefined ? user.tarifaDiurna : 0;
+        const tarifaNocturna = user.tarifaNocturna !== undefined ? user.tarifaNocturna : 0;
+
+        let bruto = 0;
+        if (user.tipoPago === 'Destajo' || user.tipoPago === 'Por Trato') {
+            bruto = parseFloat(tarifaDiurna.toFixed(2));
+        } else {
+            const horasNormalesLimit = parseFloat(user.horasNormalesMax) || 8.0;
+            let horasNormalesTrabajadas = Math.min(newHoras, horasNormalesLimit);
+            let horasExtrasTrabajadas = Math.max(0, newHoras - horasNormalesLimit);
+
+            let propDiurna = newHoras > 0 ? (horasDiurnas / newHoras) : 1;
+            let propNocturna = newHoras > 0 ? (horasNocturnas / newHoras) : 0;
+
+            let diurnasNormales = horasNormalesTrabajadas * propDiurna;
+            let nocturnasNormales = horasNormalesTrabajadas * propNocturna;
+            let diurnasExtras = horasExtrasTrabajadas * propDiurna;
+            let nocturnasExtras = horasExtrasTrabajadas * propNocturna;
+
+            bruto = parseFloat((
+                (diurnasNormales * tarifaDiurna) +
+                (nocturnasNormales * tarifaNocturna) +
+                (diurnasExtras * tarifaDiurna * 2) +
+                (nocturnasExtras * tarifaNocturna * 2)
+            ).toFixed(2));
+        }
+
+        const descuentos = record.descuento || 0;
+        const bonos = record.bono || 0;
+        const neto = Math.max(0, parseFloat((bruto + bonos - descuentos).toFixed(2)));
+
+        const nowStr = new Date().toISOString();
+
+        await dbRun(`
+            UPDATE attendance 
+            SET horasDiurnas = ?, horasNocturnas = ?, horasTrabajadas = ?, montoBruto = ?, montoNeto = ?, aprobado = 1, aprobadoPor = ?, aprobadoFecha = ?
+            WHERE id = ?
+        `, [horasDiurnas, horasNocturnas, newHoras, bruto, neto, adminId, nowStr, record.id]);
+
+        await addLog(adminId, `Admin ajusto horas del registro ${record.id} de ${user.nombre}. Original: ${horasOrig}h, Nuevo: ${newHoras}h.`);
+
+        res.json({ success: true, message: 'Horas ajustadas y aprobadas correctamente.' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, message: 'Error en servidor.' });
+    }
+});
+
 router.post('/attendance/approve/:id', async (req, res) => {
     const asistenciaId = parseInt(req.params.id);
     const { adminId, metodoPago } = req.body;
@@ -672,5 +746,106 @@ router.post('/attendance/cuts/:id/finalize', async (req, res) => {
       `Y888P'  
         `Y'    
 */
+
+// --- CORRECCIONES ---
+router.put('/attendance/correction/:id', async (req, res) => {
+    const { id } = req.params;
+    const { fecha, horaEntrada, horaSalida, justificacionMotivoEntrada, justificacionMotivoSalida, bono, descuento } = req.body;
+    try {
+        const record = await dbGet('SELECT * FROM attendance WHERE id = ?', [id]);
+        if(!record) return res.status(404).json({ success: false, message: 'Turno no encontrado' });
+        
+        const user = await dbGet('SELECT * FROM users WHERE id = ?', [record.usuarioId]);
+        if(!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        
+        let horas = 0, horasDiurnas = 0, horasNocturnas = 0, bruto = 0;
+        
+        if (horaSalida) {
+            const [y, m, d] = fecha.split('-').map(Number);
+            const [eh, em, es] = horaEntrada.split(':').map(Number);
+            const eDate = new Date(y, m - 1, d, eh, em, es || 0);
+            
+            const [sh, sm, ss] = horaSalida.split(':').map(Number);
+            let sDate = new Date(y, m - 1, d, sh, sm, ss || 0);
+            
+            if (sDate < eDate) sDate.setDate(sDate.getDate() + 1);
+            
+            let diffMs = sDate.getTime() - eDate.getTime();
+            let totalSecs = Math.floor(diffMs / 1000);
+            
+            let cDate = new Date(eDate);
+            for(let i=0; i<totalSecs; i++) {
+                const hr = cDate.getHours();
+                if (hr >= 6 && hr < 18) {
+                    horasDiurnas++;
+                } else {
+                    horasNocturnas++;
+                }
+                cDate.setSeconds(cDate.getSeconds() + 1);
+            }
+            
+            horasDiurnas = parseFloat((horasDiurnas / 3600).toFixed(4));
+            horasNocturnas = parseFloat((horasNocturnas / 3600).toFixed(4));
+            horas = parseFloat((horasDiurnas + horasNocturnas).toFixed(4));
+            
+            const td = parseFloat(user.tarifaDiurna) || 0;
+            const tn = parseFloat(user.tarifaNocturna) || 0;
+            
+            if (user.tipoPago === 'Destajo' || user.tipoPago === 'Por Trato') {
+                bruto = parseFloat(td.toFixed(2));
+            } else {
+                const hl = parseFloat(user.horasNormalesMax) || 8.0;
+                let hn = Math.min(horas, hl);
+                let he = Math.max(0, horas - hl);
+                bruto = (horasDiurnas * td) + (horasNocturnas * tn) + (he * (parseFloat(user.tarifaExtra) || 0));
+            }
+        }
+        
+        const b = parseFloat(bono) || 0;
+        const desc = parseFloat(descuento) || 0;
+        const neto = bruto + b - desc;
+        
+        await dbRun(`
+            UPDATE attendance 
+            SET fecha = ?, horaEntrada = ?, horaSalida = ?, 
+                justificacionMotivoEntrada = ?, justificacionMotivoSalida = ?, 
+                bono = ?, descuento = ?, horasTrabajadas = ?, 
+                horasDiurnas = ?, horasNocturnas = ?, montoBruto = ?, montoNeto = ? 
+            WHERE id = ?
+        `, [
+            fecha, horaEntrada, horaSalida || null, 
+            justificacionMotivoEntrada || null, justificacionMotivoSalida || null, 
+            b, desc, horas, 
+            horasDiurnas, horasNocturnas, bruto, neto, 
+            id
+        ]);
+        
+        // Log? (Si enviamos req.user.id se loguearía, omitido por simplicidad de Admin)
+        res.json({ success: true, message: 'Turno actualizado con éxito' });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+router.put('/piecework/correction/:id', async (req, res) => {
+    const { id } = req.params;
+    const { fecha, trabajo, precio, cantidad } = req.body;
+    try {
+        const p = parseFloat(precio) || 0;
+        const c = parseFloat(cantidad) || 0;
+        const total = p * c;
+        
+        await dbRun(`
+            UPDATE piecework_records 
+            SET fecha = ?, trabajo = ?, precio = ?, cantidad = ?, total = ? 
+            WHERE id = ?
+        `, [fecha, trabajo, p, c, total, id]);
+        
+        res.json({ success: true, message: 'Trato actualizado con éxito' });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 module.exports = router;
 

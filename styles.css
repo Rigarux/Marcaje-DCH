@@ -1260,7 +1260,7 @@ tr:last-child td {
     th, td {
         padding: 10px 14px;
         font-size: 0.82rem;
-        white-space: nowrap; /* Evita que el texto de las celdas se parta en varias lÃ­neas */
+        white-space: nowrap; /* Evita que el texto de las celdas se parta en varias líneas */
     }
 }
 
@@ -1473,7 +1473,7 @@ tr:last-child td {
     background-size: 15px 15px;
 }
 
-/* CÃ­rculos concéntricos de radar */
+/* Círculos concéntricos de radar */
 .simulated-map-radar {
     position: absolute;
     top: 50%;
@@ -1502,7 +1502,7 @@ tr:last-child td {
     100% { transform: rotate(360deg); }
 }
 
-/* RetÃ­cula de mira del GPS */
+/* Retícula de mira del GPS */
 .simulated-map-crosshair {
     position: absolute;
     top: 50%;
@@ -2917,4 +2917,42 @@ input[type="number"] {
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(15px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* Fix for SweetAlert z-index */
+.swal2-container {
+    z-index: 99999 !important;
+}
+
+
+.swal-custom-actions-gap { gap: 10px; }
+
+
+.btn-secondary.text-black { color: black !important; }
+
+/* Subtable mobile day grouping */
+@media (max-width: 600px) {
+    .table-responsive table tr.hide-on-mobile {
+        display: none !important;
+    }
+    
+    .table-responsive table td.mobile-first-td::after {
+        content: attr(data-day);
+        display: block;
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--primary-color);
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        order: -1;
+    }
+    
+    /* In mobile table cells are flex/block, if flex we can use order */
+    .table-responsive table td.mobile-first-td {
+        display: flex;
+        flex-direction: column;
+    }
+    /* El before contiene el label de la celda, el after contendra el dia. Queremos el dia arriba. */
 }

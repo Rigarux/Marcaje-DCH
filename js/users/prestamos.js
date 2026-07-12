@@ -229,11 +229,11 @@
         const usrLoanEndDate = document.getElementById('usr-loan-end-date');
         const userLoansTable = document.getElementById('user-loans-table');
         
-        if (activeLoan) {
-            if (usrLoanTotalVal) usrLoanTotalVal.textContent = `Q${(activeLoan.monto || 0).toFixed(2)}`;
-            if (usrLoanSaldoVal) usrLoanSaldoVal.textContent = `Q${(activeLoan.saldoPendiente || 0).toFixed(2)}`;
-            if (usrLoanCuotaVal) usrLoanCuotaVal.textContent = `Q${(activeLoan.montoCuota || 0).toFixed(2)}`;
-            if (usrLoanStatusVal) usrLoanStatusVal.textContent = 'Activo';
+        if (currentUser && currentUser.préstamosaldo > 0) {
+            if (usrLoanTotalVal) usrLoanTotalVal.textContent = `Q${(parseFloat(currentUser.préstamoTotal) || 0).toFixed(2)}`;
+            if (usrLoanSaldoVal) usrLoanSaldoVal.textContent = `Q${(parseFloat(currentUser.préstamosaldo) || 0).toFixed(2)}`;
+            if (usrLoanCuotaVal) usrLoanCuotaVal.textContent = `Q${(parseFloat(currentUser.préstamoCuota) || 0).toFixed(2)}`;
+            if (usrLoanStatusVal) usrLoanStatusVal.textContent = currentUser.préstamoEstadoCuota || 'Ninguno';
             if (usrLoanEndDate) usrLoanEndDate.textContent = 'Pendiente';
         } else {
             if (usrLoanTotalVal) usrLoanTotalVal.textContent = 'Q0.00';

@@ -3,6 +3,20 @@ const router = express.Router();
 const { dbRun, dbAll, dbGet, addLog } = require('../config/db');
 const { getUploadPath } = require('../utils/fileHelpers');
 
+router.delete('/bus-records/:id', async (req, res) => {
+    try {
+        const busId = parseInt(req.params.id);
+        const record = await dbGet('SELECT * FROM bus_records WHERE id = ?', [busId]);
+        if (!record) return res.status(404).json({ success: false, message: 'No encontrado' });
+        
+        await dbRun('DELETE FROM bus_records WHERE id = ?', [busId]);
+        res.json({ success: true, message: 'Turno de bus rechazado/eliminado.' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, message: 'Error en servidor' });
+    }
+});
+
 router.post('/bus-records/approve/:id', async (req, res) => {
     const recordId = parseInt(req.params.id);
     const { adminId, metodoPago } = req.body;

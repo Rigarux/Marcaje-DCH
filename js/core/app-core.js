@@ -1,4 +1,4 @@
-// --- ESTADO DE LA APLICACIÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN ---
+﻿// --- ESTADO DE LA APLICACIÓN ---
 let currentUser = null;
 let timerInterval = null;
 let activeTab = 'tab-trabajadores-admin';
@@ -22,6 +22,17 @@ function formatDecimalHours(decimalHours) {
     return parts.join(' ') + ` (${decimalHours.toFixed(4)}h)`;
 }
 
+// Helper global para formatear fecha de YYYY-MM-DD a DD-MM-YYYY
+function formatDateDDMMYYYY(dateString) {
+    if (!dateString) return '-';
+    // dateString puede venir como "YYYY-MM-DD HH:MM:SS" o "YYYY-MM-DD"
+    const parts = dateString.split(' ')[0].split('-');
+    if (parts.length === 3) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return dateString;
+}
+
 // --- ELEMENTOS DEL DOM ---
 // Contenedores Principales
 const loginContainer = document.getElementById('login-container');
@@ -41,7 +52,7 @@ const viewTitle = document.getElementById('view-title');
 const viewSubtitle = document.getElementById('view-subtitle');
 const currentTimeSpan = document.getElementById('current-date-time');
 const btnLogout = document.getElementById('btn-logout');
-const bottomNavMenu = document.getElementById('bottom-nav-menu');
+let bottomNavMenu = document.getElementById('bottom-nav-menu');
 
 // Vistas de Roles
 const viewUser = document.getElementById('view-user');
@@ -51,7 +62,7 @@ const viewAdmin = document.getElementById('view-admin');
 // Botones Globales
 const btnResetDb = document.getElementById('btn-reset-db');
 
-// --- INICIALIZACIÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN ---
+// --- INICIALIZACIÓN ---
 initApp();
 
 async function initApp() {
@@ -111,7 +122,7 @@ function handleHashChange() {
     if (hash) {
         activeTab = hash;
 
-        // Si es un tab del admin, activar el botÃƒÂ³n correspondiente
+        // Si es un tab del admin, activar el botón correspondiente
         if (hash.startsWith('tab-')) {
             const tabBtns = document.querySelectorAll('.tab-btn');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -170,7 +181,7 @@ function startClock() {
     setInterval(updateClock, 1000);
 }
 
-// --- MANEJO DE NAVEGACIÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN Y PANTALLAS ---
+// --- MANEJO DE NAVEGACIÓN Y PANTALLAS ---
 function showLogin() {
     loginContainer.classList.remove('hidden');
     dashboardContainer.classList.add('hidden');
@@ -190,25 +201,25 @@ function showDashboard() {
     // Asignar etiqueta de rol legible
     let roleText = 'Usuario';
     if (currentUser.rol === 'leader') roleText = 'Líder de Grupo';
-    if (currentUser.rol === 'admin') roleText = 'Supervisor';
+    if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) roleText = 'Supervisor';
     userRoleBadge.textContent = roleText;
     userRoleBadge.className = `role-badge ${currentUser.rol}`;
 
-    // Renderizar menÃƒÂº de navegación lateral y configurar vistas
+    // Renderizar menú de navegación lateral y configurar vistas
     setupSidebarMenu();
 
-    // Establecer activeTab por defecto segÃƒÂºn rol
+    // Establecer activeTab por defecto según rol
     let defaultTab = 'view-user';
     if (currentUser.rol === 'leader') defaultTab = 'view-leader';
-    else if (currentUser.rol === 'admin') defaultTab = 'tab-trabajadores-admin';
+    else if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) defaultTab = 'tab-trabajadores-admin';
 
     if (!window.location.hash || window.location.hash === '#') {
-        window.location.hash = defaultTab;
+        window.location.replace('#' + defaultTab);
     } else {
         handleHashChange();
     }
 
-    if (currentUser.rol === 'admin') {
+    if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
         renderCompanyDropdowns();
     }
 }
@@ -227,7 +238,7 @@ function setupSidebarMenu() {
     }
 
     if (currentUser.rol === 'usr' || currentUser.rol === 'leader') {
-        if (userPerms.control_asistencia !== false) menuItems.push({ id: 'nav-control-asistencia', label: 'Control de Asistencia', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-user' });
+        if (userPerms.control_asistencia !== false) menuItems.push({ id: 'nav-control-asistencia', label: 'Control de Asistencia', icon: '<polygon points="5 3 19 12 5 21 5 3"></polygon>', subView: 'view-user' });
         if (userPerms.mi_historial !== false) menuItems.push({ id: 'nav-user-history', label: 'Mi Historial', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>', subView: 'view-user-history' });
         if (userPerms.prestamos !== false) menuItems.push({ id: 'nav-user-loan', label: 'Mi Préstamo', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'view-user-loan' });
         if (userPerms.vehiculos !== false) menuItems.push({ id: 'nav-user-vehicles', label: 'Encargados de Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'view-user-vehicles' });
@@ -237,13 +248,14 @@ function setupSidebarMenu() {
         if (currentUser.rol === 'leader') {
             menuItems.push({ id: 'nav-leader', label: 'Mi Subgrupo', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>', subView: 'view-leader' });
         }
-    } else if (currentUser.rol === 'admin') {
+    } else if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
         menuItems.push({ id: 'nav-admin-trabajadores', label: 'Trabajadores', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>', subView: 'tab-trabajadores-admin' });
         menuItems.push({ id: 'nav-admin-descuentos', label: 'Descuentos', icon: '<circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line>', subView: 'tab-descuentos' });
         menuItems.push({ id: 'nav-admin-empresas', label: 'Empresas', icon: '<rect x="2" y="2" width="20" height="20" rx="2" ry="2"></rect><path d="M10 22V14h4v8"></path><path d="M8 6h2v2H8V6zm8 0h2v2H8V6zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2z"></path>', subView: 'tab-empresas' });
         if (userPerms.vehiculos !== false) menuItems.push({ id: 'nav-admin-vehículos', label: 'Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'tab-vehículos' });
         if (userPerms.prestamos !== false) menuItems.push({ id: 'nav-admin-préstamos', label: 'Préstamos', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'tab-préstamos' });
         if (userPerms.proyectos !== false) menuItems.push({ id: 'nav-admin-proyectos', label: 'Proyectos', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>', subView: 'tab-proyectos' });
+        if (userPerms.proyectos !== false) menuItems.push({ id: 'nav-admin-finanzas', label: 'Finanzas', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'tab-finanzas' });
         if (userPerms.caja_chica !== false) menuItems.push({ id: 'nav-admin-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
         // Botón de Día de Pago destacado
         menuItems.push({ id: 'nav-admin-diapago', label: 'Día de Pago', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M12 14l2 2 4-4"></path>', subView: 'tab-asistencia', isSpecial: true });
@@ -286,7 +298,7 @@ function setupSidebarMenu() {
 
         // Populate Bottom Nav
         if (bottomNavMenu) {
-            if (totalItems <= 5 || bottomItemsAdded < maxBottomItems) {
+            if (totalItems <= 4 || bottomItemsAdded < maxBottomItems) {
                 const bLi = document.createElement('li');
                 bLi.className = "bottom-nav-item " + (isActive ? 'active' : '');
                 bLi.innerHTML = `
@@ -341,7 +353,7 @@ function setupSidebarMenu() {
             // Agregar botón de Cerrar Sesión al final del menú Más
             const logoutLi = document.createElement('li');
             logoutLi.innerHTML = `
-                <a href="javascript:void(0)" class="text-danger" onclick="showLogin(); document.getElementById('bottom-nav-more-modal').classList.add('hidden');">
+                <a href="javascript:void(0)" class="text-danger" onclick="showLogin(); document.getElementById('bottom-nav-more-modal').classList.add('hidden'); window.location.reload();">
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                         <polyline points="16 17 21 12 16 7"></polyline>
@@ -363,6 +375,21 @@ function setupSidebarMenu() {
                 }
             });
         }
+    } else if (bottomNavMenu) {
+        // No hay menú Más, agregamos el botón de Salir directo a la barra inferior
+        const logoutLi = document.createElement('li');
+        logoutLi.className = "bottom-nav-item";
+        logoutLi.innerHTML = `
+            <a id="bottom-nav-logout" class="bottom-nav-link text-danger" href="javascript:void(0)" onclick="showLogin(); window.location.reload();">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Salir</span>
+            </a>
+        `;
+        bottomNavMenu.appendChild(logoutLi);
     }
 
     // Delegate bottom nav clicks
@@ -370,6 +397,7 @@ function setupSidebarMenu() {
         // Remove old listener if exists
         const newBottomNav = bottomNavMenu.cloneNode(true);
         bottomNavMenu.parentNode.replaceChild(newBottomNav, bottomNavMenu);
+        bottomNavMenu = newBottomNav;
         newBottomNav.addEventListener('click', (e) => {
             const navLink = e.target.closest('.bottom-nav-link');
             if (navLink) {
@@ -420,7 +448,7 @@ function loadRoleView() {
     if (activeTab === 'view-inventories') {
         document.getElementById('view-inventories').classList.remove('hidden');
         viewTitle.textContent = 'Inventario por Empleado';
-        viewSubtitle.textContent = 'Asignación de herramientas y revisión de auditorÃƒÂ­as fotográficas semanales.';
+        viewSubtitle.textContent = 'Asignación de herramientas y revisión de auditorías fotográficas semanales.';
         loadInventoriesView();
         return;
     }
@@ -483,10 +511,10 @@ function loadRoleView() {
             viewSubtitle.textContent = 'Monitoreo de horas de trabajo y pagos devengados por los miembros de tu subgrupo.';
             setupLeaderView();
         }
-    } else if (currentUser.rol === 'admin') {
+    } else if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
         viewAdmin.classList.remove('hidden');
 
-        // TÃƒÂ­tulo y subtítulo dinámico segÃƒÂºn pestaña
+        // Título y subtítulo dinámico según pestaña
         if (activeTab === 'tab-trabajadores-admin') {
             viewTitle.textContent = 'Fichas y Resumen de Trabajadores';
             viewSubtitle.textContent = 'Listado principal de empleados, métricas de pago e historial detallado de marcajes.';
@@ -508,6 +536,9 @@ function loadRoleView() {
         } else if (activeTab === 'tab-préstamos') {
             viewTitle.textContent = 'Gestión de Préstamos';
             viewSubtitle.textContent = 'Control de créditos otorgados y cobro de cuotas semanales.';
+        } else if (activeTab === 'tab-finanzas') {
+            viewTitle.textContent = 'Resumen Financiero';
+            viewSubtitle.textContent = 'Histórico consolidado mensual de nóminas, ingresos, egresos y proyectos.';
         } else if (activeTab === 'tab-proyectos') {
             viewTitle.textContent = 'Gastos de Proyectos';
             viewSubtitle.textContent = 'Registro de facturas y viáticos por proyecto.';
@@ -520,7 +551,9 @@ function loadRoleView() {
     }
 }
 
-// Configurar clic en el widget de perfil del usuario en el menÃƒÂº lateral
+// --- GESTIÓN DE ESTADO Y VISTAS ---
+
+// Configurar clic en el widget de perfil del usuario en el menú lateral
 document.addEventListener('DOMContentLoaded', () => {
     const userProfileWidget = document.querySelector('.user-profile-widget');
     if (userProfileWidget) {
@@ -533,11 +566,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.hash = 'view-user-penalties';
             }
             // Si es un administrador, enviarlo al panel de descuentos general
-            else if (currentUser.rol === 'admin') {
+            else if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
                 window.location.hash = 'tab-descuentos';
             }
 
-            // Cerrar el menÃƒÂº en móviles
+            // Cerrar el menú en móviles
             document.getElementById('sidebar').classList.remove('mobile-open');
         });
     }
@@ -600,3 +633,4 @@ window.appAlert = async function (title, text = '', icon = 'info') {
       `Y888P'  
         `Y'    
 */
+
