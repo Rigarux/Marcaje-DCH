@@ -163,6 +163,17 @@ router.put('/projects/:id', async (req, res) => {
             res.status(500).json({ success: false, message: e.message });
         }
     });
+
+router.put('/projects/:id/close', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await dbRun(`UPDATE projects SET estado = 'Cerrado' WHERE id = ?`, [id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 router.delete('/projects/:id', async (req, res) => {
         try {
             const { id } = req.params;

@@ -51,7 +51,7 @@
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                         </svg>
-                        <input type="password" id="password" placeholder="⬢⬢⬢⬢⬢⬢⬢⬢" required>
+                        <input type="password" id="password" placeholder="••••••••" required>
                     </div>
                 </div>
                 
@@ -66,7 +66,7 @@
             
             <div class="login-footer">
                 <p>¿No tienes credenciales? Solicítalas al Supervisor.</p>
-                <p style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); opacity: 0.7;">Versión - 17.5.0</p>
+                <p style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); opacity: 0.7;">Versión - 20.5.2</p>
             </div>
         </div>
     </main>
@@ -74,10 +74,10 @@
     <!-- ==================== CONTENEDOR DE DASHBOARD ==================== -->
     <div id="dashboard-container" class="dashboard-layout hidden">
         
-        <!-- OVERLAY M�VIL -->
+        <!-- OVERLAY MÓVIL -->
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
         
-        <!-- SIDEBAR DE NAVEGACI�N -->
+        <!-- SIDEBAR DE NAVEGACIÓN -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
@@ -101,7 +101,7 @@
                 </div>
             </div>
             
-            <!-- MEN�a DE NAVEGACI�N DINÁMICO -->
+            <!-- MENÚ DE NAVEGACIÓN DINÁMICO -->
             <nav class="sidebar-nav">
                 <ul id="sidebar-menu">
                     <!-- Los items de navegación se inyectarán según el rol con JavaScript -->
@@ -132,7 +132,7 @@
                     </svg>
                 </button>
                 <div class="header-left" style="display: flex; align-items: center; gap: 10px;">
-                    <button id="btn-mobile-back" class="btn-mobile-back" onclick="window.history.length > 1 ? window.history.back() : window.location.hash=''" aria-label="Atrás">
+                    <button id="btn-mobile-back" class="btn-mobile-back" style="display: none !important;" onclick="window.history.length > 1 ? window.history.back() : window.location.hash=''" aria-label="Atrás">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="19" y1="12" x2="5" y2="12"></line>
                             <polyline points="12 19 5 12 12 5"></polyline>
@@ -418,7 +418,7 @@
                         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                             <h3>Mi Inventario de Herramientas</h3>
                             <button id="btn-user-submit-inventory-photo" class="btn-primary" style="background-color: var(--success); border-color: var(--success);">
-                                �x� Enviar Revisión Semanal
+                                ✓ Enviar Revisión Semanal
                             </button>
                         </div>
                         <div class="table-responsive">
@@ -660,7 +660,7 @@
                     <!-- Tabla de Detalle de Marcajes del Equipo -->
                     <div class="card table-card margin-top">
                         <div class="card-header">
-                            <h3>�altimos Marcajes del Turno (Equipo)</h3>
+                            <h3>Últimos Marcajes del Turno (Equipo)</h3>
                         </div>
                         <div class="table-responsive">
                             <table>
@@ -722,15 +722,17 @@
                             <button class="tab-btn" data-tab="tab-préstamos">Préstamos</button>
                             <button class="tab-btn" data-tab="tab-usuarios">Usuarios Raw</button>
                             <button class="tab-btn" data-tab="tab-proyectos">Proyectos</button>
+                            <button class="tab-btn" data-tab="tab-finanzas" style="color: #64ffda;">Finanzas</button>
                         </div>
                         
                         <!-- TAB 0: TRABAJADORES (GRID 3 COLUMNAS Y DETALLES CON BLUR) -->
                         <div id="tab-trabajadores-admin" class="tab-content active">
+                            
                             <!-- Tarjetas de Resumen (KPIs) del Boceto -->
                             <div class="grid-4-col" style="margin-bottom: 20px;">
                                 <div class="card summary-card">
                                     <h4>Horas Total</h4>
-                                    <div class="value text-primary" id="kpi-total-hours">0.00 h</div>
+                                    <div class="value" id="kpi-total-hours">0.00 h</div>
                                     <p class="desc">Empresas</p>
                                 </div>
                                 <div class="card summary-card">
@@ -743,7 +745,7 @@
                                     <div class="value text-danger" id="kpi-total-discounts">Q0.00</div>
                                     <p class="desc text-danger">Descuentos acumuladas</p>
                                 </div>
-                                <div class="card summary-card">
+                                <div class="card summary-card" id="card-pending-approvals" style="cursor: pointer;">
                                     <h4>Pendientes</h4>
                                     <div class="value text-warning" id="kpi-pending-approvals">0</div>
                                     <p class="desc">Por aprobar</p>
@@ -801,10 +803,10 @@
                                     <div class="value text-danger" id="admin-stat-penalties">Q0.00</div>
                                     <p class="desc">Módulo de descuentos</p>
                                 </div>
-                                <div class="card summary-card">
-                                    <h4>Neto Pendiente</h4>
-                                    <div class="value text-warning" id="admin-stat-pending">Q0.00</div>
-                                    <p class="desc">Requiere Aprobación</p>
+                                    <div class="card summary-card" id="card-pending-approvals" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                                    <h4>Pendientes</h4>
+                                    <div class="value text-warning" id="kpi-pending-approvals">0</div>
+                                    <p class="desc">Aprobaciones pendientes</p>
                                 </div>
                             </div>
 
@@ -1210,7 +1212,7 @@
                                                             <input type="number" class="form-control item-amount" min="0.01" step="0.01" placeholder="0.00" required>
                                                         </div>
                                                         <input type="number" class="form-control item-qty" min="1" value="1" placeholder="Cant." required style="padding-left:10px; flex: 0.5;">
-                                                        <button type="button" class="btn-delete-item-row btn-secondary" style="width: auto; padding: 10px; display: none;" title="Eliminar fila">�S"</button>
+                                                        <button type="button" class="btn-delete-item-row btn-secondary" style="width: auto; padding: 10px; display: none;" title="Eliminar fila">X"</button>
                                                     </div>
                                                 </div>
                                                 <button type="button" id="btn-add-expense-item" class="btn-secondary" style="width: auto; font-size: 0.8rem; padding: 4px 10px; margin-bottom: 15px;">+ Agregar Item</button>
@@ -1223,7 +1225,7 @@
                                                     <button type="button" id="btn-toggle-date-range" class="btn-secondary" style="width: auto; font-size: 0.75rem; padding: 2px 8px; height: auto;">Rango (De tal fecha a tal fecha)</button>
                                                 </div>
                                                 
-                                                <!-- Campo Fecha �anica -->
+                                                <!-- Campo Fecha Única -->
                                                 <div id="expense-single-date-container">
                                                     <input type="date" id="expense-date" class="form-control" required style="padding-left:16px;">
                                                 </div>
@@ -1300,15 +1302,88 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    </div>
 
 
-</section>
+                    <!-- TAB: FINANZAS (NUEVO) -->
+                    <div id="tab-finanzas" class="tab-content">
+                        <!-- Filtro de Mes -->
+                        <div class="card" style="margin-bottom: 20px; padding: 15px; display: flex; justify-content: flex-start; align-items: center; gap: 15px;">
+                            <h3 style="margin: 0;">Resumen Financiero</h3>
+                            <select id="finance-month-select" class="form-control" style="width: 200px;">
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+
+                        <!-- Resumen Mensual (KPIs) -->
+                        <div class="grid-3-col" style="margin-bottom: 20px;">
+                            <div class="card summary-card">
+                                <h4>Nómina Pagada</h4>
+                                <div class="value text-primary" id="fin-kpi-payroll">Q0.00</div>
+                                <p class="desc">Total mes seleccionado</p>
+                            </div>
+                            <div class="card summary-card">
+                                <h4>Ingresos Globales</h4>
+                                <div class="value text-success" id="fin-kpi-incomes">Q0.00</div>
+                                <p class="desc">Ingresos registrados</p>
+                            </div>
+                            <div class="card summary-card">
+                                <h4>Gastos Globales / Caja Chica</h4>
+                                <div class="value text-danger" id="fin-kpi-expenses">Q0.00</div>
+                                <p class="desc">Egresos registrados</p>
+                            </div>
+                        </div>
+
+                        <!-- Detalle de Nómina -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-header">
+                                <h3>Detalle de Nómina por Colaborador</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Colaborador</th>
+                                            <th style="text-align: right;">Total Pagado</th>
+                                            <th style="text-align: center;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fin-payroll-table-body">
+                                        <!-- Dynamically populated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Listado de Proyectos -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Balance de Proyectos (Global Histórico)</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre del Proyecto</th>
+                                            <th>Presupuesto</th>
+                                            <th>Gastos (Registrados)</th>
+                                            <th>Ganancia Estimada</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fin-projects-table-body">
+                                        <!-- Dynamically populated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
 
                 <!-- ==================== VISTA: CAJA CHICA ==================== -->
-                <section id="view-petty-cash" class="role-view hidden" style="margin-top: 0 !important; margin-bottom: auto !important; width: 100%;">
-<div class="card" style="padding: 20px; margin-top: 0 !important; margin-bottom: auto !important;">
+                <section id="view-petty-cash" class="role-view hidden">
+<div class="card" style="padding: 20px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
                             <h3 style="margin: 0;">Fondos de Caja Chica</h3>
                             <div id="pc-header-actions" style="display: flex; gap: 10px;">
@@ -1333,7 +1408,7 @@
             </div>
         </main>
         
-        <!-- NAVEGACIÓN INFERIOR (MÓVIL) -->
+        <!-- NAVEGACIÃ“N INFERIOR (MÓVIL) -->
         <nav id="bottom-nav" class="bottom-nav">
             <ul id="bottom-nav-menu">
                 <!-- Se llenará dinámicamente según el rol -->
@@ -1457,7 +1532,7 @@
         </div>
     </div>
 
-    <!-- ==================== MODAL DE UBICACI�N Y CONFIRMACI�N DE MARCAJE ==================== -->
+    <!-- ==================== MODAL DE UBICACIÓN Y CONFIRMACIÓN DE MARCAJE ==================== -->
     <div id="location-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div class="modal-header">
@@ -1480,7 +1555,7 @@
                     <div class="simulated-map-crosshair"></div>
                     <div class="simulated-map-info">
                         <span class="map-status">GPS LOCK: EXCELENTE</span>
-                        <span class="map-coordinates" id="simulated-coordinates">Lat: 14.6284°, Lng: -90.5222°</span>
+                        <span class="map-coordinates" id="simulated-coordinates">Lat: 14.6284Â°, Lng: -90.5222Â°</span>
                         <span class="map-accuracy">Precisión: &plusmn; 4 metros</span>
                     </div>
                 </div>
@@ -1557,7 +1632,7 @@
 
                 <div class="form-group">
                     <label for="user-password-input">Contraseña *</label>
-                    <input type="password" id="user-password-input" class="form-control" placeholder="⬢⬢⬢⬢⬢⬢⬢⬢" required style="padding-left:16px;">
+                    <input type="password" id="user-password-input" class="form-control" placeholder="••••••••" required style="padding-left:16px;">
                     <p class="desc text-muted" id="user-password-help" style="margin-top:2px; font-size:0.75rem;">Para usuarios existentes, déjala en blanco si no deseas cambiarla.</p>
                 </div>
 
@@ -2257,7 +2332,9 @@
                     <p><strong>DPI:</strong> <span id="detail-worker-dpi">-</span></p>
                     <div id="detail-worker-dpi-foto-container" class="hidden" style="display: flex; align-items: center; gap: 8px;">
                         <strong>Foto DPI:</strong>
-                        <a id="detail-worker-dpi-foto-link" href="#" target="_blank" class="image-preview-link">�x�️ Ver Foto</a>
+                        <a id="detail-worker-dpi-foto-link" href="#" target="_blank" class="image-preview-link">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Ver Foto
+                        </a>
                     </div>
                     <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;" id="detail-worker-loan-summary">
                         <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: var(--warning);">Resumen de Préstamo</h4>
@@ -2313,34 +2390,35 @@
     
     <!-- Cargar lógica de la app conectada a la API SQL con cache buster -->
     <!-- Core -->
-    <script src="js/core/db-client.js?v=37" defer></script>
-    <script src="js/core/app-core.js?v=37" defer></script>
-    <script src="js/core/exportacion.js?v=37" defer></script>
+    <script src="js/core/db-client.js?v=41" defer></script>
+    <script src="js/core/app-core.js?v=41" defer></script>
+    <script src="js/core/exportacion.js?v=41" defer></script>
     
     <!-- Users & Permissions -->
-    <script src="js/users/gestion-usuarios.js?v=37" defer></script>
-    <script src="js/users/prestamos.js?v=37" defer></script>
+    <script src="js/users/gestion-usuarios.js?v=41" defer></script>
+    <script src="js/users/prestamos.js?v=41" defer></script>
 
     <!-- Finances -->
-    <script src="js/finances/ingresos.js?v=37" defer></script>
-    <script src="js/finances/caja-chica.js?v=37" defer></script>
+    <script src="js/finances/ingresos.js?v=41" defer></script>
+    <script src="js/finances/caja-chica.js?v=41" defer></script>
 
     <!-- Inventory -->
-    <script src="js/inventory/inventarios.js?v=37" defer></script>
-    <script src="js/inventory/materiales.js?v=37" defer></script>
+    <script src="js/inventory/inventarios.js?v=41" defer></script>
+    <script src="js/inventory/materiales.js?v=41" defer></script>
 
     <!-- Sales & Projects -->
 
-    <script src="js/sales/cotizaciones.js?v=37" defer></script>
-    <script src="js/sales/proyectos.js?v=37" defer></script>
+    <script src="js/sales/cotizaciones.js?v=41" defer></script>
+    <script src="js/sales/proyectos.js?v=41" defer></script>
 
     <!-- Vehicles -->
-    <script src="js/vehicles/vehiculos.js?v=37" defer></script>
+    <script src="js/vehicles/vehiculos.js?v=41" defer></script>
 
     <!-- Views -->
-    <script src="js/views/vista-usuario.js?v=37" defer></script>
-    <script src="js/views/vista-lider.js?v=37" defer></script>
-    <script src="js/views/vista-admin.js?v=37" defer></script>
+    <script src="js/views/vista-usuario.js?v=41" defer></script>
+    <script src="js/views/vista-lider.js?v=41" defer></script>
+    <script src="js/views/vista-admin.js?v=41" defer></script>
+    <script src="js/finances/admin-finanzas.js?v=41" defer></script>
 
 
     <!-- ==================== MODAL NUEVA VENTA ==================== -->
@@ -2883,4 +2961,105 @@
         </div>
     </div>
 
+    <!-- Modal para Aprobaciones Pendientes -->
+    <div id="pending-approvals-modal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 800px; width: 95%;">
+            <div class="modal-header">
+                <h3>Aprobaciones Pendientes</h3>
+                <button type="button" class="btn-close-modal" onclick="document.getElementById('pending-approvals-modal').classList.add('hidden')">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="pending-approvals-list" style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="document.getElementById('pending-approvals-modal').classList.add('hidden')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Corrección de Registros -->
+    <div id="correction-modal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width: 600px; width: 95%;">
+            <div class="modal-header">
+                <h3 id="correction-modal-title">Corrección de Registro</h3>
+                <button type="button" class="btn-close-modal" onclick="document.getElementById('correction-modal').classList.add('hidden')">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="correction-record-id">
+                <input type="hidden" id="correction-record-type">
+                
+                <!-- Formulario Por Trato (Piecework) -->
+                <div id="correction-form-piecework" class="hidden">
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="corr-pw-fecha" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Trabajo / Justificación 1</label>
+                        <input type="text" id="corr-pw-trabajo" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Precio (Autorizado)</label>
+                        <input type="number" step="0.01" id="corr-pw-precio" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Cantidad</label>
+                        <input type="number" step="0.01" id="corr-pw-cantidad" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Formulario Por Horas (Attendance) -->
+                <div id="correction-form-attendance" class="hidden">
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="corr-att-fecha" class="form-control">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex:1;">
+                            <label>Hora Inicio</label>
+                            <input type="time" step="1" id="corr-att-entrada" class="form-control">
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label>Hora Fin</label>
+                            <input type="time" step="1" id="corr-att-salida" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Justificación Inicio</label>
+                        <input type="text" id="corr-att-justin" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Justificación Fin</label>
+                        <input type="text" id="corr-att-justout" class="form-control">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex:1;">
+                            <label>Bonos (+)</label>
+                            <input type="number" step="0.01" id="corr-att-bono" class="form-control">
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label>Descuentos (-)</label>
+                            <input type="number" step="0.01" id="corr-att-descuento" class="form-control">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="document.getElementById('correction-modal').classList.add('hidden')">Cancelar</button>
+                <button type="button" class="btn-primary" id="btn-save-correction">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
 

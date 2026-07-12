@@ -25,13 +25,20 @@
                 const percent = p.presupuesto > 0 ? (p.totalGastos / p.presupuesto) * 100 : 0;
                 const isOverBudget = p.totalGastos > p.presupuesto;
                 const barWidth = Math.min(percent, 100);
+                
+                const statusBadge = p.estado === 'Cerrado' ? `<span class="badge bg-danger" style="font-size: 0.7rem; margin-left: 8px;">Cerrado</span>` : `<span class="badge bg-success" style="font-size: 0.7rem; margin-left: 8px;">Activo</span>`;
+                const closeBtnHtml = p.estado === 'Cerrado' ? '' : `
+                            <button type="button" class="btn-close-project" data-id="${p.id}" title="Cerrar Proyecto" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:4px;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            </button>`;
 
                 const card = document.createElement('div');
                 card.className = 'project-card';
                 card.innerHTML = `
                     <div class="project-card-header">
-                        <span class="project-card-title">${p.nombre}</span>
+                        <span class="project-card-title">${p.nombre} ${statusBadge}</span>
                         <div style="display: flex; gap: 8px;">
+                            ${closeBtnHtml}
                             <button type="button" class="btn-edit-project" data-id="${p.id}" title="Editar Proyecto" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:4px;">
                                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             </button>
@@ -58,7 +65,7 @@
 
                 // Clic en la tarjeta para ver detalles
                 card.addEventListener('click', (e) => {
-                    if (e.target.closest('.btn-delete-project') || e.target.closest('.btn-edit-project')) return;
+                    if (e.target.closest('.btn-delete-project') || e.target.closest('.btn-edit-project') || e.target.closest('.btn-close-project')) return;
                     currentDetailedProjectId = p.id;
                     renderProjectDetails(p.id);
                 });
@@ -98,11 +105,30 @@
                         if (delData.success) {
                             showToast('Proyecto Eliminado', 'El proyecto se eliminó correctamente.', 'success');
                             renderProjectsView();
+                        } else {
+                            showToast('Error', delData.message || 'Error al eliminar.', 'error');
                         }
                     }
                 });
             });
 
+            // Enlazar botón de cerrar proyecto
+            container.querySelectorAll('.btn-close-project').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
+                    if (await appConfirm('Confirmación', '¿Estás seguro de CERRAR este proyecto? Ya no se podrán agregar más gastos.')) {
+                        const closeRes = await fetch(`/api/projects/${id}/close`, { method: 'PUT' });
+                        const closeData = await closeRes.json();
+                        if (closeData.success) {
+                            showToast('Proyecto Cerrado', 'El proyecto ha sido cerrado exitosamente.', 'success');
+                            renderProjectsView();
+                        } else {
+                            showToast('Error', closeData.message || 'Error al cerrar.', 'error');
+                        }
+                    }
+                });
+            });
         } catch (err) {
             console.error(err); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger');
             container.innerHTML = '<p class="text-danger">Error al cargar proyectos.</p>';

@@ -1,0 +1,282 @@
+window.renderAdminFinances = async function() {
+    const monthSelect = document.getElementById('finance-month-select');
+    if (!monthSelect) return;
+
+    // Fetch projects and global incomes
+    let projects = [];
+    let globalIncomes = [];
+    let pettyCashFunds = [];
+    
+    try {
+        const [projRes, incRes, pettyRes] = await Promise.all([
+            fetch('/api/projects'),
+            fetch('/api/global-incomes'),
+            fetch('/api/petty-cash-funds')
+        ]);
+        if (projRes.ok) {
+            const data = await projRes.json();
+            projects = Array.isArray(data) ? data : [];
+        }
+        if (incRes.ok) {
+            const data = await incRes.json();
+            globalIncomes = Array.isArray(data) ? data : (data.data || []);
+        }
+        if (pettyRes.ok) {
+            const data = await pettyRes.json();
+            pettyCashFunds = Array.isArray(data) ? data : [];
+        }
+    } catch (e) {
+        console.error("Error fetching finance data:", e);
+    }
+
+    // Attendance data (Nomina)
+    const attendance = window.AttendanceDB?.getAttendance() || [];
+    const piecework = window.AttendanceDB?.getPiecework() || [];
+    const busRecords = window.AttendanceDB?.getBusRecords() || [];
+
+    // Helper: format YYYY-MM
+    function getMonthKey(dateString) {
+        if (!dateString) return null;
+        let d;
+        if (dateString.includes('/')) {
+            const parts = dateString.split(' ')[0].split('/');
+            d = new Date(parts[2], parts[1] - 1, parts[0]);
+        } else {
+            d = new Date(dateString);
+        }
+        if (isNaN(d.getTime())) return null;
+        const m = (d.getMonth() + 1).toString().padStart(2, '0');
+        return `${d.getFullYear()}-${m}`;
+    }
+
+    // Extract unique months from all activity to populate dropdown
+    const monthsSet = new Set();
+    const addMonth = (dateStr) => {
+        const key = getMonthKey(dateStr);
+        if (key) monthsSet.add(key);
+    };
+
+    attendance.forEach(a => addMonth(a.fecha));
+    piecework.forEach(p => addMonth(p.fecha));
+    busRecords.forEach(b => addMonth(b.fecha));
+    globalIncomes.forEach(g => addMonth(g.fecha));
+    
+    // Petty cash expenses dates
+    pettyCashFunds.forEach(fund => {
+        if (fund.gastos) {
+            fund.gastos.forEach(e => addMonth(e.fecha));
+        }
+    });
+
+    const sortedMonths = Array.from(monthsSet).sort().reverse();
+    
+    // If no months, add current
+    if (sortedMonths.length === 0) {
+        const now = new Date();
+        const m = (now.getMonth() + 1).toString().padStart(2, '0');
+        sortedMonths.push(`${now.getFullYear()}-${m}`);
+    }
+
+    // Populate Select if empty or different
+    const currentSelected = monthSelect.value || sortedMonths[0];
+    monthSelect.innerHTML = '';
+    sortedMonths.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        // Format label nicely: "2026-07" -> "Julio 2026"
+        const [yy, mm] = m.split('-');
+        const date = new Date(yy, parseInt(mm) - 1, 1);
+        opt.textContent = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
+        if (m === currentSelected) opt.selected = true;
+        monthSelect.appendChild(opt);
+    });
+
+    const selectedMonth = monthSelect.value;
+
+    // ----- CALCULATE KPIs FOR SELECTED MONTH -----
+    let monthPayroll = 0;
+    let monthIncomes = 0;
+    let monthExpenses = 0;
+
+    // Nomina Pagada
+    let payrollByUser = {};
+    window.currentPayrollDetailsByUser = {};
+
+    attendance.forEach(a => {
+        if (getMonthKey(a.fecha) === selectedMonth && (a.aprobado || a.archivado)) {
+            const amount = parseFloat(a.montoNeto) || 0;
+            monthPayroll += amount;
+            payrollByUser[a.usuarioId] = (payrollByUser[a.usuarioId] || 0) + amount;
+            
+            if (!window.currentPayrollDetailsByUser[a.usuarioId]) window.currentPayrollDetailsByUser[a.usuarioId] = [];
+            window.currentPayrollDetailsByUser[a.usuarioId].push({ fecha: a.fecha, tipo: 'Asistencia Regular', monto: amount });
+        }
+    });
+    piecework.forEach(p => {
+        if (getMonthKey(p.fecha) === selectedMonth && (p.estado === 'Aprobado' || p.estado === 'Pagado' || p.archivado)) {
+            const amount = parseFloat(p.total) || 0;
+            monthPayroll += amount;
+            payrollByUser[p.usuarioId] = (payrollByUser[p.usuarioId] || 0) + amount;
+            
+            if (!window.currentPayrollDetailsByUser[p.usuarioId]) window.currentPayrollDetailsByUser[p.usuarioId] = [];
+            window.currentPayrollDetailsByUser[p.usuarioId].push({ fecha: p.fecha, tipo: 'Trabajo por Trato', monto: amount });
+        }
+    });
+    const allUsers = window.AttendanceDB?.getUsers() || [];
+    busRecords.forEach(b => {
+        if (getMonthKey(b.fecha) === selectedMonth && (b.aprobado || b.archivado)) {
+            const user = allUsers.find(u => u.id === b.usuarioId);
+            const tarifaDia = parseFloat(user ? user.tarifaDiurna : 0) || 0;
+            const shifts = b.turno ? b.turno.split(',').length : 1;
+            const amount = (shifts * tarifaDia);
+            monthPayroll += amount;
+            payrollByUser[b.usuarioId] = (payrollByUser[b.usuarioId] || 0) + amount;
+            
+            if (!window.currentPayrollDetailsByUser[b.usuarioId]) window.currentPayrollDetailsByUser[b.usuarioId] = [];
+            window.currentPayrollDetailsByUser[b.usuarioId].push({ fecha: b.fecha, tipo: 'Turno de Buses', monto: amount });
+        }
+    });
+
+    // Ingresos / Gastos globales
+    globalIncomes.forEach(g => {
+        if (getMonthKey(g.fecha) === selectedMonth && g.estado !== 'Rechazado') {
+            if (g.tipo === 'Ingreso') {
+                monthIncomes += parseFloat(g.monto) || 0;
+            } else if (g.tipo === 'Gasto' || g.tipo === 'Egreso') {
+                monthExpenses += parseFloat(g.monto) || 0;
+            }
+        }
+    });
+
+    // Caja Chica
+    pettyCashFunds.forEach(fund => {
+        if (fund.gastos) {
+            fund.gastos.forEach(e => {
+                if (getMonthKey(e.fecha) === selectedMonth) {
+                    monthExpenses += parseFloat(e.monto) || 0;
+                }
+            });
+        }
+    });
+
+    // Update DOM
+    document.getElementById('fin-kpi-payroll').textContent = `Q${monthPayroll.toLocaleString('es-GT', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('fin-kpi-incomes').textContent = `Q${monthIncomes.toLocaleString('es-GT', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('fin-kpi-expenses').textContent = `Q${monthExpenses.toLocaleString('es-GT', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+    // Render payroll table
+    const payrollTbody = document.getElementById('fin-payroll-table-body');
+    if (payrollTbody) {
+        payrollTbody.innerHTML = '';
+        const userIds = Object.keys(payrollByUser);
+        if (userIds.length === 0) {
+            payrollTbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No hay nómina registrada en este mes</td></tr>`;
+        } else {
+            // Sort by amount descending
+            userIds.sort((a, b) => payrollByUser[b] - payrollByUser[a]);
+            userIds.forEach(uid => {
+                const amount = payrollByUser[uid];
+                const userObj = allUsers.find(u => u.id === parseInt(uid) || u.id === uid);
+                const userName = userObj ? userObj.nombre : `Usuario #${uid}`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${userName}</strong></td>
+                    <td style="text-align: right; color: var(--primary); font-weight: bold;">Q${amount.toLocaleString('es-GT', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-table-action" style="padding: 4px 8px; font-size: 0.8rem;" onclick="window.showPayrollDetails('${uid}', '${userName.replace(/'/g, "\\'")}')">Ver Detalles</button>
+                    </td>
+                `;
+                payrollTbody.appendChild(tr);
+            });
+        }
+    }
+
+    // ----- RENDERING PROJECTS TABLE (GLOBAL) -----
+    const tbody = document.getElementById('fin-projects-table-body');
+    tbody.innerHTML = '';
+    
+    if (projects.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No hay proyectos registrados</td></tr>`;
+    } else {
+        projects.forEach(p => {
+            const presupuesto = parseFloat(p.presupuesto) || 0;
+            
+            // Calc gastos for project
+            const gastos = parseFloat(p.totalGastos) || 0;
+
+            const ganancia = presupuesto - gastos;
+            
+            let color = ganancia > 0 ? 'text-success' : (ganancia < 0 ? 'text-danger' : '');
+            let estadoP = 'En progreso';
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${p.nombre}</strong> <span class="badge ${p.estado === 'Cerrado' ? 'bg-danger' : 'bg-success'}" style="font-size: 0.6rem; margin-left: 5px;">${p.estado || 'Activo'}</span></td>
+                <td>Q${presupuesto.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td>Q${gastos.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td class="${color} font-bold">Q${ganancia.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td><span class="badge ${ganancia < 0 ? 'bg-danger' : 'bg-primary'}">${ganancia < 0 ? 'Pérdida' : 'Estable'}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Attach event listener to select only once
+    if (!monthSelect.dataset.listenerAttached) {
+        monthSelect.addEventListener('change', window.renderAdminFinances);
+        monthSelect.dataset.listenerAttached = 'true';
+    }
+};
+
+window.showPayrollDetails = function(uid, userName) {
+    const details = window.currentPayrollDetailsByUser[uid] || [];
+    
+    // Sort by date ascending
+    details.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+    
+    let html = `
+    <div style="max-height: 300px; overflow-y: auto; text-align: left; margin-top: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);">
+        <table class="table" style="margin: 0; font-size: 0.9rem;">
+            <thead>
+                <tr>
+                    <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">Fecha</th>
+                    <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">Concepto</th>
+                    <th style="padding: 10px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1);">Monto</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    if (details.length === 0) {
+        html += `<tr><td colspan="3" class="text-center text-muted" style="padding: 15px;">No hay detalles disponibles</td></tr>`;
+    } else {
+        details.forEach(d => {
+            let colorMonto = 'var(--primary)';
+            if (d.tipo.toLowerCase().includes('préstamo') || d.tipo.toLowerCase().includes('descuento')) {
+                colorMonto = 'var(--danger)';
+            }
+            html += `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">${d.fecha}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">${d.tipo}</td>
+                    <td style="padding: 10px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.05); color: ${colorMonto};">Q${d.monto.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+    }
+    html += `</tbody></table></div>`;
+    
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: `Detalle de Nómina`,
+            html: `<p style="margin-top:0; font-weight: bold; color: var(--text-color);">${userName}</p>` + html,
+            width: '600px',
+            background: '#1a2235',
+            color: '#f8fafc',
+            confirmButtonColor: '#3b82f6',
+            confirmButtonText: 'Cerrar'
+        });
+    } else {
+        alert("No se pudo cargar SweetAlert, pero los detalles son: " + JSON.stringify(details));
+    }
+};

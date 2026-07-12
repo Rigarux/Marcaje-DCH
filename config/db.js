@@ -362,8 +362,9 @@ async function initDb() {
         "ALTER TABLE quote_items ADD COLUMN material_id INTEGER",
         "ALTER TABLE attendance ADD COLUMN corteId INTEGER",
         "ALTER TABLE bus_records ADD COLUMN corteId INTEGER",
-        "ALTER TABLE users ADD COLUMN permisos TEXT"
-];
+        "ALTER TABLE users ADD COLUMN permisos TEXT",
+        "ALTER TABLE projects ADD COLUMN estado TEXT DEFAULT 'Activo'"
+    ];
         for (const query of migrations) {
             try {
                 await dbRun(query);
