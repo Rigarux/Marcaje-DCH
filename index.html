@@ -1354,6 +1354,29 @@
                             </div>
                         </div>
 
+                        <!-- Días Trabajados (Acumulado) -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-header">
+                                <h3>Acumulado de Días Trabajados</h3>
+                                <p style="margin: 0; font-size: 0.85rem; color: #8892b0;">Útil para cálculos de Bono 14, Aguinaldo e Indemnización.</p>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Colaborador</th>
+                                            <th style="text-align: center;">Días Mes Actual</th>
+                                            <th style="text-align: center;">Días Bono 14 (Jul-Jun)</th>
+                                            <th style="text-align: center;">Días Aguinaldo (Dic-Nov)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fin-worked-days-table-body">
+                                        <!-- Dynamically populated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <!-- Listado de Proyectos -->
                         <div class="card">
                             <div class="card-header">
@@ -1548,15 +1571,13 @@
             <div class="modal-body">
                 <p class="location-prompt-text text-muted">Para proceder con el marcaje, el sistema requiere capturar tu ubicación en tiempo real para validar la asistencia.</p>
                 
-                <!-- Cuadro simulador de Mapa / Coordenadas GPS -->
-                <div class="simulated-map-container margin-top">
-                    <div class="simulated-map-grid"></div>
-                    <div class="simulated-map-radar"></div>
-                    <div class="simulated-map-crosshair"></div>
-                    <div class="simulated-map-info">
-                        <span class="map-status">GPS LOCK: EXCELENTE</span>
-                        <span class="map-coordinates" id="simulated-coordinates">Lat: 14.6284Â°, Lng: -90.5222Â°</span>
-                        <span class="map-accuracy">Precisión: &plusmn; 4 metros</span>
+                <!-- Cuadro de Mapa / Coordenadas GPS -->
+                <div class="map-wrapper margin-top" style="position: relative; width: 100%; height: 200px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);">
+                    <div id="real-map" style="width: 100%; height: 100%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #666;">Cargando mapa...</div>
+                    <div class="simulated-map-info" style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); z-index: 10; padding: 5px; display: flex; justify-content: space-between; font-size: 0.75rem;">
+                        <span class="map-status" id="gps-status" style="color: #f1c40f;">OBTENIENDO GPS...</span>
+                        <span class="map-coordinates" id="simulated-coordinates">Lat: -, Lng: -</span>
+                        <span class="map-accuracy" id="gps-accuracy">Precisión: -</span>
                     </div>
                 </div>
                 
@@ -2388,37 +2409,40 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDKe0fiduABj0nIB3cxGa_L7myxE3A5Z1I&libraries=places"></script>
+
     <!-- Cargar lógica de la app conectada a la API SQL con cache buster -->
     <!-- Core -->
-    <script src="js/core/db-client.js?v=41" defer></script>
-    <script src="js/core/app-core.js?v=41" defer></script>
-    <script src="js/core/exportacion.js?v=41" defer></script>
+    <script src="js/core/db-client.js?v=42" defer></script>
+    <script src="js/core/app-core.js?v=42" defer></script>
+    <script src="js/core/exportacion.js?v=42" defer></script>
     
     <!-- Users & Permissions -->
-    <script src="js/users/gestion-usuarios.js?v=41" defer></script>
-    <script src="js/users/prestamos.js?v=41" defer></script>
+    <script src="js/users/gestion-usuarios.js?v=42" defer></script>
+    <script src="js/users/prestamos.js?v=42" defer></script>
 
     <!-- Finances -->
-    <script src="js/finances/ingresos.js?v=41" defer></script>
-    <script src="js/finances/caja-chica.js?v=41" defer></script>
+    <script src="js/finances/ingresos.js?v=42" defer></script>
+    <script src="js/finances/caja-chica.js?v=42" defer></script>
 
     <!-- Inventory -->
-    <script src="js/inventory/inventarios.js?v=41" defer></script>
-    <script src="js/inventory/materiales.js?v=41" defer></script>
+    <script src="js/inventory/inventarios.js?v=42" defer></script>
+    <script src="js/inventory/materiales.js?v=42" defer></script>
 
     <!-- Sales & Projects -->
 
-    <script src="js/sales/cotizaciones.js?v=41" defer></script>
-    <script src="js/sales/proyectos.js?v=41" defer></script>
+    <script src="js/sales/cotizaciones.js?v=42" defer></script>
+    <script src="js/sales/proyectos.js?v=42" defer></script>
 
     <!-- Vehicles -->
-    <script src="js/vehicles/vehiculos.js?v=41" defer></script>
+    <script src="js/vehicles/vehiculos.js?v=42" defer></script>
 
     <!-- Views -->
-    <script src="js/views/vista-usuario.js?v=41" defer></script>
-    <script src="js/views/vista-lider.js?v=41" defer></script>
-    <script src="js/views/vista-admin.js?v=41" defer></script>
-    <script src="js/finances/admin-finanzas.js?v=41" defer></script>
+    <script src="js/views/vista-usuario.js?v=42" defer></script>
+    <script src="js/views/vista-lider.js?v=42" defer></script>
+    <script src="js/views/vista-admin.js?v=42" defer></script>
+    <script src="js/finances/admin-finanzas.js?v=42" defer></script>
 
 
     <!-- ==================== MODAL NUEVA VENTA ==================== -->
@@ -3063,3 +3087,28 @@
         </div>
     </div>
 
+
+<!-- ==================== SIGNATURE MODAL ==================== -->
+<div id="signature-modal" class="modal-overlay hidden" style="z-index: 3000;">
+    <div class="modal-card" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2>Firma de Recibo de Pago</h2>
+            <span class="close" onclick="document.getElementById('signature-modal').classList.add('hidden')">&times;</span>
+        </div>
+        <div class="modal-body" style="text-align: center;">
+            <p class="text-muted" style="margin-bottom: 10px;">Por favor, dibuje su firma en el recuadro para confirmar la recepción del pago.</p>
+            <div style="border: 2px solid var(--border-color); border-radius: 8px; background-color: #fff; display: inline-block;">
+                <canvas id="signature-pad" width="400" height="200" style="touch-action: none; cursor: crosshair;"></canvas>
+            </div>
+            <input type="hidden" id="signature-cut-id">
+            <input type="hidden" id="signature-user-id">
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; margin-top: 15px;">
+            <button class="btn-secondary" id="btn-clear-signature">Limpiar</button>
+            <div>
+                <button class="btn-secondary" onclick="document.getElementById('signature-modal').classList.add('hidden')">Cancelar</button>
+                <button class="btn-primary" id="btn-save-signature" style="background-color: var(--success); border-color: var(--success);">Guardar Firma</button>
+            </div>
+        </div>
+    </div>
+</div>

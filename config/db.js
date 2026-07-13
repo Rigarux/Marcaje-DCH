@@ -61,6 +61,15 @@ async function initDb() {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE
             )`,
+            `CREATE TABLE IF NOT EXISTS payment_signatures (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cut_id INTEGER,
+                user_id INTEGER,
+                signature_base64 TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(cut_id) REFERENCES payroll_cuts(id) ON DELETE CASCADE,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )`,
             `CREATE TABLE IF NOT EXISTS attendance (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 usuarioId INTEGER,

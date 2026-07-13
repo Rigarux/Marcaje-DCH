@@ -191,6 +191,89 @@ window.renderAdminFinances = async function() {
         }
     }
 
+    // ----- DÍAS TRABAJADOS (BONO 14, AGUINALDO) -----
+    const workedDaysTbody = document.getElementById('fin-worked-days-table-body');
+    if (workedDaysTbody) {
+        workedDaysTbody.innerHTML = '';
+        
+        let daysByUser = {};
+        
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth(); // 0-indexed, 0 = Jan, 11 = Dec
+
+        // Determinar límites Bono 14
+        let bono14Start, bono14End;
+        if (currentMonth < 6) { // Before July
+            bono14Start = new Date(currentYear - 1, 6, 1); // July 1st last year
+            bono14End = new Date(currentYear, 5, 30, 23, 59, 59); // June 30th this year
+        } else {
+            bono14Start = new Date(currentYear, 6, 1); // July 1st this year
+            bono14End = new Date(currentYear + 1, 5, 30, 23, 59, 59); // June 30th next year
+        }
+
+        // Determinar límites Aguinaldo
+        let aguiStart, aguiEnd;
+        if (currentMonth < 11) { // Before December
+            aguiStart = new Date(currentYear - 1, 11, 1); // Dec 1st last year
+            aguiEnd = new Date(currentYear, 10, 30, 23, 59, 59); // Nov 30th this year
+        } else {
+            aguiStart = new Date(currentYear, 11, 1); // Dec 1st this year
+            aguiEnd = new Date(currentYear + 1, 10, 30, 23, 59, 59); // Nov 30th next year
+        }
+
+        // Helper date parser
+        function parseDate(dateStr) {
+            if (!dateStr) return new Date(0);
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split(' ')[0].split('/');
+                return new Date(parts[2], parts[1] - 1, parts[0]);
+            }
+            return new Date(dateStr);
+        }
+
+        // Calculate cycle days
+        attendance.forEach(a => {
+            if (a.horaSalida && (a.aprobado || a.archivado)) {
+                if (!daysByUser[a.usuarioId]) daysByUser[a.usuarioId] = { monthDays: 0, bono14Days: 0, aguiDays: 0 };
+                
+                const recDate = parseDate(a.fecha);
+                
+                if (recDate >= bono14Start && recDate <= bono14End) {
+                    daysByUser[a.usuarioId].bono14Days++;
+                }
+                if (recDate >= aguiStart && recDate <= aguiEnd) {
+                    daysByUser[a.usuarioId].aguiDays++;
+                }
+                if (getMonthKey(a.fecha) === selectedMonth) {
+                    daysByUser[a.usuarioId].monthDays++;
+                }
+            }
+        });
+
+        const activeUserIds = Object.keys(daysByUser);
+        if (activeUserIds.length === 0) {
+            workedDaysTbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay registros de días trabajados en los ciclos actuales</td></tr>`;
+        } else {
+            // Sort by Bono 14 days mostly
+            activeUserIds.sort((a, b) => daysByUser[b].bono14Days - daysByUser[a].bono14Days);
+            activeUserIds.forEach(uid => {
+                const userObj = allUsers.find(u => u.id === parseInt(uid) || u.id === uid);
+                const userName = userObj ? userObj.nombre : `Usuario #${uid}`;
+                const data = daysByUser[uid];
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${userName}</strong></td>
+                    <td style="text-align: center; color: var(--primary); font-weight: bold;">${data.monthDays} días</td>
+                    <td style="text-align: center; color: var(--success); font-weight: bold;">${data.bono14Days} días</td>
+                    <td style="text-align: center; color: var(--warning); font-weight: bold;">${data.aguiDays} días</td>
+                `;
+                workedDaysTbody.appendChild(tr);
+            });
+        }
+    }
+
     // ----- RENDERING PROJECTS TABLE (GLOBAL) -----
     const tbody = document.getElementById('fin-projects-table-body');
     tbody.innerHTML = '';

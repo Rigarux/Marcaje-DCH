@@ -563,6 +563,14 @@
                 actionBtn = `<span class="table-badge approved" style="display:block; text-align:center; padding:4px 0;">Todo Aprobado</span>`;
             }
 
+            // Lógica Séptimo Día
+            const totalHours = group.totalDiurnas + group.totalNocturnas;
+            const has7thDay = group.records.length >= 4 && totalHours >= 48;
+            let seventhDayBtn = '';
+            if (has7thDay && !isPiecework && !isBuses) {
+                seventhDayBtn = `<button class="btn-table-action add-7th-day-btn" data-uid="${group.userId}" style="background-color: var(--success); border-color: var(--success); margin-top: 5px; padding: 4px 8px; font-size:0.75rem; width: 100%;">Pagar 7mo Día</button>`;
+            }
+
             const isRowExpanded = expandedUserId === group.userId;
             const rotationDeg = isRowExpanded ? '90deg' : '0deg';
 
@@ -588,9 +596,12 @@
                 <td>${loanText}</td>
                 <td><strong>${netText}</strong></td>
                 <td>
-                    <div style="display:flex; gap:6px;">
-                        <button class="btn-table-action approve toggle-details-btn" data-uid="${group.userId}" style="background-color: var(--primary); border-color: var(--primary); padding: 4px 8px; font-size:0.75rem; width: auto;">Detalles</button>
-                        ${actionBtn}
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn-table-action approve toggle-details-btn" data-uid="${group.userId}" style="background-color: var(--primary); border-color: var(--primary); padding: 4px 8px; font-size:0.75rem; width: auto;">Detalles</button>
+                            ${actionBtn}
+                        </div>
+                        ${seventhDayBtn}
                     </div>
                 </td>
             `;
@@ -967,6 +978,31 @@ fragment.appendChild(trMain);
                         } else {
                             icon.style.transform = 'rotate(90deg)';
                             expandedUserId = uid;
+                        }
+                    }
+                });
+            });
+
+            row.querySelectorAll('.add-7th-day-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const uid = parseInt(e.target.getAttribute('data-uid'));
+                    const group = grouped[uid];
+                    if (group && group.records.length > 0) {
+                        const user = allUsers.find(u => u.id === uid);
+                        const tarifaDiurna = parseFloat(user ? user.tarifaDiurna : 0) || 0;
+                        const bonoAmount = tarifaDiurna * 8; // 8 hours of work
+
+                        // We attach the bonus to the last attendance record of the group
+                        const lastRecord = group.records[group.records.length - 1];
+                        
+                        if (confirm(`¿Estás seguro de pagar el Séptimo Día a ${user.nombre}? Se agregará un bono de Q${bonoAmount.toFixed(2)}.`)) {
+                            const success = await window.AttendanceDB.applyBonus(lastRecord.id, 'Séptimo Día', bonoAmount, currentUser.id);
+                            if (success) {
+                                alert('Séptimo Día pagado correctamente.');
+                                setupAdminView();
+                            } else {
+                                alert('Error al pagar el Séptimo Día.');
+                            }
                         }
                     }
                 });

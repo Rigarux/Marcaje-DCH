@@ -94,9 +94,22 @@
         try {
             const res = await fetch(`/api/attendance/cuts/${id}/records`);
             const data = await res.json();
+            
+            let signatures = [];
+            try {
+                const sigRes = await fetch(`/api/attendance/cuts/${id}/signatures`);
+                if (sigRes.ok) {
+                    const sigData = await sigRes.json();
+                    signatures = sigData.success ? sigData.signatures : [];
+                }
+            } catch (e) {
+                console.warn("No se pudieron cargar las firmas:", e);
+            }
+            
             if (data.success) {
                 currentCutData = data;
-                renderCutDetails(data.attendance, data.busRecords, estado);
+                currentCutData.signatures = signatures;
+                renderCutDetails(data.attendance, data.busRecords, estado, signatures);
             }
         } catch (error) {
             console.error('Error cargando detalles del corte:', error);
@@ -104,7 +117,7 @@
         }
     }
 
-    function renderCutDetails(attendance, busRecords, estado) {
+    function renderCutDetails(attendance, busRecords, estado, signatures = []) {
         const detailsBody = document.getElementById('cut-details-table-body');
         detailsBody.innerHTML = '';
         
@@ -170,15 +183,29 @@
 
             const tr = document.createElement('tr');
             
-            // Toggle HTML for Confirmations
+            // Toggle HTML for Confirmations / Signatures
             let confirmationHtml = '';
             if (estado === 'Finalizado') {
-                confirmationHtml = `
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span class="text-success">✅ Confirmado</span>
-                        <button class="btn-table-action penalize" onclick="window.openPenalizeModal(${group.userId});" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--danger); border-color: var(--danger); display: inline-block;">Descuento</button>
-                    </div>
-                `;
+                const userSignature = signatures.find(s => s.user_id === group.userId);
+                if (userSignature) {
+                    const dateStr = new Date(userSignature.created_at).toLocaleString();
+                    confirmationHtml = `
+                        <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="text-success" style="font-size: 0.8rem;" title="Firmado el ${dateStr}">✅ Pago Firmado</span>
+                                <button class="btn-table-action penalize" onclick="window.openPenalizeModal(${group.userId});" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--danger); border-color: var(--danger); display: inline-block;">Descuento</button>
+                            </div>
+                            <img src="${userSignature.signature_base64}" alt="Firma" style="height: 40px; width: auto; max-width: 120px; object-fit: contain; background: white; border: 1px solid #ccc; border-radius: 4px;" />
+                        </div>
+                    `;
+                } else {
+                    confirmationHtml = `
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button class="btn-table-action btn-sign-payment" data-uid="${group.userId}" data-cid="${currentCutId}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--success); border-color: var(--success); display: inline-block;">Firmar Pago</button>
+                            <button class="btn-table-action penalize" onclick="window.openPenalizeModal(${group.userId});" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--danger); border-color: var(--danger); display: inline-block;">Descuento</button>
+                        </div>
+                    `;
+                }
             } else {
                 confirmationHtml = `
                     <label class="switch" style="display: flex; align-items: center; gap: 5px; margin-bottom: 5px;">
@@ -286,7 +313,7 @@
                 btnFinalizeExportCut.textContent = 'Exportando PDF...';
                 try {
                     const allUsers = window.AttendanceDB.getUsers();
-                    await generatePayrollPDF(allUsers, currentCutData.attendance, currentCutData.busRecords);
+                    await generatePayrollPDF(allUsers, currentCutData.attendance, currentCutData.busRecords, currentCutData.signatures || []);
                 } catch (error) {
                     console.error(error);
                     showToast('Error', 'Error generando el PDF', 'danger');
@@ -321,7 +348,7 @@
                     
                     // Refrescar el PDF
                     const allUsers = window.AttendanceDB.getUsers();
-                    await generatePayrollPDF(allUsers, currentCutData.attendance, currentCutData.busRecords);
+                    await generatePayrollPDF(allUsers, currentCutData.attendance, currentCutData.busRecords, currentCutData.signatures || []);
                     
                     cutDetailsModal.classList.add('hidden');
                     loadCuts(); // Refresh list
@@ -395,7 +422,7 @@
         return hoursDec.toFixed(2) + ' hrs';
     }
 
-    async function generatePayrollPDF(allUsers, filteredAttendance, filteredBuses) {
+    async function generatePayrollPDF(allUsers, filteredAttendance, filteredBuses, signatures = []) {
         const today = new Date();
         const dateString = today.toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -569,6 +596,20 @@
                             </tr>
                         </tfoot>
                     </table>
+            `;
+
+            const userSig = signatures.find(s => s.user_id === group.userObj?.id);
+            if (userSig && userSig.signature_base64) {
+                const dateStr = new Date(userSig.created_at).toLocaleString();
+                html += `
+                    <div style="background-color: #f9fafb; padding: 10px 15px; border-top: 1px solid #d1d5db; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 12px; color: #166534; font-weight: bold;">✅ Firmado el ${dateStr}</span>
+                        <img src="${userSig.signature_base64}" alt="Firma" style="height: 40px; width: auto; max-width: 150px; object-fit: contain; background: white; border: 1px solid #ccc; border-radius: 4px;" />
+                    </div>
+                `;
+            }
+
+            html += `
                 </div>
             `;
         });
@@ -601,3 +642,166 @@
 
         await html2pdf().set(opt).from(finalHtml).save();
     }
+
+    // --- SIGNATURE PAD LOGIC ---
+    // Inyectar el modal dinámicamente si no existe (evita problemas de caché en index.html)
+    if (!document.getElementById('signature-modal')) {
+        const modalHtml = `
+        <!-- ==================== SIGNATURE MODAL ==================== -->
+        <div id="signature-modal" class="modal-overlay hidden" style="z-index: 3000;">
+            <div class="modal-card" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2>Firma de Recibo de Pago</h2>
+                    <span class="close" onclick="document.getElementById('signature-modal').classList.add('hidden')">&times;</span>
+                </div>
+                <div class="modal-body" style="text-align: center;">
+                    <p class="text-muted" style="margin-bottom: 10px;">Por favor, dibuje su firma en el recuadro para confirmar la recepción del pago.</p>
+                    <div style="border: 2px solid var(--border-color); border-radius: 8px; background-color: #fff; display: inline-block;">
+                        <canvas id="signature-pad" width="400" height="200" style="touch-action: none; cursor: crosshair;"></canvas>
+                    </div>
+                    <input type="hidden" id="signature-cut-id">
+                    <input type="hidden" id="signature-user-id">
+                </div>
+                <div class="modal-footer" style="display: flex; justify-content: space-between; margin-top: 15px;">
+                    <button class="btn-secondary" id="btn-clear-signature">Limpiar</button>
+                    <div>
+                        <button class="btn-secondary" onclick="document.getElementById('signature-modal').classList.add('hidden')">Cancelar</button>
+                        <button class="btn-primary" id="btn-save-signature" style="background-color: var(--success); border-color: var(--success);">Guardar Firma</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    let signaturePadCanvas = document.getElementById('signature-pad');
+    let signatureCtx = signaturePadCanvas ? signaturePadCanvas.getContext('2d') : null;
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
+
+    if (signaturePadCanvas) {
+        const getXY = (e) => {
+            const rect = signaturePadCanvas.getBoundingClientRect();
+            let clientX = e.clientX, clientY = e.clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        };
+
+        const drawStart = (e) => {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getXY(e);
+            lastX = pos.x;
+            lastY = pos.y;
+        };
+
+        const drawMove = (e) => {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getXY(e);
+            signatureCtx.beginPath();
+            signatureCtx.moveTo(lastX, lastY);
+            signatureCtx.lineTo(pos.x, pos.y);
+            signatureCtx.strokeStyle = "#000";
+            signatureCtx.lineWidth = 2;
+            signatureCtx.lineCap = "round";
+            signatureCtx.stroke();
+            lastX = pos.x;
+            lastY = pos.y;
+        };
+
+        const drawEnd = (e) => {
+            if (isDrawing) e.preventDefault();
+            isDrawing = false;
+        };
+
+        signaturePadCanvas.addEventListener('mousedown', drawStart);
+        signaturePadCanvas.addEventListener('mousemove', drawMove);
+        signaturePadCanvas.addEventListener('mouseup', drawEnd);
+        signaturePadCanvas.addEventListener('mouseout', drawEnd);
+        
+        signaturePadCanvas.addEventListener('touchstart', drawStart, {passive: false});
+        signaturePadCanvas.addEventListener('touchmove', drawMove, {passive: false});
+        signaturePadCanvas.addEventListener('touchend', drawEnd);
+    }
+
+    const btnClearSignature = document.getElementById('btn-clear-signature');
+    if (btnClearSignature) {
+        btnClearSignature.addEventListener('click', () => {
+            if (signatureCtx && signaturePadCanvas) {
+                signatureCtx.clearRect(0, 0, signaturePadCanvas.width, signaturePadCanvas.height);
+            }
+        });
+    }
+
+    const btnSaveSignature = document.getElementById('btn-save-signature');
+    if (btnSaveSignature) {
+        btnSaveSignature.addEventListener('click', async () => {
+            if (!signaturePadCanvas) return;
+            
+            const blank = document.createElement('canvas');
+            blank.width = signaturePadCanvas.width;
+            blank.height = signaturePadCanvas.height;
+            if (signaturePadCanvas.toDataURL() === blank.toDataURL()) {
+                alert('Debe realizar una firma antes de guardar.');
+                return;
+            }
+            
+            const dataUrl = signaturePadCanvas.toDataURL('image/png');
+            const cutId = document.getElementById('signature-cut-id').value;
+            const userId = document.getElementById('signature-user-id').value;
+            
+            btnSaveSignature.disabled = true;
+            btnSaveSignature.textContent = 'Guardando...';
+            
+            try {
+                const res = await fetch(`/api/attendance/cuts/${cutId}/signatures`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, signature_base64: dataUrl })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Firma guardada correctamente.');
+                    document.getElementById('signature-modal').classList.add('hidden');
+                    openCutDetails(cutId, 'Finalizado'); 
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Error guardando firma.');
+            } finally {
+                btnSaveSignature.disabled = false;
+                btnSaveSignature.textContent = 'Guardar Firma';
+            }
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const signBtn = e.target.closest('.btn-sign-payment');
+        if (signBtn) {
+            e.stopPropagation();
+            const userId = signBtn.getAttribute('data-uid');
+            const cutId = signBtn.getAttribute('data-cid');
+            
+            document.getElementById('signature-user-id').value = userId;
+            document.getElementById('signature-cut-id').value = cutId;
+            
+            if (signatureCtx && signaturePadCanvas) {
+                signatureCtx.clearRect(0, 0, signaturePadCanvas.width, signaturePadCanvas.height);
+            }
+            
+            const sigModal = document.getElementById('signature-modal');
+            if (sigModal) {
+                sigModal.classList.remove('hidden');
+            }
+        }
+    });

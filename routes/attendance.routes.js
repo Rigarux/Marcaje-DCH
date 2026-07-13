@@ -739,6 +739,31 @@ router.post('/attendance/cuts/:id/finalize', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+// --- FIRMAS DE PAGO (CORTES) ---
+router.post('/attendance/cuts/:id/signatures', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { user_id, signature_base64 } = req.body;
+        
+        await dbRun("DELETE FROM payment_signatures WHERE cut_id = ? AND user_id = ?", [id, user_id]);
+        await dbRun("INSERT INTO payment_signatures (cut_id, user_id, signature_base64) VALUES (?, ?, ?)", [id, user_id, signature_base64]);
+        
+        res.json({ success: true, message: 'Firma guardada exitosamente.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.get('/attendance/cuts/:id/signatures', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const signatures = await dbAll("SELECT user_id, signature_base64, created_at FROM payment_signatures WHERE cut_id = ?", [id]);
+        res.json({ success: true, signatures });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 /*
     ,d88b.d88b,
     88888888888

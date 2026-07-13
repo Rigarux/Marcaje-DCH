@@ -237,17 +237,93 @@
             }
         }
 
-        // Simular coordenadas aleatorias dentro de Ciudad de Guatemala
-        const randomLat = (14.6284 + (Math.random() - 0.5) * 0.02).toFixed(4);
-        const randomLng = (-90.5222 + (Math.random() - 0.5) * 0.02).toFixed(4);
-        simulatedCoordinates.textContent = `Lat: ${randomLat}°, Lng: ${randomLng}°`;
-
         // Restablecer justificaciones
         if (locationWhereInput) locationWhereInput.value = '';
         if (locationWhyInput) locationWhyInput.value = '';
 
+        const gpsStatus = document.getElementById('gps-status');
+        const gpsAccuracy = document.getElementById('gps-accuracy');
+        const realMapEl = document.getElementById('real-map');
+
+        if (gpsStatus) {
+            gpsStatus.textContent = 'OBTENIENDO GPS...';
+            gpsStatus.style.color = '#f1c40f';
+        }
+        if (gpsAccuracy) gpsAccuracy.textContent = 'Precisión: -';
+        simulatedCoordinates.textContent = `Lat: -, Lng: -`;
+        if (realMapEl) realMapEl.innerHTML = 'Cargando mapa...';
+
         // Abrir modal
         locationModal.classList.remove('hidden');
+
+        // Inicializar mapa y obtener ubicación real
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                
+                simulatedCoordinates.textContent = `Lat: ${lat.toFixed(4)}°, Lng: ${lng.toFixed(4)}°`;
+                if (gpsStatus) {
+                    gpsStatus.textContent = 'GPS LOCK: OK';
+                    gpsStatus.style.color = '#2ecc71';
+                }
+                if (gpsAccuracy) gpsAccuracy.textContent = `Precisión: ± ${Math.round(accuracy)}m`;
+
+                // Render Google Map
+                if (window.google && window.google.maps && realMapEl) {
+                    const myLatlng = { lat: lat, lng: lng };
+                    const mapOptions = {
+                        zoom: 16,
+                        center: myLatlng,
+                        disableDefaultUI: true,
+                        zoomControl: true
+                    };
+                    const map = new google.maps.Map(realMapEl, mapOptions);
+                    new google.maps.Marker({
+                        position: myLatlng,
+                        map,
+                        title: "Tu Ubicación"
+                    });
+
+                    // Auto-completar dirección
+                    if (locationWhereInput) {
+                        locationWhereInput.placeholder = "Obteniendo dirección...";
+                        const geocoder = new google.maps.Geocoder();
+                        geocoder.geocode({ location: myLatlng }, (results, status) => {
+                            if (status === "OK" && results[0]) {
+                                locationWhereInput.value = results[0].formatted_address;
+                            } else {
+                                locationWhereInput.placeholder = "ej: Oficina Central, Proyecto X...";
+                            }
+                        });
+                    }
+                } else if (realMapEl) {
+                    realMapEl.innerHTML = 'Error al cargar Google Maps.';
+                }
+            }, (error) => {
+                console.error("Error obteniendo ubicación:", error);
+                if (gpsStatus) {
+                    gpsStatus.textContent = 'ERROR GPS';
+                    gpsStatus.style.color = '#e74c3c';
+                }
+                if (realMapEl) realMapEl.innerHTML = 'Error de ubicación (usando simulada).';
+                // Valores simulados si falla
+                const randomLat = (14.6284 + (Math.random() - 0.5) * 0.02).toFixed(4);
+                const randomLng = (-90.5222 + (Math.random() - 0.5) * 0.02).toFixed(4);
+                simulatedCoordinates.textContent = `Lat: ${randomLat}°, Lng: ${randomLng}°`;
+            }, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            });
+        } else {
+            if (gpsStatus) {
+                gpsStatus.textContent = 'NO SOPORTADO';
+                gpsStatus.style.color = '#e74c3c';
+            }
+            if (realMapEl) realMapEl.innerHTML = 'Navegador sin geolocalización.';
+        }
     });
 
     // Cerrar modal de ubicación

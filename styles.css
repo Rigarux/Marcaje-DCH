@@ -2956,3 +2956,14 @@ input[type="number"] {
     }
     /* El before contiene el label de la celda, el after contendra el dia. Queremos el dia arriba. */
 }
+
+/* ==========================================================================
+   SIGNATURE PAD STYLES
+   ========================================================================== */
+#signature-pad {
+    width: 100%;
+    max-width: 400px;
+    height: 200px;
+    touch-action: none;
+    border-radius: 8px;
+}
