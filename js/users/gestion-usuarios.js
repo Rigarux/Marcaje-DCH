@@ -742,7 +742,7 @@
             userPasswordHelp.classList.add('hidden');
             userRoleSelect.value = 'usr';
             userCompanySelect.value = 'N/A';
-            userGroupSelect.value = 'N/A';
+            if (userGroupSelect) userGroupSelect.value = 'N/A';
             if (userRateDiurnaInput) userRateDiurnaInput.value = '';
             if (userRateNocturnaInput) userRateNocturnaInput.value = '';
             if (userFrequencySelect) userFrequencySelect.value = 'semanal';
