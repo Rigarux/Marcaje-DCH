@@ -252,6 +252,13 @@
         if (gpsAccuracy) gpsAccuracy.textContent = 'Precisión: -';
         simulatedCoordinates.textContent = `Lat: -, Lng: -`;
         if (realMapEl) realMapEl.innerHTML = 'Cargando mapa...';
+        
+        if (btnConfirmLocation) {
+            btnConfirmLocation.disabled = true;
+            btnConfirmLocation.textContent = 'Obteniendo ubicación...';
+            btnConfirmLocation.style.opacity = '0.5';
+            btnConfirmLocation.style.cursor = 'not-allowed';
+        }
 
         // Abrir modal
         locationModal.classList.remove('hidden');
@@ -269,6 +276,13 @@
                     gpsStatus.style.color = '#2ecc71';
                 }
                 if (gpsAccuracy) gpsAccuracy.textContent = `Precisión: ± ${Math.round(accuracy)}m`;
+                
+                if (btnConfirmLocation) {
+                    btnConfirmLocation.disabled = false;
+                    btnConfirmLocation.textContent = 'Confirmar y Marcar';
+                    btnConfirmLocation.style.opacity = '1';
+                    btnConfirmLocation.style.cursor = 'pointer';
+                }
 
                 // Render Google Map
                 if (window.google && window.google.maps && realMapEl) {
@@ -304,14 +318,16 @@
             }, (error) => {
                 console.error("Error obteniendo ubicación:", error);
                 if (gpsStatus) {
-                    gpsStatus.textContent = 'ERROR GPS';
+                    gpsStatus.textContent = 'PERMISO DENEGADO';
                     gpsStatus.style.color = '#e74c3c';
                 }
-                if (realMapEl) realMapEl.innerHTML = 'Error de ubicación (usando simulada).';
-                // Valores simulados si falla
-                const randomLat = (14.6284 + (Math.random() - 0.5) * 0.02).toFixed(4);
-                const randomLng = (-90.5222 + (Math.random() - 0.5) * 0.02).toFixed(4);
-                simulatedCoordinates.textContent = `Lat: ${randomLat}°, Lng: ${randomLng}°`;
+                if (realMapEl) {
+                    realMapEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #e74c3c;"><strong>¡Ubicación obligatoria!</strong><br><br>No podemos registrar tu marcaje porque no concediste los permisos de ubicación o hubo un error al obtenerla. Por favor, asegúrate de habilitar la ubicación en tu navegador para continuar.</div>';
+                }
+                if (btnConfirmLocation) {
+                    btnConfirmLocation.textContent = 'Ubicación Requerida';
+                }
+                simulatedCoordinates.textContent = `Lat: -, Lng: -`;
             }, {
                 enableHighAccuracy: true,
                 timeout: 10000,
@@ -322,7 +338,10 @@
                 gpsStatus.textContent = 'NO SOPORTADO';
                 gpsStatus.style.color = '#e74c3c';
             }
-            if (realMapEl) realMapEl.innerHTML = 'Navegador sin geolocalización.';
+            if (realMapEl) realMapEl.innerHTML = 'Tu navegador no soporta geolocalización. No puedes marcar.';
+            if (btnConfirmLocation) {
+                btnConfirmLocation.textContent = 'No soportado';
+            }
         }
     });
 
@@ -339,6 +358,8 @@
 
     // Confirmar marcaje y enviar ubicación
     btnConfirmLocation.addEventListener('click', async () => {
+        if (btnConfirmLocation.disabled) return;
+        
         let whereValue = locationWhereInput ? locationWhereInput.value.trim() : '';
         let whyValue = locationWhyInput ? locationWhyInput.value.trim() : '';
 
