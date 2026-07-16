@@ -2,9 +2,9 @@
 node_modules/
 
 # Bases de datos SQLite
-*.db
-*.sqlite
-database.db
+# *.db
+# *.sqlite
+# database.db
 
 # Variables de entorno y secretos
 .env
