@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { dbRun, dbAll, dbGet, addLog } = require('../config/db');
+const { dbRun, dbAll, dbGet, addLog, getFormattedTimestamp } = require('../config/db');
 const { getUploadPath } = require('../utils/fileHelpers');
 
 router.delete('/bus-records/:id', async (req, res) => {
@@ -72,7 +72,7 @@ router.get('/loans/user/:userId', async (req, res) => {
     }
 });
 router.post('/loans', async (req, res) => {
-    const { usuarioId, monto, cuotas } = req.body;
+    const { usuarioId, monto, cuotas, cuotaMonto } = req.body;
     try {
         const now = new Date();
         const year = now.getFullYear();
@@ -80,11 +80,11 @@ router.post('/loans', async (req, res) => {
         const day = String(now.getDate()).padStart(2, '0');
         const dateStr = `${year}-${month}-${day}`;
         await dbRun(`
-            INSERT INTO loans (usuarioId, fecha, monto, cuotas, estado)
-            VALUES (?, ?, ?, ?, 'Pendiente')
-        `, [parseInt(usuarioId), dateStr, parseFloat(monto), parseInt(cuotas)]);
+            INSERT INTO loans (usuarioId, fecha, monto, cuotas, cuotaMonto, estado)
+            VALUES (?, ?, ?, ?, ?, 'Pendiente')
+        `, [parseInt(usuarioId), dateStr, parseFloat(monto), parseInt(cuotas), parseFloat(cuotaMonto) || 0]);
         
-        await addLog(usuarioId, `Solicitó un préstamo de Q${parseFloat(monto).toFixed(2)} a pagar en ${cuotas} cuotas`);
+        await addLog(usuarioId, `Solicitó un préstamo de Q${parseFloat(monto).toFixed(2)} a pagar en cuotas de Q${parseFloat(cuotaMonto || (monto/cuotas)).toFixed(2)}`);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
@@ -99,7 +99,7 @@ router.post('/loans/approve/:id', async (req, res) => {
 
         await dbRun(`UPDATE loans SET estado = 'Aprobado' WHERE id = ?`, [loanId]);
         
-        const cuotaMonto = loan.monto / loan.cuotas;
+        const cuotaMonto = loan.cuotaMonto > 0 ? loan.cuotaMonto : (loan.monto / loan.cuotas);
         const nuevoTotal = (parseFloat(loan.préstamoTotal) || 0) + loan.monto;
         const nuevoSaldo = (parseFloat(loan.préstamosaldo) || 0) + loan.monto;
         
@@ -206,13 +206,27 @@ router.post('/bus-records/submit', async (req, res) => {
 
             const detallesGastosStr = JSON.stringify(processedGastos);
 
+            const todayStr = new Date().toLocaleDateString('es-GT', { timeZone: 'America/Guatemala' });
+            const existingIncomeToday = await dbGet(`
+                SELECT id FROM bus_records 
+                WHERE usuarioId = ? 
+                  AND ingresoDinero > 0 
+                  AND fecha LIKE ?
+            `, [usuarioId, todayStr + '%']);
+
             await dbRun(`
                 INSERT INTO bus_records (usuarioId, fecha, turno, ingresoDinero, tipoGasto, montoGasto, fotoFacturaUrl, detallesGastos, aprobado)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
             `, [usuarioId, fecha, turno, ingresoDinero || 0, 'Multiples', totalMontoGasto, null, detallesGastosStr]);
 
             if (ingresoDinero && parseFloat(ingresoDinero) > 0) {
-                await dbRun(`UPDATE users SET sueldoBusesAcumulado = sueldoBusesAcumulado + 200 WHERE id = ?`, [usuarioId]);
+                if (!existingIncomeToday) {
+                    const user = await dbGet(`SELECT sueldoBusesDiario FROM users WHERE id = ?`, [usuarioId]);
+                    if (user) {
+                        const sueldoDiario = parseFloat(user.sueldoBusesDiario) || 0;
+                        await dbRun(`UPDATE users SET sueldoBusesAcumulado = sueldoBusesAcumulado + ? WHERE id = ?`, [sueldoDiario, usuarioId]);
+                    }
+                }
             }
 
             res.json({ success: true, message: 'Registro de BUSES guardado con éxito.' });
@@ -221,23 +235,32 @@ router.post('/bus-records/submit', async (req, res) => {
         }
     });
 router.get('/petty-cash-funds', async (req, res) => {
-        try {
-            const { usuarioId } = req.query;
-            let query = `
-                SELECT f.*, u.nombre as empleadoNombre, p.nombre as proyectoNombre 
-                FROM petty_cash_funds f
-                LEFT JOIN users u ON f.usuario_id = u.id
-                LEFT JOIN projects p ON f.proyecto_id = p.id
-            `;
-            let params = [];
-            
-            if (usuarioId) {
-                query += ` WHERE f.usuario_id = ?`;
-                params.push(usuarioId);
-            }
-            query += ` ORDER BY f.estado ASC, f.fecha DESC`; // ACTIVO primero
-            
-            const funds = await dbAll(query, params);
+    try {
+        const { usuarioId, empresa } = req.query;
+        let query = `
+            SELECT f.*, u.nombre as empleadoNombre, p.nombre as proyectoNombre 
+            FROM petty_cash_funds f
+            LEFT JOIN users u ON f.usuario_id = u.id
+            LEFT JOIN projects p ON f.proyecto_id = p.id
+        `;
+        let params = [];
+        
+        let conditions = [];
+        if (usuarioId) {
+            conditions.push(`f.usuario_id = ?`);
+            params.push(usuarioId);
+        }
+        if (empresa && empresa !== 'Todas') {
+            conditions.push(`f.empresa = ?`);
+            params.push(empresa);
+        }
+
+        if (conditions.length > 0) {
+            query += ` WHERE ` + conditions.join(` AND `);
+        }
+        query += ` ORDER BY f.estado ASC, f.fecha DESC`; // ACTIVO primero
+        
+        const funds = await dbAll(query, params);
             
             // Obtener gastos por fondo para inyectarlos
             for (let f of funds) {
@@ -257,19 +280,19 @@ router.get('/petty-cash-funds', async (req, res) => {
         }
     });
 router.post('/petty-cash-funds/assign', async (req, res) => {
-        try {
-            const { usuario_id, monto, descripcion, registrado_por, proyecto_id } = req.body;
-            if (!usuario_id || !monto || !descripcion) {
-                return res.status(400).json({ success: false, message: 'Datos incompletos' });
-            }
+    try {
+        const { usuario_id, monto, descripcion, registrado_por, proyecto_id, empresa } = req.body;
+        if (!usuario_id || !monto || !descripcion) {
+            return res.status(400).json({ success: false, message: 'Datos incompletos' });
+        }
 
-            await dbRun(
-                `INSERT INTO petty_cash_funds (usuario_id, proyecto_id, monto_asignado, monto_disponible, descripcion, fecha, registrado_por, estado) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVO')`,
-                [usuario_id, proyecto_id || null, monto, monto, descripcion, getFormattedTimestamp(), registrado_por || null]
-            );
+        await dbRun(
+            `INSERT INTO petty_cash_funds (usuario_id, proyecto_id, monto_asignado, monto_disponible, descripcion, fecha, registrado_por, estado, empresa) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)`,
+            [usuario_id, proyecto_id || null, monto, monto, descripcion, getFormattedTimestamp(), registrado_por || null, empresa || null]
+        );
 
-            await addLog(registrado_por || 0, `Asignó fondo Q${monto} a usuario ID: ${usuario_id}`);
+        await addLog(registrado_por || 0, `Asignó fondo Q${monto} a usuario ID: ${usuario_id}`);
             res.json({ success: true });
         } catch (error) {
             console.error('Error al asignar fondo:', error);

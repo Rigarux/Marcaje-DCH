@@ -154,11 +154,11 @@ window.AttendanceDB = {
         return this._state.logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     },
 
-    async checkIn(userId, lat = null, lng = null, justificacionLugar = null, justificacionMotivo = null, proyectoId = null) {
+    async checkIn(userId, lat = null, lng = null, justificacionLugar = null, justificacionMotivo = null, proyectoId = null, fotoEntrada = null) {
         const res = await fetch('/api/attendance/checkin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: userId, lat, lng, justificacionLugar, justificacionMotivo, proyectoId })
+            body: JSON.stringify({ usuarioId: userId, lat, lng, justificacionLugar, justificacionMotivo, proyectoId, fotoEntrada })
         });
         const data = await res.json();
         if (data.success) {
@@ -168,11 +168,11 @@ window.AttendanceDB = {
         return null;
     },
 
-    async checkOut(userId, lat = null, lng = null, justificacionLugar = null, justificacionMotivo = null) {
+    async checkOut(userId, lat = null, lng = null, justificacionLugar = null, justificacionMotivo = null, trabajoDescripcion = null, trabajoCantidad = 0, fotoAntes = null, fotoDespues = null, fotoSalida = null) {
         const res = await fetch('/api/attendance/checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: userId, lat, lng, justificacionLugar, justificacionMotivo })
+            body: JSON.stringify({ usuarioId: userId, lat, lng, justificacionLugar, justificacionMotivo, trabajoDescripcion, trabajoCantidad, fotoAntes, fotoDespues, fotoSalida })
         });
         const data = await res.json();
         if (data.success) {
@@ -345,11 +345,11 @@ window.AttendanceDB = {
         return false;
     },
 
-    async createUser(username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal = 0, préstamoCuota = 0, préstamosaldo = 0, préstamoEstadoCuota = 'Ninguno', tipoPago = 'Por Horas', horasNormalesMax = 8.0, rangoMaximoHoras = 44.0, tarifaHoraExtra = 0.0, dpi = '', dpiFoto = null, hasVentasRole = 0, assignedStores = [], precioDieselBuses = 30.0, sueldoBusesAcumulado = 0.0, permisos = null) {
+    async createUser(username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal = 0, préstamoCuota = 0, préstamosaldo = 0, préstamoEstadoCuota = 'Ninguno', tipoPago = 'Por Horas', horasNormalesMax = 8.0, rangoMaximoHoras = 44.0, tarifaHoraExtra = 0.0, dpi = '', dpiFoto = null, hasVentasRole = 0, assignedStores = [], precioDieselBuses = 30.0, sueldoBusesAcumulado = 0.0, permisos = null, sueldoBusesDiario = 0.0, empresas_asignadas_json = '[]') {
         const res = await fetch('/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos })
+            body: JSON.stringify({ username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos, sueldoBusesDiario, empresas_asignadas_json })
         });
         const data = await res.json();
         if (data.success) {
@@ -359,11 +359,11 @@ window.AttendanceDB = {
         return { success: false, message: data.message || 'Error al crear usuario' };
     },
 
-    async updateUser(userId, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal = 0, préstamoCuota = 0, préstamosaldo = 0, préstamoEstadoCuota = 'Ninguno', tipoPago = 'Por Horas', horasNormalesMax = 8.0, rangoMaximoHoras = 44.0, tarifaHoraExtra = 0.0, dpi = '', dpiFoto = null, hasVentasRole = 0, assignedStores = [], precioDieselBuses = 30.0, sueldoBusesAcumulado = 0.0, permisos = null) {
+    async updateUser(userId, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal = 0, préstamoCuota = 0, préstamosaldo = 0, préstamoEstadoCuota = 'Ninguno', tipoPago = 'Por Horas', horasNormalesMax = 8.0, rangoMaximoHoras = 44.0, tarifaHoraExtra = 0.0, dpi = '', dpiFoto = null, hasVentasRole = 0, assignedStores = [], precioDieselBuses = 30.0, sueldoBusesAcumulado = 0.0, permisos = null, sueldoBusesDiario = 0.0, empresas_asignadas_json = '[]') {
         const res = await fetch('/api/users/'+userId, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos })
+            body: JSON.stringify({ username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos, sueldoBusesDiario, empresas_asignadas_json })
         });
         const data = await res.json();
         if (data.success) {
@@ -385,11 +385,11 @@ window.AttendanceDB = {
         return { success: false, message: data.message || 'Error al eliminar usuario' };
     },
 
-    async createCompany(name, encargadoId = null, adminId) {
+    async createCompany(name, encargadoId = null, adminId, modules = '{}', require_photo = 0) {
         const res = await fetch('/api/companies', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, encargadoId, adminId })
+            body: JSON.stringify({ name, encargadoId, adminId, modules, require_photo })
         });
         const data = await res.json();
         if (data.success) {
@@ -439,11 +439,11 @@ window.AttendanceDB = {
         return { success: false, message: data.message };
     },
 
-    async updateCompany(oldName, newName, encargadoId = null, employeeIds = [], adminId) {
+    async updateCompany(oldName, newName, encargadoId = null, employeeIds = [], adminId, modules = '{}', require_photo = 0) {
         const res = await fetch('/api/companies', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ oldName, newName, encargadoId, employeeIds, adminId })
+            body: JSON.stringify({ oldName, newName, encargadoId, employeeIds, adminId, modules, require_photo })
         });
         const data = await res.json();
         if (data.success) {
@@ -498,10 +498,11 @@ window.AttendanceDB = {
     },
 
     async createVehicle(placa, marca, modelo, empleadoAsignadoId, estado, adminId) {
+        const empresa = window.AttendanceDB?.currentCompany || 'N/A';
         const res = await fetch('/api/vehicles', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ placa, marca, modelo, empleadoAsignadoId, estado, adminId })
+            body: JSON.stringify({ placa, marca, modelo, empleadoAsignadoId, estado, adminId, empresa })
         });
         const data = await res.json();
         if (data.success) {
@@ -512,10 +513,11 @@ window.AttendanceDB = {
     },
 
     async updateVehicle(id, placa, marca, modelo, empleadoAsignadoId, estado, motivoUso = null, fechaAsignación = null, adminId) {
+        const empresa = window.AttendanceDB?.currentCompany || 'N/A';
         const res = await fetch(`/api/vehicles/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ placa, marca, modelo, empleadoAsignadoId, estado, motivoUso, fechaAsignación, adminId })
+            body: JSON.stringify({ placa, marca, modelo, empleadoAsignadoId, estado, motivoUso, fechaAsignación, adminId, empresa })
         });
         const data = await res.json();
         if (data.success) {
@@ -541,11 +543,11 @@ window.AttendanceDB = {
         return this._state.loans;
     },
 
-    async createLoan(usuarioId, monto, cuotas) {
+    async createLoan(usuarioId, monto, cuotas, cuotaMonto) {
         const res = await fetch('/api/loans', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId, monto, cuotas })
+            body: JSON.stringify({ usuarioId, monto, cuotas, cuotaMonto })
         });
         const data = await res.json();
         if (data.success) {

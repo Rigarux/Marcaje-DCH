@@ -12,7 +12,8 @@
         container.innerHTML = '<p class="text-muted">Cargando proyectos...</p>';
 
         try {
-            const res = await fetch('/api/projects');
+            const currentComp = window.AttendanceDB?.currentCompany || 'Todas';
+            const res = await fetch(`/api/projects?empresa=${encodeURIComponent(currentComp)}`);
             const projects = await res.json();
             window.projectsList = projects; // Guardar en lista global
 
@@ -155,21 +156,25 @@
             const viewTitle = document.getElementById('view-title');
             viewTitle.textContent = 'Detalles del Proyecto: ' + project.nombre;
 
+            const incomes = data.incomes || [];
+            const totalIngresos = incomes.reduce((sum, i) => sum + Number(i.monto), 0);
             const totalGastosMateriales = expenses.reduce((sum, e) => sum + (Number(e.monto) * (Number(e.cantidad) || 1)), 0);
             const totalPlanilla = attendances.reduce((sum, a) => sum + Number(a.pago), 0);
             const totalGastos = totalGastosMateriales + totalPlanilla;
-            const balance = project.presupuesto - totalGastos;
+            const balancePresupuesto = project.presupuesto - totalGastos;
+            const gananciaReal = totalIngresos - totalGastos;
 
             document.getElementById('detail-project-budget').textContent = 'Q' + project.presupuesto.toFixed(2);
             document.getElementById('detail-project-expenses').textContent = 'Q' + totalGastos.toFixed(2);
+            document.getElementById('detail-project-incomes').textContent = 'Q' + totalIngresos.toFixed(2);
+
+            const profitEl = document.getElementById('detail-project-real-profit');
+            profitEl.textContent = 'Q' + gananciaReal.toFixed(2);
+            profitEl.className = gananciaReal < 0 ? 'value text-danger' : 'value text-success';
 
             const balanceEl = document.getElementById('detail-project-balance');
-            balanceEl.textContent = 'Q' + balance.toFixed(2);
-            if (balance < 0) {
-                balanceEl.className = 'value text-danger';
-            } else {
-                balanceEl.className = 'value text-success';
-            }
+            balanceEl.textContent = 'Q' + balancePresupuesto.toFixed(2);
+            balanceEl.className = balancePresupuesto < 0 ? 'value text-danger' : 'value text-success';
 
             // Render table
             const tbody = document.getElementById('project-expenses-table-body');
@@ -298,6 +303,56 @@
                 }
             }
 
+            // Render table for Incomes
+            const tbodyIncomes = document.getElementById('project-incomes-table-body');
+            if (tbodyIncomes) {
+                tbodyIncomes.innerHTML = '';
+                if (incomes.length === 0) {
+                    tbodyIncomes.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-muted" style="text-align: center; padding: 20px;">
+                                No hay pagos de clientes registrados.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    const fragmentIncomes = document.createDocumentFragment();
+                    incomes.forEach(inc => {
+                        const tr = document.createElement('tr');
+                        const invoiceHtml = inc.fotoComprobanteUrl
+                            ? `<a href="${inc.fotoComprobanteUrl}" target="_blank" class="badge badge-success" style="padding: 4px 8px; text-decoration: none; font-size: 0.75rem; background-color: var(--success);">Ver Comprobante</a>`
+                            : '-';
+                        tr.innerHTML = `
+                            <td>${inc.fecha}</td>
+                            <td>${inc.descripcion}</td>
+                            <td style="text-align: right; font-weight: 500; color: var(--success);">Q${Number(inc.monto).toFixed(2)}</td>
+                            <td style="text-align: center;">${invoiceHtml}</td>
+                            <td style="text-align: center;">
+                                <button type="button" class="btn-table-action delete-income-btn" data-id="${inc.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--danger); border-color: var(--danger);">
+                                    Eliminar
+                                </button>
+                            </td>
+                        `;
+                        fragmentIncomes.appendChild(tr);
+                    });
+                    tbodyIncomes.appendChild(fragmentIncomes);
+
+                    tbodyIncomes.querySelectorAll('.delete-income-btn').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const id = btn.getAttribute('data-id');
+                            if (await appConfirm('Confirmación', '¿Estás seguro de eliminar este pago/ingreso?')) {
+                                const delRes = await fetch(`/api/projects/incomes/${id}`, { method: 'DELETE' });
+                                const delData = await delRes.json();
+                                if (delData.success) {
+                                    showToast('Pago Eliminado', 'El pago fue eliminado correctamente.', 'success');
+                                    renderProjectDetails(projectId);
+                                }
+                            }
+                        });
+                    });
+                }
+            }
+
             // Agrupamiento por fecha para las exportaciones
             const groups = {};
             expenses.forEach(e => {
@@ -382,8 +437,10 @@
                     wsData.push([]);
                     wsData.push(["RESUMEN FINANCIERO", "", "", ""]);
                     wsData.push(["Presupuesto Inicial:", "", "", 'Q ' + Number(project.presupuesto).toFixed(2)]);
+                    wsData.push(["Pagos (Ingresos):", "", "", 'Q ' + Number(totalIngresos).toFixed(2)]);
                     wsData.push(["Total Gastado:", "", "", 'Q ' + Number(totalGastos).toFixed(2)]);
-                    wsData.push(["Balance Restante:", "", "", 'Q ' + Number(balance).toFixed(2)]);
+                    wsData.push(["Ganancia Real:", "", "", 'Q ' + Number(gananciaReal).toFixed(2)]);
+                    wsData.push(["Balance Presupuesto:", "", "", 'Q ' + Number(balancePresupuesto).toFixed(2)]);
 
                     // Combinar celdas del resumen
                     const summaryStart = currentRowIndex + 1;
@@ -391,6 +448,8 @@
                     merges.push({ s: { r: summaryStart + 1, c: 0 }, e: { r: summaryStart + 1, c: 2 } });
                     merges.push({ s: { r: summaryStart + 2, c: 0 }, e: { r: summaryStart + 2, c: 2 } });
                     merges.push({ s: { r: summaryStart + 3, c: 0 }, e: { r: summaryStart + 3, c: 2 } });
+                    merges.push({ s: { r: summaryStart + 4, c: 0 }, e: { r: summaryStart + 4, c: 2 } });
+                    merges.push({ s: { r: summaryStart + 5, c: 0 }, e: { r: summaryStart + 5, c: 2 } });
 
                     const wb = XLSX.utils.book_new();
                     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -424,8 +483,10 @@
                     document.getElementById('print-project-name').textContent = project.nombre;
                     document.getElementById('print-project-description').textContent = project.descripcion || "Sin descripción del proyecto.";
                     document.getElementById('print-budget-val').textContent = "Q" + Number(project.presupuesto).toFixed(2);
+                    document.getElementById('print-incomes-val').textContent = "Q" + Number(totalIngresos).toFixed(2);
                     document.getElementById('print-expenses-val').textContent = "Q" + Number(totalGastos).toFixed(2);
-                    document.getElementById('print-balance-val').textContent = "Q" + Number(balance).toFixed(2);
+                    document.getElementById('print-real-profit-val').textContent = "Q" + Number(gananciaReal).toFixed(2);
+                    document.getElementById('print-balance-val').textContent = "Q" + Number(balancePresupuesto).toFixed(2);
 
                     const printTbody = document.getElementById('print-expenses-tbody');
                     printTbody.innerHTML = '';
@@ -558,12 +619,13 @@
             const editId = document.getElementById('edit-project-id').value;
             const url = editId ? `/api/projects/${editId}` : '/api/projects';
             const method = editId ? 'PUT' : 'POST';
+            const empresa = window.AttendanceDB?.currentCompany || 'N/A';
 
             try {
                 const res = await fetch(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, presupuesto })
+                    body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, presupuesto, empresa })
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -593,6 +655,47 @@
             document.getElementById('project-form-title').textContent = "Registrar Proyecto";
             document.getElementById('btn-save-project').textContent = "Guardar Proyecto";
             btnCancelProjectEdit.classList.add('hidden');
+        });
+    }
+
+    // Formulario de Nuevo Ingreso (Pagos)
+    const newIncomeForm = document.getElementById('new-income-form');
+    if (newIncomeForm) {
+        newIncomeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentDetailedProjectId) return;
+            
+            const fecha = document.getElementById('income-date').value;
+            const monto = parseFloat(document.getElementById('income-amount').value) || 0;
+            const desc = document.getElementById('income-desc').value.trim();
+            const photoInput = document.getElementById('income-photo');
+            let fotoBase64 = null;
+
+            if (photoInput.files && photoInput.files[0]) {
+                const reader = new FileReader();
+                reader.readAsDataURL(photoInput.files[0]);
+                await new Promise(r => reader.onload = r);
+                fotoBase64 = reader.result;
+            }
+            
+            try {
+                const res = await fetch(`/api/projects/${currentDetailedProjectId}/incomes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fecha, monto, descripcion: desc, fotoBase64 })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Pago Registrado', 'El pago de cliente se registró correctamente.', 'success');
+                    newIncomeForm.reset();
+                    renderProjectDetails(currentDetailedProjectId);
+                } else {
+                    showToast('Error', data.message || 'No se pudo guardar el pago', 'danger');
+                }
+            } catch (err) {
+                console.error(err); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger');
+                showToast('Error', 'Error al guardar el pago.', 'danger');
+            }
         });
     }
 

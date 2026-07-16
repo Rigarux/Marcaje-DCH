@@ -8,7 +8,8 @@
         const projectSelect = document.getElementById('global-income-project-select');
 
         // Fetch projects to populate the list
-        fetch('/api/projects').then(r => r.json()).then(data => {
+        const currentComp = window.AttendanceDB?.currentCompany || 'Todas';
+        fetch(`/api/projects?empresa=${encodeURIComponent(currentComp)}`).then(r => r.json()).then(data => {
             let projects = [];
             if (Array.isArray(data)) projects = data;
             else if (data && data.success && Array.isArray(data.data)) projects = data.data;

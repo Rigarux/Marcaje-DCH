@@ -789,7 +789,8 @@ window.openAcceptQuoteModal = async function (id, total) {
     // Cargar proyectos activos
     acceptQuoteProjectSelect.innerHTML = '<option value="">Cargando proyectos...</option>';
     try {
-        const res = await fetch('/api/projects');
+        const currentComp = window.AttendanceDB?.currentCompany || 'Todas';
+        const res = await fetch(`/api/projects?empresa=${encodeURIComponent(currentComp)}`);
         const data = await res.json();
 
         acceptQuoteProjectSelect.innerHTML = '<option value="">Seleccione un proyecto...</option>';

@@ -1,4 +1,4 @@
-﻿// --- ESTADO DE LA APLICACIÓN ---
+// --- ESTADO DE LA APLICACIÓN ---
 let currentUser = null;
 let timerInterval = null;
 let activeTab = 'tab-trabajadores-admin';
@@ -118,46 +118,61 @@ async function initApp() {
 
 function handleHashChange() {
     if (!currentUser) return;
-    const hash = decodeURIComponent(window.location.hash.substring(1));
-    if (hash) {
-        activeTab = hash;
-
-        // Si es un tab del admin, activar el botón correspondiente
-        if (hash.startsWith('tab-')) {
-            const tabBtns = document.querySelectorAll('.tab-btn');
-            const tabContents = document.querySelectorAll('.tab-content');
-            if (tabBtns.length > 0) {
-                tabBtns.forEach(b => b.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
-                const matchingBtn = document.querySelector(`.tab-btn[data-tab="${hash}"]`);
-                if (matchingBtn) matchingBtn.classList.add('active');
-                const matchingContent = document.getElementById(hash);
-                if (matchingContent) matchingContent.classList.add('active');
-            }
+    let hash = decodeURIComponent(window.location.hash.substring(1));
+    
+    if (!hash) {
+        const firstTab = document.querySelector('.sidebar-nav-link');
+        if (firstTab) {
+            hash = firstTab.getAttribute('data-subview');
+            window.location.hash = hash;
+            return;
+        } else {
+            hash = 'view-user'; // Fallback
         }
+    }
 
-        loadRoleView();
+    activeTab = hash;
 
-        // Actualizar vista activa en sidebar (visual)
-        document.querySelectorAll('.sidebar-nav-item').forEach(item => item.classList.remove('active'));
-        const activeLink = document.querySelector(`.sidebar-nav-link[data-subview="${hash}"]`);
-        if (activeLink && activeLink.parentElement) {
-            activeLink.parentElement.classList.add('active');
+    // Si es un tab del admin, activar el botón correspondiente
+    if (hash.startsWith('tab-')) {
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        if (tabBtns.length > 0) {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            const matchingBtn = document.querySelector(`.tab-btn[data-tab="${hash}"]`);
+            if (matchingBtn) matchingBtn.classList.add('active');
+            const matchingContent = document.getElementById(hash);
+            if (matchingContent) matchingContent.classList.add('active');
         }
+    }
 
-        // Actualizar vista activa en bottom nav
+    // Ocultar todas las vistas principales primero
+    document.querySelectorAll('.role-view').forEach(v => v.classList.add('hidden'));
+
+    loadRoleView(activeTab);
+
+    // Actualizar vista activa en sidebar (visual)
+    document.querySelectorAll('.sidebar-nav-item').forEach(item => item.classList.remove('active'));
+    const activeLink = document.querySelector(`.sidebar-nav-link[data-subview="${hash}"]`);
+    if (activeLink && activeLink.parentElement) {
+        activeLink.parentElement.classList.add('active');
+    }
+
+    // Actualizar vista activa en bottom nav
+    if (typeof bottomNavMenu !== 'undefined' && bottomNavMenu) {
         document.querySelectorAll('.bottom-nav-item').forEach(item => item.classList.remove('active'));
         const activeBottomLink = document.querySelector(`.bottom-nav-link[data-subview="${hash}"]`);
         if (activeBottomLink && activeBottomLink.parentElement) {
             activeBottomLink.parentElement.classList.add('active');
         }
+    }
 
-        // Actualizar vista activa en more nav list
-        document.querySelectorAll('.more-nav-list a').forEach(item => item.classList.remove('active'));
-        const activeMoreLink = document.querySelector(`.more-nav-list a[data-subview="${hash}"]`);
-        if (activeMoreLink) {
-            activeMoreLink.classList.add('active');
-        }
+    // Actualizar vista activa en more nav list
+    document.querySelectorAll('.more-nav-list a').forEach(item => item.classList.remove('active'));
+    const activeMoreLink = document.querySelector(`.more-nav-list a[data-subview="${hash}"]`);
+    if (activeMoreLink) {
+        activeMoreLink.classList.add('active');
     }
 }
 
@@ -205,22 +220,75 @@ function showDashboard() {
     userRoleBadge.textContent = roleText;
     userRoleBadge.className = `role-badge ${currentUser.rol}`;
 
+    const globalCompanyContainer = document.getElementById('global-company-selector-container');
+    const globalCompanySelector = document.getElementById('global-company-selector');
+
+    if (currentUser.rol === 'leader' || currentUser.rol === 'admin' || currentUser.rol === 'superadmin') {
+        let assigned = [];
+        if (currentUser.rol === 'leader') {
+            try { assigned = JSON.parse(currentUser.empresas_asignadas || '[]'); } catch(e){}
+        } else {
+            // Admin sees all companies
+            const allComps = window.AttendanceDB.getCompanies();
+            assigned = allComps.map(c => c.name);
+            assigned.unshift('Todas'); // Add an "All" option for Admin
+        }
+
+        if (assigned.length > 0) {
+            globalCompanySelector.innerHTML = '';
+            assigned.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                globalCompanySelector.appendChild(opt);
+            });
+            if (!window.AttendanceDB.currentCompany && assigned.length > 0) {
+                window.AttendanceDB.currentCompany = assigned[0];
+            } else if (window.AttendanceDB.currentCompany && !assigned.includes(window.AttendanceDB.currentCompany)) {
+                window.AttendanceDB.currentCompany = assigned[0];
+            }
+            globalCompanySelector.value = window.AttendanceDB.currentCompany;
+            globalCompanyContainer.style.display = 'block';
+
+            // Remover listeners previos
+            const newSelector = globalCompanySelector.cloneNode(true);
+            globalCompanySelector.parentNode.replaceChild(newSelector, globalCompanySelector);
+            
+            newSelector.addEventListener('change', () => {
+                window.AttendanceDB.currentCompany = newSelector.value;
+                const newFirstTab = setupSidebarMenu(); // Refrescar los apartados según la empresa
+                
+                // Si la pestaña actual ya no es válida para esta empresa, redirigir
+                if (newFirstTab && !document.querySelector(`.sidebar-nav-link[data-subview="${activeTab}"]`)) {
+                    window.location.replace('#' + newFirstTab);
+                } else {
+                    loadRoleView(); // reload data for this company
+                }
+            });
+        } else {
+            if (globalCompanyContainer) globalCompanyContainer.style.display = 'none';
+        }
+    } else {
+        if (globalCompanyContainer) globalCompanyContainer.style.display = 'none';
+    }
+
+    if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
+        renderCompanyDropdowns();
+    }
+
     // Renderizar menú de navegación lateral y configurar vistas
-    setupSidebarMenu();
+    const firstTab = setupSidebarMenu();
 
     // Establecer activeTab por defecto según rol
-    let defaultTab = 'view-user';
-    if (currentUser.rol === 'leader') defaultTab = 'view-leader';
-    else if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) defaultTab = 'tab-trabajadores-admin';
+    let defaultTab = firstTab || 'view-user';
+    if (!firstTab && (currentUser.rol === 'leader' || currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
+        defaultTab = 'tab-trabajadores-admin';
+    }
 
     if (!window.location.hash || window.location.hash === '#') {
         window.location.replace('#' + defaultTab);
     } else {
         handleHashChange();
-    }
-
-    if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
-        renderCompanyDropdowns();
     }
 }
 
@@ -237,32 +305,44 @@ function setupSidebarMenu() {
         } catch(e) {}
     }
 
-    if (currentUser.rol === 'usr' || currentUser.rol === 'leader') {
-        if (userPerms.control_asistencia !== false) menuItems.push({ id: 'nav-control-asistencia', label: 'Control de Asistencia', icon: '<polygon points="5 3 19 12 5 21 5 3"></polygon>', subView: 'view-user' });
-        if (userPerms.mi_historial !== false) menuItems.push({ id: 'nav-user-history', label: 'Mi Historial', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>', subView: 'view-user-history' });
-        if (userPerms.prestamos !== false) menuItems.push({ id: 'nav-user-loan', label: 'Mi Préstamo', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'view-user-loan' });
-        if (userPerms.vehiculos !== false) menuItems.push({ id: 'nav-user-vehicles', label: 'Encargados de Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'view-user-vehicles' });
-        if (userPerms.inventario !== false) menuItems.push({ id: 'nav-user-inventory', label: 'Mi Inventario', icon: '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>', subView: 'view-user-inventory' });
-        if (userPerms.caja_chica !== false) menuItems.push({ id: 'nav-user-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
-
-        if (currentUser.rol === 'leader') {
-            menuItems.push({ id: 'nav-leader', label: 'Mi Subgrupo', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>', subView: 'view-leader' });
+    let compPerms = {};
+    if (window.AttendanceDB && window.AttendanceDB.currentCompany && window.AttendanceDB.currentCompany !== 'Todas') {
+        const allComps = window.AttendanceDB.getCompanies();
+        const currentCompObj = allComps.find(c => c.name === window.AttendanceDB.currentCompany);
+        if (currentCompObj && currentCompObj.modules) {
+            try {
+                compPerms = typeof currentCompObj.modules === 'string' ? JSON.parse(currentCompObj.modules) : currentCompObj.modules;
+            } catch(e) {}
         }
-    } else if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
-        menuItems.push({ id: 'nav-admin-trabajadores', label: 'Trabajadores', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>', subView: 'tab-trabajadores-admin' });
-        menuItems.push({ id: 'nav-admin-descuentos', label: 'Descuentos', icon: '<circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line>', subView: 'tab-descuentos' });
-        menuItems.push({ id: 'nav-admin-empresas', label: 'Empresas', icon: '<rect x="2" y="2" width="20" height="20" rx="2" ry="2"></rect><path d="M10 22V14h4v8"></path><path d="M8 6h2v2H8V6zm8 0h2v2H8V6zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2z"></path>', subView: 'tab-empresas' });
-        if (userPerms.vehiculos !== false) menuItems.push({ id: 'nav-admin-vehículos', label: 'Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'tab-vehículos' });
-        if (userPerms.prestamos !== false) menuItems.push({ id: 'nav-admin-préstamos', label: 'Préstamos', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'tab-préstamos' });
-        if (userPerms.proyectos !== false) menuItems.push({ id: 'nav-admin-proyectos', label: 'Proyectos', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>', subView: 'tab-proyectos' });
-        if (userPerms.proyectos !== false) menuItems.push({ id: 'nav-admin-finanzas', label: 'Finanzas', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'tab-finanzas' });
-        if (userPerms.caja_chica !== false) menuItems.push({ id: 'nav-admin-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
-        // Botón de Día de Pago destacado
-        menuItems.push({ id: 'nav-admin-diapago', label: 'Día de Pago', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M12 14l2 2 4-4"></path>', subView: 'tab-asistencia', isSpecial: true });
+    }
+
+    if (currentUser.rol === 'usr') {
+        if (userPerms.control_asistencia !== false && compPerms.asistencia !== false) menuItems.push({ id: 'nav-control-asistencia', label: 'Control de Asistencia', icon: '<polygon points="5 3 19 12 5 21 5 3"></polygon>', subView: 'view-user' });
+        if (userPerms.mi_historial !== false && compPerms.asistencia !== false) menuItems.push({ id: 'nav-user-history', label: 'Mi Historial', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>', subView: 'view-user-history' });
+        if (userPerms.prestamos !== false && compPerms.prestamos !== false) menuItems.push({ id: 'nav-user-loan', label: 'Mi Préstamo', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'view-user-loan' });
+        if (userPerms.vehiculos !== false && compPerms.vehiculos !== false) menuItems.push({ id: 'nav-user-vehicles', label: 'Encargados de Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'view-user-vehicles' });
+        if (userPerms.inventario !== false && compPerms.inventario !== false) menuItems.push({ id: 'nav-user-inventory', label: 'Mi Inventario', icon: '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>', subView: 'view-user-inventory' });
+        if (userPerms.caja_chica !== false && compPerms.finanzas !== false) menuItems.push({ id: 'nav-user-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
+    } else if (currentUser.rol === 'admin' || currentUser.rol === 'superadmin' || currentUser.rol === 'leader') {
+        const isLeader = currentUser.rol === 'leader';
+        
+        if (compPerms.trabajadores !== false) menuItems.push({ id: 'nav-admin-trabajadores', label: 'Trabajadores', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>', subView: 'tab-trabajadores-admin' });
+        if (compPerms.descuentos !== false) menuItems.push({ id: 'nav-admin-descuentos', label: 'Descuentos', icon: '<circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line>', subView: 'tab-descuentos' });
+        
+        if (!isLeader) {
+            menuItems.push({ id: 'nav-admin-empresas', label: 'Empresas', icon: '<rect x="2" y="2" width="20" height="20" rx="2" ry="2"></rect><path d="M10 22V14h4v8"></path><path d="M8 6h2v2H8V6zm8 0h2v2H8V6zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2z"></path>', subView: 'tab-empresas' });
+        }
+        
+        if (compPerms.vehiculos !== false && (!isLeader || userPerms.vehiculos !== false)) menuItems.push({ id: 'nav-admin-vehículos', label: 'Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'tab-vehículos' });
+        if (compPerms.prestamos !== false && (!isLeader || userPerms.prestamos !== false)) menuItems.push({ id: 'nav-admin-préstamos', label: 'Préstamos', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'tab-préstamos' });
+        if (compPerms.proyectos !== false && (!isLeader || userPerms.proyectos !== false)) menuItems.push({ id: 'nav-admin-proyectos', label: 'Proyectos', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>', subView: 'tab-proyectos' });
+        if (compPerms.finanzas !== false && (!isLeader || userPerms.ingresos_gastos !== false)) menuItems.push({ id: 'nav-admin-finanzas', label: 'Finanzas', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'tab-finanzas' });
+        if (compPerms.finanzas !== false && (!isLeader || userPerms.caja_chica !== false)) menuItems.push({ id: 'nav-admin-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
+        if (compPerms.asistencia !== false && (!isLeader || userPerms.control_asistencia !== false)) menuItems.push({ id: 'nav-admin-diapago', label: 'Día de Pago', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M12 14l2 2 4-4"></path>', subView: 'tab-asistencia', isSpecial: true });
     }
 
     // Todos los roles tienen acceso a Ingresos Globales
-    if (userPerms.ingresos_gastos !== false) menuItems.push({ id: 'nav-global-incomes', label: 'Ingresos y Gastos', icon: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-global-incomes' });
+    if (userPerms.ingresos_gastos !== false && compPerms.finanzas !== false) menuItems.push({ id: 'nav-global-incomes', label: 'Ingresos y Gastos', icon: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-global-incomes' });
 
     const maxBottomItems = 4;
     let bottomItemsAdded = 0;
@@ -392,22 +472,25 @@ function setupSidebarMenu() {
         bottomNavMenu.appendChild(logoutLi);
     }
 
-    // Delegate bottom nav clicks
+    document.querySelectorAll('.sidebar-nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const subViewId = e.currentTarget.getAttribute('data-subview');
+            window.location.hash = subViewId;
+        });
+    });
+
     if (bottomNavMenu) {
-        // Remove old listener if exists
-        const newBottomNav = bottomNavMenu.cloneNode(true);
-        bottomNavMenu.parentNode.replaceChild(newBottomNav, bottomNavMenu);
-        bottomNavMenu = newBottomNav;
-        newBottomNav.addEventListener('click', (e) => {
-            const navLink = e.target.closest('.bottom-nav-link');
-            if (navLink) {
-                const subview = navLink.getAttribute('data-subview');
-                if (subview && subview !== 'undefined' && subview !== '') {
-                    window.location.hash = subview;
-                }
-            }
+        document.querySelectorAll('.bottom-nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const subViewId = e.currentTarget.getAttribute('data-subview');
+                window.location.hash = subViewId;
+            });
         });
     }
+
+    return menuItems.length > 0 ? menuItems[0].subView : null;
 }
 
 // Cargar la vista correspondiente al rol
@@ -462,19 +545,10 @@ function loadRoleView() {
         return;
     }
 
-    if (currentUser.rol === 'usr' || currentUser.rol === 'leader') {
-        if (activeTab === 'tab-tiendas' && currentUser.rol === 'leader') {
-            const adminView = document.getElementById('view-admin');
-            if (adminView) adminView.classList.remove('hidden');
-            document.querySelectorAll('#view-admin .tab-content').forEach(c => c.classList.remove('active'));
-            const targetTabContent = document.getElementById('tab-tiendas');
-            if (targetTabContent) targetTabContent.classList.add('active');
-            viewTitle.textContent = 'Gestión de Tiendas';
-            viewSubtitle.textContent = 'Administra tiendas, asigna personal y gestiona el inventario principal.';
-            const tabHeader = document.querySelector('.tab-header');
-            if (tabHeader) tabHeader.style.display = 'none'; // Ocultar barra superior del admin
-            renderAdminStoresTable();
-        } else if (activeTab === 'view-user-history') {
+    const isUserTab = activeTab.startsWith('view-user');
+    
+    if (currentUser.rol === 'usr' || ((currentUser.rol === 'leader' || currentUser.rol === 'admin' || currentUser.rol === 'superadmin') && isUserTab)) {
+        if (activeTab === 'view-user-history') {
             const historyView = document.getElementById('view-user-history');
             if (historyView) historyView.classList.remove('hidden');
             viewTitle.textContent = 'Historiales';
@@ -505,13 +579,24 @@ function loadRoleView() {
             viewTitle.textContent = 'Control de Asistencia';
             viewSubtitle.textContent = 'Registra tus marcas diarias y visualiza tus ingresos calculados en Quetzales (Q).';
             setupUserView();
-        } else {
-            viewLeader.classList.remove('hidden');
-            viewTitle.textContent = `Panel de Control - ${currentUser.grupo}`;
-            viewSubtitle.textContent = 'Monitoreo de horas de trabajo y pagos devengados por los miembros de tu subgrupo.';
-            setupLeaderView();
         }
-    } else if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
+    }
+    
+    if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin' || currentUser.rol === 'leader') && !isUserTab) {
+        if (activeTab === 'tab-tiendas' && currentUser.rol === 'leader') {
+            const adminView = document.getElementById('view-admin');
+            if (adminView) adminView.classList.remove('hidden');
+            document.querySelectorAll('#view-admin .tab-content').forEach(c => c.classList.remove('active'));
+            const targetTabContent = document.getElementById('tab-tiendas');
+            if (targetTabContent) targetTabContent.classList.add('active');
+            viewTitle.textContent = 'Gestión de Tiendas';
+            viewSubtitle.textContent = 'Administra tiendas, asigna personal y gestiona el inventario principal.';
+            const tabHeader = document.querySelector('.tab-header');
+            if (tabHeader) tabHeader.style.display = 'none'; // Ocultar barra superior del admin
+            renderAdminStoresTable();
+            return;
+        }
+
         viewAdmin.classList.remove('hidden');
 
         // Título y subtítulo dinámico según pestaña
@@ -557,20 +642,11 @@ function loadRoleView() {
 document.addEventListener('DOMContentLoaded', () => {
     const userProfileWidget = document.querySelector('.user-profile-widget');
     if (userProfileWidget) {
-        userProfileWidget.style.cursor = 'pointer';
+        // Quitar el cursor de puntero ya que no tendrá acción de navegación
+        userProfileWidget.style.cursor = 'default';
+        
+        // Mantener solo la funcionalidad de cerrar el menú en móviles si hacen clic
         userProfileWidget.addEventListener('click', () => {
-            if (!currentUser) return;
-
-            // Si es un usuario normal o lider, enviarlo a su vista de descuentos
-            if (currentUser.rol === 'usr' || currentUser.rol === 'leader') {
-                window.location.hash = 'view-user-penalties';
-            }
-            // Si es un administrador, enviarlo al panel de descuentos general
-            else if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) {
-                window.location.hash = 'tab-descuentos';
-            }
-
-            // Cerrar el menú en móviles
             document.getElementById('sidebar').classList.remove('mobile-open');
         });
     }

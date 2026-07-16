@@ -11,7 +11,13 @@
 
     function populateLoansUsersSelect() {
         if (!loanUserSelect) return;
-        const users = window.AttendanceDB.getUsers();
+        let users = window.AttendanceDB.getUsers();
+        
+        const currentComp = window.AttendanceDB.currentCompany;
+        if (currentComp && currentComp !== 'Todas') {
+            users = users.filter(u => u.empresa === currentComp);
+        }
+        
         loanUserSelect.innerHTML = '<option value="" disabled selected>Seleccione un colaborador...</option>';
         users.filter(u => u.rol === 'usr' || u.rol === 'leader').forEach(u => {
             const opt = document.createElement('option');
@@ -23,7 +29,15 @@
 
     function renderAdminLoansTable() {
         if (!adminLoansTable) return;
-        const loans = window.AttendanceDB.getLoans();
+        let loans = window.AttendanceDB.getLoans();
+        
+        const currentComp = window.AttendanceDB.currentCompany;
+        if (currentComp && currentComp !== 'Todas') {
+            const allUsers = window.AttendanceDB.getUsers();
+            const usersInCompany = allUsers.filter(u => u.empresa === currentComp).map(u => u.id);
+            loans = loans.filter(l => usersInCompany.includes(l.usuarioId));
+        }
+
         adminLoansTable.innerHTML = '';
 
         if (loans.length === 0) {
@@ -52,7 +66,7 @@
                 <td><strong>${l.nombreEmpleado || 'Colaborador'}</strong></td>
                 <td>${l.fecha}</td>
                 <td>Q${(l.monto || 0).toFixed(2)}</td>
-                <td>${l.cuotas} pago(s)</td>
+                <td>Q${(l.cuotaMonto || (l.monto / l.cuotas)).toFixed(2)} / pago</td>
                 <td><span class="table-badge ${statusClass}">${l.estado}</span></td>
                 <td>
                     <div style="display:flex; align-items:center; gap:5px;">
@@ -108,7 +122,12 @@
         if (activeLoansTable) {
             activeLoansTable.innerHTML = '';
             const allUsers = window.AttendanceDB.getUsers();
-            const usersWithLoans = allUsers.filter(u => (u.préstamoTotal > 0 || u.préstamosaldo > 0));
+            let usersWithLoans = allUsers.filter(u => (u.préstamoTotal > 0 || u.préstamosaldo > 0));
+            
+            const currentComp = window.AttendanceDB.currentCompany;
+            if (currentComp && currentComp !== 'Todas') {
+                usersWithLoans = usersWithLoans.filter(u => u.empresa === currentComp);
+            }
 
             if (usersWithLoans.length === 0) {
                 activeLoansTable.innerHTML = `<tr><td colspan="6" class="text-muted" style="text-align:center; padding:20px;">No hay colaboradores con préstamos activos configurados.</td></tr>`;
@@ -169,6 +188,85 @@
         }
     }
 
+    window.renderAdminVacationsTable = function() {
+        const adminVacationsTable = document.getElementById('admin-vacations-table');
+        if (!adminVacationsTable) return;
+        
+        let allUsers = window.AttendanceDB.getUsers().filter(u => u.rol !== 'superadmin' && u.rol !== 'admin');
+        const currentComp = window.AttendanceDB.currentCompany;
+        if (currentComp && currentComp !== 'Todas') {
+            allUsers = allUsers.filter(u => u.empresa === currentComp);
+        }
+
+        adminVacationsTable.innerHTML = '';
+        const pendingUsers = allUsers.filter(u => u.descansoEstado === 'Pendiente de Autorizar');
+        
+        if (allUsers.length === 0) {
+            adminVacationsTable.innerHTML = `<tr><td colspan="5" class="text-muted" style="text-align:center; padding:20px;">No hay usuarios.</td></tr>`;
+            return;
+        }
+
+        allUsers.forEach(u => {
+            let statusClass = u.descansoEstado === 'Pendiente de Autorizar' ? 'pending' : 'approved';
+            let actions = '';
+            
+            if (u.descansoEstado === 'Pendiente de Autorizar') {
+                actions = `<button class="btn-table-action approve authorize-vacation-btn" data-userid="${u.id}">Autorizar</button>`;
+            } else {
+                actions = `<span class="text-muted">-</span>`;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${u.nombre}</strong></td>
+                <td>${u.vacacionesRestantes !== undefined ? u.vacacionesRestantes : 15} Días</td>
+                <td>${u.descansoDiasSolicitados || 0} Días</td>
+                <td><span class="table-badge ${statusClass}">${u.descansoEstado || 'Ninguno'}</span></td>
+                <td>${actions}</td>
+            `;
+            // Highlight row if pending
+            if (u.descansoEstado === 'Pendiente de Autorizar') {
+                tr.style.backgroundColor = 'rgba(255, 152, 0, 0.1)';
+            }
+            adminVacationsTable.appendChild(tr);
+        });
+
+        adminVacationsTable.querySelectorAll('.authorize-vacation-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const uid = parseInt(btn.getAttribute('data-userid'));
+                
+                const confirmAdmin = confirm("¿Estás seguro de autorizar esta solicitud? Esto generará automáticamente 8 horas de asistencia para cada día solicitado.");
+                if (!confirmAdmin) return;
+                
+                const loggedInUserStr = sessionStorage.getItem('dch_current_user');
+                const loggedInUser = loggedInUserStr ? JSON.parse(loggedInUserStr) : null;
+                const adminId = loggedInUser ? loggedInUser.id : 0;
+
+                try {
+                    const res = await fetch(`/api/users/${uid}/descansos/autorizar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ adminId })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast('Vacaciones Autorizadas', 'Se han autorizado las vacaciones y creado los marcajes automáticos.', 'success');
+                        window.AttendanceDB.fetchInitialData().then(() => {
+                            window.renderAdminVacationsTable();
+                            if (typeof renderAdminLoansTable === 'function') renderAdminLoansTable();
+                        });
+                    } else {
+                        showToast('Error', data.message || 'Error al autorizar', 'danger');
+                    }
+                } catch(err) {
+                    console.error(err);
+                    showToast('Error', 'Error de red', 'danger');
+                }
+            });
+        });
+    };
+
+
     if (btnOpenLoanModal) {
         btnOpenLoanModal.addEventListener('click', () => {
             openLoanModal();
@@ -198,14 +296,15 @@
             e.preventDefault();
             const wId = parseInt(loanUserSelect.value);
             const monto = parseFloat(loanAmountInput.value);
-            const cuotas = parseInt(loanInstallmentsSelect.value);
+            const cuotaMonto = parseFloat(loanInstallmentsSelect.value);
+            const cuotas = Math.ceil(monto / cuotaMonto);
 
             if (!wId || isNaN(wId)) {
                 showToast('Error', 'Debe seleccionar un colaborador.', 'danger');
                 return;
             }
 
-            const success = await window.AttendanceDB.createLoan(wId, monto, cuotas);
+            const success = await window.AttendanceDB.createLoan(wId, monto, cuotas, cuotaMonto);
             if (success) {
                 showToast('Solicitud Enviada', 'Se ha registrado la solicitud de préstamo.', 'success');
                 closeLoanModal();
@@ -219,7 +318,7 @@
     window.setupUserLoanView = function() {
         if (!currentUser) return;
         
-        const loans = window.AttendanceDB.getLoans().filter(l => l.empleadoId === currentUser.id);
+        const loans = window.AttendanceDB.getLoans().filter(l => l.usuarioId === currentUser.id);
         const activeLoan = loans.find(l => l.estado === 'Aprobado');
         
         const usrLoanTotalVal = document.getElementById('usr-loan-total-val');
@@ -253,7 +352,7 @@
                     tr.innerHTML = `
                         <td>${l.fecha}</td>
                         <td>Q${(l.monto || 0).toFixed(2)}</td>
-                        <td>${l.cuotas}</td>
+                        <td>Q${(l.cuotaMonto || (l.monto / l.cuotas)).toFixed(2)}</td>
                         <td>${l.estado}</td>
                     `;
                     userLoansTable.appendChild(tr);
@@ -269,9 +368,10 @@
                 const amountInput = document.getElementById('request-loan-amount');
                 const installmentsInput = document.getElementById('request-loan-installments');
                 const amount = parseFloat(amountInput.value);
-                const installments = parseInt(installmentsInput.value);
+                const cuotaMonto = parseFloat(installmentsInput.value);
+                const installments = Math.ceil(amount / cuotaMonto);
                 
-                const success = await window.AttendanceDB.createLoan(currentUser.id, amount, installments);
+                const success = await window.AttendanceDB.createLoan(currentUser.id, amount, installments, cuotaMonto);
                 if (success) {
                     showToast('Solicitud Enviada', 'Tu solicitud de préstamo ha sido enviada.', 'success');
                     amountInput.value = '';
@@ -279,6 +379,54 @@
                     window.setupUserLoanView();
                 } else {
                     showToast('Error', 'Hubo un error al enviar tu solicitud.', 'danger');
+                }
+            });
+        }
+
+        const usrVacationsVal = document.getElementById('usr-vacations-val');
+        const usrVacationsStatus = document.getElementById('usr-vacations-status');
+        if (usrVacationsVal) {
+            usrVacationsVal.textContent = `${currentUser.vacacionesRestantes !== undefined ? currentUser.vacacionesRestantes : 15} Días`;
+            if (currentUser.descansoEstado === 'Pendiente de Autorizar') {
+                usrVacationsStatus.textContent = `Tienes una solicitud de ${currentUser.descansoDiasSolicitados || 1} día(s) pendiente`;
+                usrVacationsStatus.style.color = 'var(--warning)';
+            } else {
+                usrVacationsStatus.textContent = 'Ninguna solicitud pendiente';
+                usrVacationsStatus.style.color = '';
+            }
+        }
+
+        const formRequestVacation = document.getElementById('form-request-vacation');
+        if (formRequestVacation && !formRequestVacation.hasAttribute('data-listener-attached')) {
+            formRequestVacation.setAttribute('data-listener-attached', 'true');
+            formRequestVacation.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (currentUser.descansoEstado === 'Pendiente de Autorizar') {
+                    showToast('Aviso', 'Ya tienes una solicitud pendiente.', 'warning');
+                    return;
+                }
+                const daysInput = document.getElementById('request-vacation-days');
+                const days = parseInt(daysInput.value) || 1;
+                
+                try {
+                    const res = await fetch(`/api/users/${currentUser.id}/descansos/solicitar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ dias: days })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast('Solicitud Enviada', 'Tu solicitud de descanso ha sido enviada.', 'success');
+                        daysInput.value = '';
+                        currentUser.descansoEstado = 'Pendiente de Autorizar';
+                        currentUser.descansoDiasSolicitados = days;
+                        window.setupUserLoanView();
+                    } else {
+                        showToast('Error', data.message || 'Error al enviar solicitud', 'danger');
+                    }
+                } catch(err) {
+                    console.error(err);
+                    showToast('Error', 'Error de red', 'danger');
                 }
             });
         }

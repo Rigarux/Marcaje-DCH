@@ -14,8 +14,15 @@
 
         try {
             let url = '/api/petty-cash-funds';
+            const queryParams = new URLSearchParams();
             if (currentUser.rol === 'usr') {
-                url += `?usuarioId=${currentUser.id}`;
+                queryParams.append('usuarioId', currentUser.id);
+            }
+            if (['admin', 'superadmin', 'leader'].includes(currentUser.rol) && window.AttendanceDB?.currentCompany) {
+                queryParams.append('empresa', window.AttendanceDB.currentCompany);
+            }
+            if (queryParams.toString()) {
+                url += `?${queryParams.toString()}`;
             }
 
             const [fundsRes, usersRes] = await Promise.all([
@@ -37,11 +44,12 @@
                 assignBtn.onclick = () => {
                     const select = document.getElementById('assign-pc-employee');
                     select.innerHTML = '<option value="">Seleccione un empleado...</option>';
-                    users.filter(u => u.rol === 'usr' || u.rol === 'leader').forEach(u => {
+                    users.filter(u => (u.rol === 'usr' || u.rol === 'leader') && (!window.AttendanceDB?.currentCompany || window.AttendanceDB?.currentCompany === 'Todas' || u.empresa === window.AttendanceDB?.currentCompany)).forEach(u => {
                         select.innerHTML += `<option value="${u.id}">${u.nombre}</option>`;
                     });
 
-                    fetch('/api/projects').then(r => r.json()).then(projs => {
+                    const currentComp = window.AttendanceDB?.currentCompany || 'Todas';
+                    fetch(`/api/projects?empresa=${encodeURIComponent(currentComp)}`).then(r => r.json()).then(projs => {
                         const projSelect = document.getElementById('assign-pc-project');
                         if (projSelect) {
                             projSelect.innerHTML = '<option value="">Ninguno</option>';
@@ -79,7 +87,7 @@
                             <label style="font-size: 0.8rem;">Empleado (Cajas Cerradas)</label>
                             <select id="pc-filter-user" class="form-control" style="padding: 5px;">
                                 <option value="">Todos los empleados</option>
-                                ${users.filter(u => u.rol === 'usr' || u.rol === 'leader').map(u => `<option value="${u.id}" ${window.pcFilters.userId == u.id ? 'selected' : ''}>${u.nombre}</option>`).join('')}
+                                ${users.filter(u => (u.rol === 'usr' || u.rol === 'leader') && (!window.AttendanceDB?.currentCompany || window.AttendanceDB?.currentCompany === 'Todas' || u.empresa === window.AttendanceDB?.currentCompany)).map(u => `<option value="${u.id}" ${window.pcFilters.userId == u.id ? 'selected' : ''}>${u.nombre}</option>`).join('')}
                             </select>
                         </div>
                     `;
@@ -227,9 +235,10 @@
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
                     <div>
                         <span class="badge ${badgeColor}" style="margin-bottom: 5px; display: inline-block;">${fondo.estado}</span>
-                        <h4 style="margin: 0; font-size: 1.1rem;">${fondo.descripcion}</h4>
-                        ${fondo.proyectoNombre ? `<div style="font-size: 0.8rem; color: var(--primary); margin-top: 5px;">Proyecto: ${fondo.proyectoNombre}</div>` : ''}
-                        ${currentUser.rol !== 'usr' ? `<div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">Asignado a: ${fondo.empleadoNombre}</div>` : ''}
+                          <h4 style="margin: 0; font-size: 1.1rem;">${fondo.descripcion}</h4>
+                          ${fondo.empresa ? `<div style="font-size: 0.8rem; color: var(--primary); margin-top: 5px;">Empresa: ${fondo.empresa === 'N/A' ? 'General (No asignada)' : fondo.empresa}</div>` : ''}
+                          ${fondo.proyectoNombre ? `<div style="font-size: 0.8rem; color: var(--primary); margin-top: 2px;">Proyecto: ${fondo.proyectoNombre}</div>` : ''}
+                          ${currentUser.rol !== 'usr' ? `<div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">Asignado a: ${fondo.empleadoNombre}</div>` : ''}
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">
                             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: text-top; margin-right: 3px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                             Fecha de asignación: ${new Date(fondo.fecha).toLocaleDateString('es-GT', {year: 'numeric', month: 'short', day: 'numeric'})}
@@ -316,7 +325,8 @@
                     monto: parseFloat(amount),
                     descripcion: note,
                     proyecto_id: projectId ? parseInt(projectId) : null,
-                    registrado_por: currentUser.id
+                    registrado_por: currentUser.id,
+                    empresa: window.AttendanceDB?.currentCompany || 'N/A'
                 })
             });
             const data = await res.json();

@@ -8,16 +8,15 @@ async function processAutomaticCut() {
         const users = await dbAll("SELECT * FROM users");
         if (users.length === 0) return;
 
-        let userIdsToCut = [];
+        let usersToCutByCompany = {};
 
         for (const user of users) {
             const isSemanales = !user.frecuenciaPago || user.frecuenciaPago === 'semanal';
+            let shouldCut = false;
             
             if (isSemanales) {
-                // Si es semanal, siempre se corta el viernes
-                userIdsToCut.push(user.id);
+                shouldCut = true;
             } else if (user.frecuenciaPago === '15na') {
-                // Verificar si tiene >= 15 días laborados sin cortar
                 const attendance = await dbAll(`
                     SELECT COUNT(DISTINCT fecha) as days 
                     FROM attendance 
@@ -32,42 +31,53 @@ async function processAutomaticCut() {
                 
                 const totalDays = (attendance[0]?.days || 0) + (busRecords[0]?.days || 0);
                 if (totalDays >= 15) {
-                    userIdsToCut.push(user.id);
+                    shouldCut = true;
                 }
+            }
+
+            if (shouldCut) {
+                const emp = user.empresa || 'DCH';
+                if (!usersToCutByCompany[emp]) {
+                    usersToCutByCompany[emp] = [];
+                }
+                usersToCutByCompany[emp].push(user.id);
             }
         }
 
-        if (userIdsToCut.length === 0) {
+        if (Object.keys(usersToCutByCompany).length === 0) {
             console.log("No hay empleados pendientes de corte.");
             return;
         }
 
-        // Crear un nuevo corte en la base de datos
         const currentDate = new Date().toISOString().split('T')[0];
         const currentTime = new Date().toTimeString().split(' ')[0];
-        const result = await dbRun(
-            "INSERT INTO payroll_cuts (fechaCorte, fechaGenerado, estado) VALUES (?, ?, ?)", 
-            [currentDate, `${currentDate} ${currentTime}`, 'Pendiente']
-        );
-        const nuevoCorteId = result.lastID;
 
-        // Cerrar registros de attendance
-        let attParams = userIdsToCut.map(() => '?').join(',');
-        await dbRun(`
-            UPDATE attendance 
-            SET corteId = ?, archivado = 1 
-            WHERE usuarioId IN (${attParams}) AND corteId IS NULL AND archivado = 0 AND horaSalida IS NOT NULL AND horaSalida != ''
-        `, [nuevoCorteId, ...userIdsToCut]);
+        for (const [empresa, userIds] of Object.entries(usersToCutByCompany)) {
+            // Crear un nuevo corte en la base de datos por empresa
+            const result = await dbRun(
+                "INSERT INTO payroll_cuts (fechaCorte, fechaGenerado, estado, empresa) VALUES (?, ?, ?, ?)", 
+                [currentDate, `${currentDate} ${currentTime}`, 'Pendiente', empresa]
+            );
+            const nuevoCorteId = result.lastID;
 
-        // Cerrar registros de bus_records
-        await dbRun(`
-            UPDATE bus_records 
-            SET corteId = ?, archivado = 1 
-            WHERE usuarioId IN (${attParams}) AND corteId IS NULL AND archivado = 0
-        `, [nuevoCorteId, ...userIdsToCut]);
+            // Cerrar registros de attendance
+            let attParams = userIds.map(() => '?').join(',');
+            await dbRun(`
+                UPDATE attendance 
+                SET corteId = ?, archivado = 1 
+                WHERE usuarioId IN (${attParams}) AND corteId IS NULL AND archivado = 0 AND horaSalida IS NOT NULL AND horaSalida != ''
+            `, [nuevoCorteId, ...userIds]);
 
-        await addLog(0, `Se generó automáticamente el corte de planilla #${nuevoCorteId} para ${userIdsToCut.length} colaboradores.`);
-        console.log(`Corte #${nuevoCorteId} generado exitosamente.`);
+            // Cerrar registros de bus_records
+            await dbRun(`
+                UPDATE bus_records 
+                SET corteId = ?, archivado = 1 
+                WHERE usuarioId IN (${attParams}) AND corteId IS NULL AND archivado = 0
+            `, [nuevoCorteId, ...userIds]);
+
+            await addLog(0, `Se generó automáticamente el corte de planilla #${nuevoCorteId} para la empresa ${empresa} (${userIds.length} colaboradores).`);
+            console.log(`Corte #${nuevoCorteId} generado exitosamente para ${empresa}.`);
+        }
 
     } catch (error) {
         console.error("Error al procesar el corte automático:", error);
@@ -91,6 +101,19 @@ function startCron() {
         if (isFriday && isTime && !hasRunToday) {
             hasRunToday = true;
             processAutomaticCut();
+        }
+
+        // Lógica de reseteo de vacaciones (5 de enero)
+        const isJan5 = now.getMonth() === 0 && now.getDate() === 5;
+        if (isJan5 && !global.hasRunVacationResetToday) {
+            global.hasRunVacationResetToday = true;
+            console.log("Detectado 5 de enero: Reiniciando contadores de vacaciones a 15...");
+            dbRun("UPDATE users SET vacacionesRestantes = 15")
+                .then(() => console.log("Vacaciones reiniciadas exitosamente."))
+                .catch(e => console.error("Error al reiniciar vacaciones:", e));
+        }
+        if (!isJan5) {
+            global.hasRunVacationResetToday = false;
         }
     }, 60000); // Revisar cada minuto
 }

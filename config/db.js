@@ -116,6 +116,9 @@ async function initDb() {
                 modelo TEXT,
                 empleadoAsignadoId INTEGER,
                 estado TEXT DEFAULT 'Disponible',
+                motivoUso TEXT,
+                fechaAsignación TEXT,
+                empresa TEXT,
                 FOREIGN KEY(empleadoAsignadoId) REFERENCES users(id) ON DELETE SET NULL
             )`,
             `CREATE TABLE IF NOT EXISTS loans (
@@ -168,7 +171,8 @@ async function initDb() {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 fechaCorte TEXT,
                 fechaGenerado TEXT,
-                estado TEXT DEFAULT 'Pendiente'
+                estado TEXT DEFAULT 'Pendiente',
+                empresa TEXT DEFAULT 'DCH'
             )`,
             `CREATE TABLE IF NOT EXISTS projects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,7 +180,17 @@ async function initDb() {
                 descripcion TEXT,
                 fechaInicio TEXT,
                 fechaFin TEXT,
-                presupuesto REAL DEFAULT 0
+                presupuesto REAL DEFAULT 0,
+                empresa TEXT
+            )`,
+            `CREATE TABLE IF NOT EXISTS project_incomes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                proyectoId INTEGER NOT NULL,
+                monto REAL DEFAULT 0,
+                fecha TEXT,
+                descripcion TEXT,
+                fotoComprobanteUrl TEXT,
+                FOREIGN KEY(proyectoId) REFERENCES projects(id) ON DELETE CASCADE
             )`,
             `CREATE TABLE IF NOT EXISTS project_expenses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -242,6 +256,7 @@ async function initDb() {
                 fecha DATETIME,
                 registrado_por INTEGER,
                 estado TEXT DEFAULT 'ACTIVO',
+                empresa TEXT,
                 FOREIGN KEY(usuario_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY(proyecto_id) REFERENCES projects(id) ON DELETE SET NULL,
                 FOREIGN KEY(registrado_por) REFERENCES users(id) ON DELETE SET NULL
@@ -326,6 +341,10 @@ async function initDb() {
 
         // Migraciones seguras
         const migrations = [
+        "ALTER TABLE users ADD COLUMN vacacionesRestantes INTEGER DEFAULT 15",
+        "ALTER TABLE users ADD COLUMN descansoEstado TEXT DEFAULT 'Ninguno'",
+        "ALTER TABLE users ADD COLUMN descansoDiasSolicitados INTEGER DEFAULT 0",
+        "ALTER TABLE loans ADD COLUMN cuotaMonto REAL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN préstamoTotal REAL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN préstamoCuota REAL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN préstamosaldo REAL DEFAULT 0",
@@ -347,6 +366,9 @@ async function initDb() {
         "ALTER TABLE attendance ADD COLUMN justificacionMotivoSalida TEXT",
         "ALTER TABLE attendance ADD COLUMN proyectoId INTEGER",
         "ALTER TABLE attendance ADD COLUMN metodoPago TEXT DEFAULT 'Efectivo'",
+        "ALTER TABLE users ADD COLUMN empresas_asignadas TEXT DEFAULT '[]'",
+        "ALTER TABLE companies ADD COLUMN modules TEXT DEFAULT '{}'",
+        "ALTER TABLE companies ADD COLUMN require_photo INTEGER DEFAULT 0",
         "ALTER TABLE attendance ADD COLUMN archivado INTEGER DEFAULT 0",
         "ALTER TABLE penalizations ADD COLUMN fotoUrl TEXT",
         "ALTER TABLE project_expenses ADD COLUMN fotoFacturaUrl TEXT",
@@ -421,4 +443,4 @@ async function addLog(userId, action) {
 // Login
 
 
-module.exports = { db, dbRun, dbAll, dbGet, initDb, addLog };
+module.exports = { db, dbRun, dbAll, dbGet, initDb, addLog, getFormattedTimestamp };

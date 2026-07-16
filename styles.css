@@ -2967,3 +2967,58 @@ input[type="number"] {
     touch-action: none;
     border-radius: 8px;
 }
+
+/* ==========================================================================
+   RESPONSIVE TABLES (DATA-LABEL)
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* Ocultar encabezados de tabla originales */
+    table thead {
+        display: none !important;
+    }
+    
+    /* Convertir tabla a layout de bloques */
+    table, tbody, tr {
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    /* Cada fila es una tarjeta */
+    table tbody tr {
+        margin-bottom: 15px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        overflow: hidden;
+    }
+    
+    /* Celdas con etiquetas */
+    table tbody td[data-label] {
+        position: relative;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        text-align: right !important;
+        padding: 12px 15px !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        min-height: auto;
+    }
+    
+    table tbody td[data-label]:last-child {
+        border-bottom: none;
+    }
+    
+    table tbody td[data-label]::before {
+        content: attr(data-label);
+        position: static !important;
+        transform: none !important;
+        font-weight: 700;
+        text-align: left;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        width: 45%;
+        margin-right: 10px;
+    }
+}

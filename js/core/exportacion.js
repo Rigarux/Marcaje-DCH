@@ -32,7 +32,8 @@
         
         cutsBody.innerHTML = '<tr><td colspan="4" class="text-center">Cargando...</td></tr>';
         try {
-            const res = await fetch('/api/attendance/cuts');
+            const currentComp = window.AttendanceDB.currentCompany || 'Todas';
+            const res = await fetch(`/api/attendance/cuts?empresa=${encodeURIComponent(currentComp)}`);
             const data = await res.json();
             if (data.success) {
                 cutsBody.innerHTML = '';

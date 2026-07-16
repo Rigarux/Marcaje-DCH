@@ -122,6 +122,16 @@
 
         <!-- PANEL DE CONTENIDO PRINCIPAL -->
         <main class="main-content">
+            <!-- Barra Exclusiva para Selección de Empresa -->
+            <div id="top-company-bar" style="display: flex; justify-content: flex-end; align-items: center; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border-color); min-height: 56px;">
+                <div id="global-company-selector-container" style="display: none; align-items: center; gap: 10px;">
+                    <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">Filtrar Empresa:</span>
+                    <select id="global-company-selector" class="form-control" style="width: auto; padding: 6px 16px; height: 38px; font-size: 0.95rem; font-weight: 600; border-radius: var(--radius-sm); border: 1px solid var(--primary-light); background: var(--background); color: var(--text); cursor: pointer; min-width: 180px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                        <!-- Opciones cargadas dinámicamente -->
+                    </select>
+                </div>
+            </div>
+
             <!-- Barra superior del Header -->
             <header class="content-header">
                 <button id="btn-toggle-sidebar" class="btn-toggle-sidebar" aria-label="Abrir Menú">
@@ -144,7 +154,7 @@
                     </div>
                 </div>
                 <div class="header-right" style="display: none !important;">
-                    <div class="date-time-widget">
+                    <div class="date-time-widget" style="display: none !important;">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                             <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -529,10 +539,30 @@
                                 <input type="number" id="request-loan-amount" class="form-control" step="0.01" min="1" required>
                             </div>
                             <div class="form-group">
-                                <label for="request-loan-installments">Cantidad de Cuotas (Semanas/Quincenas)</label>
-                                <input type="number" id="request-loan-installments" class="form-control" min="1" max="100" required>
+                                <label for="request-loan-installments">Monto de la Cuota (Q)</label>
+                                <div class="currency-input-wrapper">
+                                    <span class="currency-symbol">Q</span>
+                                    <input type="number" id="request-loan-installments" class="form-control" min="0.01" step="0.01" required>
+                                </div>
                             </div>
                             <button type="submit" class="btn-primary" style="width: 100%;">Enviar Solicitud</button>
+                        </form>
+                    </div>
+
+                    <div class="card bg-gradient-primary" style="max-width: 500px; margin: 20px auto; padding: 25px; border-radius: var(--radius-md); text-align: left;">
+                        <span class="text-muted" style="font-size: 0.9rem; opacity: 0.9; color: #fff !important;">Vacaciones Restantes</span>
+                        <h4 id="usr-vacations-val" style="margin: 5px 0 0 0; font-size: 1.8rem; font-weight: 700;">15 Días</h4>
+                        <span id="usr-vacations-status" style="font-size: 0.85rem; opacity: 0.9; display: block; margin-top: 5px;">Ninguna solicitud pendiente</span>
+                    </div>
+
+                    <div class="card" style="max-width: 500px; margin: 20px auto; padding: 25px;">
+                        <h4>Solicitar Descanso (Vacaciones)</h4>
+                        <form id="form-request-vacation" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="request-vacation-days">Días a solicitar</label>
+                                <input type="number" id="request-vacation-days" class="form-control" step="1" min="1" max="15" required>
+                            </div>
+                            <button type="submit" class="btn-primary" style="width: 100%;">Enviar Solicitud de Descanso</button>
                         </form>
                     </div>
 
@@ -589,128 +619,9 @@
                     </div>
 </section>
 
-                <!-- ==================== VISTA: LÍDER DE GRUPO (leader) ==================== -->
-                <section id="view-leader" class="role-view hidden">
-<!-- Resumen del subgrupo -->
-                    <div class="grid-3-col">
-                        <div class="card summary-card">
-                            <div class="card-icon success">
-                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="9" cy="7" r="4"></circle>
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                </svg>
-                            </div>
-                            <h4>Miembros Activos Hoy</h4>
-                            <div class="value" id="leader-stat-active">0</div>
-                            <p class="desc">En el subgrupo de trabajo</p>
-                        </div>
-                        
-                        <div class="card summary-card">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="12 6 12 12 16 14"></polyline>
-                                </svg>
-                            </div>
-                            <h4>Horas Totales del Grupo</h4>
-                            <div class="value" id="leader-stat-hours">0.00 h</div>
-                            <p class="desc">Acumulado del período</p>
-                        </div>
-
-                        <div class="card summary-card">
-                            <div class="card-icon warning">
-                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="12" y1="1" x2="12" y2="23"></line>
-                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                                </svg>
-                            </div>
-                            <h4>Pago Acumulado Neto</h4>
-                            <div class="value text-success" id="leader-stat-earnings">Q0.00</div>
-                            <p class="desc">Tareas y turnos realizados</p>
-                        </div>
-                    </div>
-
-                    <!-- Tabla de Miembros del Equipo -->
-                    <div class="card table-card margin-top">
-                        <div class="card-header">
-                            <h3 id="leader-table-title">Miembros de mi Equipo</h3>
-                        </div>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Colaborador</th>
-                                        <th>Estado Actual</th>
-                                        <th>Tarifa</th>
-                                        <th>Horas Totales</th>
-                                        <th>Bruto Estimado</th>
-                                        <th>Descuentos</th>
-                                        <th>Neto Acumulado</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="leader-team-table">
-                                    <!-- Carga dinámica -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Tabla de Detalle de Marcajes del Equipo -->
-                    <div class="card table-card margin-top">
-                        <div class="card-header">
-                            <h3>Últimos Marcajes del Turno (Equipo)</h3>
-                        </div>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Colaborador</th>
-                                        <th>Fecha</th>
-                                        <th>Entrada</th>
-                                        <th>Salida</th>
-                                        <th>Horas Trab.</th>
-                                        <th>Monto Neto</th>
-                                        <th>Estado de Pago</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="leader-attendance-table">
-                                    <!-- Carga dinámica -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Tabla de Detalle de Trabajos Entregados (Por Trato) -->
-                    <div class="card table-card margin-top">
-                        <div class="card-header">
-                            <h3>Últimos Trabajos Entregados (Equipo Por Trato)</h3>
-                        </div>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Colaborador</th>
-                                        <th>Fecha</th>
-                                        <th>Trabajo</th>
-                                        <th>Precio Unit.</th>
-                                        <th>Cantidad</th>
-                                        <th>Total</th>
-                                        <th>Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="leader-piecework-table">
-                                    <!-- Carga dinámica -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-</section>
-
                 <!-- ==================== VISTA: ADMINISTRADOR RRHH (admin) ==================== -->
                 <section id="view-admin" class="role-view hidden">
-<!-- Pestañas de Navegación del Panel RRHH -->
+                    <!-- Pestañas de Navegación del Panel RRHH -->
                     <div class="tabs-container">
                         <div class="tab-header hidden">
                             <button class="tab-btn active" data-tab="tab-trabajadores-admin">Trabajadores</button>
@@ -757,9 +668,6 @@
                                 <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;">
                                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                                         <h3 style="margin: 0;">Trabajadores</h3>
-                                        <select id="filter-empresa-trabajadores" class="form-control" style="width: auto; min-width: 150px; padding: 4px 8px; font-size: 0.9rem;">
-                                            <option value="">Todas las empresas</option>
-                                        </select>
                                     </div>
                                     <div style="display: flex; gap: 10px;">
                                         <button id="btn-export-permits" class="btn-secondary hidden" style="width:auto; padding:8px 16px; font-size:0.85rem;">
@@ -1103,6 +1011,28 @@
                                     </table>
                                 </div>
                             </div>
+
+                            <div class="card table-card card-inner margin-top">
+                                <div class="card-header" style="border-bottom:none; margin-bottom:0;">
+                                    <h3>Revisión de Vacaciones (Solicitudes de Descanso)</h3>
+                                </div>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Colaborador</th>
+                                                <th>Vacaciones Restantes</th>
+                                                <th>Días Solicitados</th>
+                                                <th>Estado</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-vacations-table">
+                                            <!-- Carga dinámica -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- TAB: PROYECTOS -->
@@ -1168,22 +1098,32 @@
                                     </button>
                                 </div>
 
-                                <div class="grid-3-col" style="margin-bottom: 20px;" id="project-financial-summary">
+                                    <div class="grid-4-col" style="margin-bottom: 20px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;" id="project-financial-summary">
                                     <!-- Tarjetas de KPIs del proyecto -->
-                                    <div class="card summary-card">
-                                        <h4>Presupuesto</h4>
-                                        <div class="value text-primary" id="detail-project-budget">Q0.00</div>
-                                        <p class="desc">Estimado Inicial</p>
+                                    <div class="card summary-card" style="padding: 15px;">
+                                        <h4 style="font-size: 0.9rem;">Presupuesto</h4>
+                                        <div class="value text-primary" id="detail-project-budget" style="font-size: 1.2rem;">Q0.00</div>
+                                        <p class="desc" style="font-size: 0.75rem;">Estimado Inicial</p>
                                     </div>
-                                    <div class="card summary-card">
-                                        <h4>Gastos Totales</h4>
-                                        <div class="value text-danger" id="detail-project-expenses">Q0.00</div>
-                                        <p class="desc">Acumulado Registrado</p>
+                                    <div class="card summary-card" style="padding: 15px;">
+                                        <h4 style="font-size: 0.9rem;">Gastos Totales</h4>
+                                        <div class="value text-danger" id="detail-project-expenses" style="font-size: 1.2rem;">Q0.00</div>
+                                        <p class="desc" style="font-size: 0.75rem;">Acumulado Registrado</p>
                                     </div>
-                                    <div class="card summary-card">
-                                        <h4>Balance / Restante</h4>
-                                        <div class="value text-success" id="detail-project-balance">Q0.00</div>
-                                        <p class="desc">Disponible</p>
+                                    <div class="card summary-card" style="padding: 15px;">
+                                        <h4 style="font-size: 0.9rem;">Pagos (Ingresos)</h4>
+                                        <div class="value text-success" id="detail-project-incomes" style="font-size: 1.2rem;">Q0.00</div>
+                                        <p class="desc" style="font-size: 0.75rem;">Total Abonado</p>
+                                    </div>
+                                    <div class="card summary-card" style="padding: 15px;">
+                                        <h4 style="font-size: 0.9rem;">Ganancia Real</h4>
+                                        <div class="value text-success" id="detail-project-real-profit" style="font-size: 1.2rem;">Q0.00</div>
+                                        <p class="desc" style="font-size: 0.75rem;">Ingresos - Gastos</p>
+                                    </div>
+                                    <div class="card summary-card" style="padding: 15px;">
+                                        <h4 style="font-size: 0.9rem;">Balance Presupuesto</h4>
+                                        <div class="value text-success" id="detail-project-balance" style="font-size: 1.2rem;">Q0.00</div>
+                                        <p class="desc" style="font-size: 0.75rem;">Presupuesto - Gastos</p>
                                     </div>
                                 </div>
 
@@ -1273,7 +1213,61 @@
                                             </table>
                                         </div>
                                     </div>
-
+                                    
+                                    <!-- PAGOS DE CLIENTES / INGRESOS -->
+                                    <div class="project-details-section margin-top">
+                                        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--success); padding-bottom: 8px; margin-bottom: 15px;">
+                                            <h3 style="font-size: 1.1rem; color: var(--text-color); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--success)" stroke-width="2" fill="none"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                                Pagos de Cliente (Constancias)
+                                            </h3>
+                                        </div>
+                                        <div class="grid-2-col" style="grid-template-columns: 1fr 2fr; gap: 20px;">
+                                            <div class="card card-inner">
+                                                <div class="card-header">
+                                                    <h3>Registrar Pago</h3>
+                                                </div>
+                                                <form id="new-income-form" style="padding: 20px;" autocomplete="off">
+                                                    <div class="form-group">
+                                                        <label>Fecha *</label>
+                                                        <input type="date" id="income-date" class="form-control" required>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Monto Abonado (Q) *</label>
+                                                        <input type="number" id="income-amount" class="form-control" min="0.01" step="0.01" required>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Descripción / Ref. *</label>
+                                                        <input type="text" id="income-desc" class="form-control" placeholder="Ej: Anticipo 50%" required>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Constancia / Comprobante</label>
+                                                        <input type="file" id="income-photo" accept="image/*" class="form-control" style="padding: 8px;">
+                                                    </div>
+                                                    <button type="submit" class="btn-primary" style="margin-top: 10px; width: 100%; background-color: var(--success); border-color: var(--success);">Guardar Pago</button>
+                                                </form>
+                                            </div>
+                                            <div class="card table-card card-inner">
+                                                <div class="table-responsive">
+                                                    <table id="project-incomes-table-element">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Fecha</th>
+                                                                <th>Descripción</th>
+                                                                <th style="text-align: right;">Monto (Q)</th>
+                                                                <th style="text-align: center;">Comprobante</th>
+                                                                <th style="text-align: center;">Acciones</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="project-incomes-table-body">
+                                                            <!-- Carga dinámica -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <!-- PLANILLA Y PAGOS A EMPLEADOS -->
                                     <div class="project-details-section margin-top">
                                         <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; margin-bottom: 15px;">
@@ -1281,7 +1275,6 @@
                                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="var(--primary-color)" stroke-width="2" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                                 Planilla y Pagos a Empleados
                                             </h3>
-                                            <span id="project-total-payroll-badge" style="background-color: var(--primary); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; font-weight: bold;">Total: Q0.00</span>
                                         </div>
                                         <div class="table-responsive">
                                             <table id="project-attendances-table-element">
@@ -1297,6 +1290,9 @@
                                                     <!-- Carga dinámica -->
                                                 </tbody>
                                             </table>
+                                        </div>
+                                        <div style="display: flex; justify-content: flex-end; margin-top: 15px; padding-right: 10px;">
+                                            <span id="project-total-payroll-badge" style="background-color: var(--primary); color: white; padding: 8px 16px; border-radius: 6px; font-size: 1.1rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">Total: Q0.00</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1365,9 +1361,12 @@
                                     <thead>
                                         <tr>
                                             <th>Colaborador</th>
-                                            <th style="text-align: center;">Días Mes Actual</th>
+                                            <th style="text-align: center;">Descanso Restante</th>
+                                            <th style="text-align: center;">Día total laborados</th>
                                             <th style="text-align: center;">Días Bono 14 (Jul-Jun)</th>
+                                            <th style="text-align: right;">Pago Bono 14 (Q)</th>
                                             <th style="text-align: center;">Días Aguinaldo (Dic-Nov)</th>
+                                            <th style="text-align: right;">Pago Aguinaldo (Q)</th>
                                         </tr>
                                     </thead>
                                     <tbody id="fin-worked-days-table-body">
@@ -1387,9 +1386,12 @@
                                     <thead>
                                         <tr>
                                             <th>Nombre del Proyecto</th>
-                                            <th>Presupuesto</th>
-                                            <th>Gastos (Registrados)</th>
-                                            <th>Ganancia Estimada</th>
+                                            <th>Presupuesto (Cotizado)</th>
+                                            <th>Ingresos (Pagado)</th>
+                                            <th>Gastos (Materiales)</th>
+                                            <th>Gastos (Personal)</th>
+                                            <th>Gastos (Total)</th>
+                                            <th>Ganancia Real</th>
                                             <th>Estado</th>
                                         </tr>
                                     </thead>
@@ -1596,6 +1598,45 @@
                     <label for="location-why-input" style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">¿Por qué estás aquí? (Motivo / Tarea) *</label>
                     <input type="text" id="location-why-input" class="form-control" placeholder="ej: Inicio de turno / Entrega de mercadería" required style="padding-left: 16px;" autocomplete="off">
                 </div>
+
+                <!-- Contenedor Foto Asistencia (Entrada / Salida) -->
+                <div id="foto-asistencia-container" class="form-group margin-top">
+                    <label for="location-foto-asistencia" style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">Fotografía (Obligatoria para marcar) *</label>
+                    <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; padding: 15px; border: 2px dashed var(--border-color); border-radius: 8px; background: rgba(0,0,0,0.1);">
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 5px;">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                        <input type="file" id="location-foto-asistencia" class="form-control" accept="image/*" capture="user" required style="width: 100%;">
+                        <span id="foto-status-text" style="font-size: 0.8rem; color: var(--danger); font-weight: bold;">Cámara Requerida</span>
+                    </div>
+                </div>
+
+                <!-- Contenedor Campos Por Trato (Checkout) -->
+                <div id="destajo-fields-container" class="hidden">
+                    <hr style="border-color: var(--border-color); margin: 15px 0;">
+                    <h4 style="margin-bottom: 10px; color: var(--text-color);">Detalles del Trabajo (Por Trato)</h4>
+                    
+                    <div class="form-group">
+                        <label for="destajo-descripcion" style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">Lo que realizó *</label>
+                        <input type="text" id="destajo-descripcion" class="form-control" placeholder="Descripción del trabajo..." style="padding-left: 16px;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="destajo-cantidad" style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">Cantidad (Unidades) *</label>
+                        <input type="number" id="destajo-cantidad" class="form-control" min="1" placeholder="Ej: 5" style="padding-left: 16px;">
+                    </div>
+                    
+                    <div class="form-group margin-top">
+                        <label for="destajo-foto-antes" style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">Fotografía ANTES *</label>
+                        <input type="file" id="destajo-foto-antes" class="form-control" accept="image/*" capture="environment">
+                    </div>
+                    
+                    <div class="form-group margin-top">
+                        <label for="destajo-foto-despues" style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">Fotografía DESPUÉS *</label>
+                        <input type="file" id="destajo-foto-despues" class="form-control" accept="image/*" capture="environment">
+                    </div>
+                </div>
             </div>
 
             <div class="modal-footer">
@@ -1661,12 +1702,12 @@
                     <label for="user-role-select">Rol *</label>
                     <select id="user-role-select" class="form-control" required>
                         <option value="usr">Usuario Operario</option>
-                        <option value="leader">Líder de Grupo</option>
-                        <option value="admin">Supervisor</option>
+                        <option value="leader">Supervisor</option>
+                        <option value="admin">Gerente</option>
                     </select>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="user-company-container">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <label for="user-company-select" style="margin-bottom: 0;">Empresa *</label>
                         <button type="button" id="btn-add-company-modal" class="btn-primary" style="width: auto; padding: 4px 8px; font-size: 0.75rem; line-height: 1; height: auto; margin: 0; border-radius: var(--radius-sm);">+ Nueva</button>
@@ -1676,12 +1717,19 @@
                     </select>
                 </div>
 
+                <div class="form-group hidden" id="user-companies-multi-container">
+                    <label>Empresas Asignadas (Supervisor)</label>
+                    <div id="user-companies-list" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; background: rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Lista dinámica con checkboxes -->
+                    </div>
+                </div>
 
                 <div class="form-group">
                     <label for="user-tipo-pago-select">Tipo de Pago *</label>
                     <select id="user-tipo-pago-select" class="form-control" required>
                         <option value="Por Horas">Por Horas</option>
                         <option value="Por Trato">Por Trato</option>
+                        <option value="Pago Fijo Diario">Pago Fijo Diario</option>
                     </select>
                 </div>
 
@@ -1732,7 +1780,7 @@
                              </div>
                          </div>
                          <div>
-                             <label for="user-sueldo-acumulado-input">Sueldo Acumulado (Q)</label>
+                             <label for="user-sueldo-acumulado-input">Sueldo Diario (Q)</label>
                              <div class="currency-input-wrapper">
                                  <span class="currency-symbol">Q</span>
                                  <input type="number" id="user-sueldo-acumulado-input" class="form-control" step="0.01" placeholder="0.00">
@@ -2110,29 +2158,29 @@
                     </svg>
                 </button>
             </div>
-            <form idaccept-quote-form" autocomplete="off">
-                <input type="hidden" idaccept-quote-id">
-                <input type="hidden" idaccept-quote-total">
+            <form id="accept-quote-form" autocomplete="off">
+                <input type="hidden" id="accept-quote-id">
+                <input type="hidden" id="accept-quote-total">
                 <p style="margin-bottom: 15px; font-size: 0.9rem; color: var(--text-muted);">
                     Asigne esta cotización a un proyecto para registrar los costos automáticamente y suba la factura correspondiente.
                 </p>
                 <div class="form-group">
                     <label for="accept-quote-project">Seleccionar Proyecto Activo *</label>
-                    <select idaccept-quote-project" required>
+                    <select id="accept-quote-project" required>
                         <option value="">Seleccione un proyecto...</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="accept-quote-invoice">Factura / Comprobante (Opcional)</label>
                     <div class="file-upload-wrapper">
-                        <input type="file" idaccept-quote-invoice" accept="image/*,.pdf" class="file-input">
+                        <input type="file" id="accept-quote-invoice" accept="image/*,.pdf" class="file-input">
                         <div class="file-upload-trigger">
                             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="17 8 12 3 7 8"></polyline>
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
-                            <span class="file-name" idaccept-quote-invoice-name">Seleccionar archivo...</span>
+                            <span class="file-name" id="accept-quote-invoice-name">Seleccionar archivo...</span>
                         </div>
                     </div>
                 </div>
@@ -2204,13 +2252,11 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="loan-installments">Cuotas de Pago *</label>
-                    <select id="loan-installments" class="form-control" required>
-                        <option value="1">1 pago (Descuento inmediato en planilla)</option>
-                        <option value="2">2 pagos quincenales</option>
-                        <option value="4">4 pagos semanales</option>
-                        <option value="8">8 pagos semanales</option>
-                    </select>
+                    <label for="loan-installments">Monto de la Cuota (Q) *</label>
+                    <div class="currency-input-wrapper">
+                        <span class="currency-symbol">Q</span>
+                        <input type="number" id="loan-installments" class="form-control" min="0.01" step="0.01" placeholder="0.00" required>
+                    </div>
                 </div>
 
                 <div class="modal-footer">
@@ -2252,6 +2298,68 @@
                     <label>Asociar Empleados</label>
                     <div id="company-employees-list" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; background: rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 8px;">
                         <!-- Lista dinámica con checkboxes -->
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Configuración Avanzada</label>
+                    <div style="margin-top: 8px;">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-require-photo-checkin">
+                            <span class="checkmark"></span>
+                            Requerir foto obligatoria al marcar inicio de turno
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Permisos de Módulos para esta Empresa</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-perm-asistencia" checked>
+                            <span class="checkmark"></span>
+                            Asistencia
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-perm-trabajadores" checked>
+                            <span class="checkmark"></span>
+                            Trabajadores
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-perm-finanzas" checked>
+                            <span class="checkmark"></span>
+                            Finanzas (Caja Chica/Gastos)
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-perm-inventario" checked>
+                            <span class="checkmark"></span>
+                            Inventario / Bodega
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-perm-ventas" checked>
+                            <span class="checkmark"></span>
+                            Ventas y Cotizaciones
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-perm-proyectos" checked>
+                            <span class="checkmark"></span>
+                            Proyectos
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-perm-prestamos" checked>
+                            <span class="checkmark"></span>
+                            Préstamos
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-perm-vehiculos" checked>
+                            <span class="checkmark"></span>
+                            Vehículos
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="comp-perm-descuentos" checked>
+                            <span class="checkmark"></span>
+                            Descuentos
+                        </label>
                     </div>
                 </div>
 
@@ -2414,35 +2522,35 @@
 
     <!-- Cargar lógica de la app conectada a la API SQL con cache buster -->
     <!-- Core -->
-    <script src="js/core/db-client.js?v=42" defer></script>
-    <script src="js/core/app-core.js?v=42" defer></script>
-    <script src="js/core/exportacion.js?v=42" defer></script>
+    <script src="js/core/db-client.js?v=45" defer></script>
+    <script src="js/core/app-core.js?v=45" defer></script>
+    <script src="js/core/exportacion.js?v=45" defer></script>
     
     <!-- Users & Permissions -->
-    <script src="js/users/gestion-usuarios.js?v=42" defer></script>
-    <script src="js/users/prestamos.js?v=42" defer></script>
+    <script src="js/users/gestion-usuarios.js?v=45" defer></script>
+    <script src="js/users/prestamos.js?v=46" defer></script>
 
     <!-- Finances -->
-    <script src="js/finances/ingresos.js?v=42" defer></script>
-    <script src="js/finances/caja-chica.js?v=42" defer></script>
+    <script src="js/finances/ingresos.js?v=45" defer></script>
+    <script src="js/finances/caja-chica.js?v=45" defer></script>
 
     <!-- Inventory -->
-    <script src="js/inventory/inventarios.js?v=42" defer></script>
-    <script src="js/inventory/materiales.js?v=42" defer></script>
+    <script src="js/inventory/inventarios.js?v=45" defer></script>
+    <script src="js/inventory/materiales.js?v=45" defer></script>
 
     <!-- Sales & Projects -->
 
-    <script src="js/sales/cotizaciones.js?v=42" defer></script>
-    <script src="js/sales/proyectos.js?v=42" defer></script>
+    <script src="js/sales/cotizaciones.js?v=45" defer></script>
+    <script src="js/sales/proyectos.js?v=45" defer></script>
 
     <!-- Vehicles -->
-    <script src="js/vehicles/vehiculos.js?v=42" defer></script>
+    <script src="js/vehicles/vehiculos.js?v=45" defer></script>
 
     <!-- Views -->
-    <script src="js/views/vista-usuario.js?v=42" defer></script>
-    <script src="js/views/vista-lider.js?v=42" defer></script>
-    <script src="js/views/vista-admin.js?v=42" defer></script>
-    <script src="js/finances/admin-finanzas.js?v=42" defer></script>
+    <script src="js/views/vista-usuario.js?v=45" defer></script>
+    <script src="js/views/vista-lider.js?v=45" defer></script>
+    <script src="js/views/vista-admin.js?v=45" defer></script>
+    <script src="js/finances/admin-finanzas.js?v=48" defer></script>
 
 
     <!-- ==================== MODAL NUEVA VENTA ==================== -->
@@ -2871,16 +2979,24 @@
         <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
             <table style="width: 300px; border-collapse: collapse; font-size: 13px; color: #000;">
                 <tr>
-                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Presupuesto Total:</td>
+                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Presupuesto Inicial:</td>
                     <td style="border: 1px solid #000; padding: 8px; text-align: right;" id="print-budget-val">Q0.00</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Pagos (Ingresos):</td>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: right; color: #16a34a;" id="print-incomes-val">Q0.00</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Gastos Acumulados:</td>
                     <td style="border: 1px solid #000; padding: 8px; text-align: right; color: #dc2626;" id="print-expenses-val">Q0.00</td>
                 </tr>
                 <tr>
-                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Balance Restante:</td>
-                    <td style="border: 1px solid #000; padding: 8px; text-align: right; color: #16a34a; font-weight: bold;" id="print-balance-val">Q0.00</td>
+                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Ganancia Real:</td>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: right; color: #16a34a; font-weight: bold;" id="print-real-profit-val">Q0.00</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">Balance Presupuesto:</td>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: right;" id="print-balance-val">Q0.00</td>
                 </tr>
             </table>
         </div>

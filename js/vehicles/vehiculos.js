@@ -32,7 +32,13 @@
 
     function renderAdminVehiclesTable() {
         if (!adminVehiclesTable) return;
-        const vehicles = window.AttendanceDB.getVehicles();
+        let vehicles = window.AttendanceDB.getVehicles();
+        
+        const currentComp = window.AttendanceDB.currentCompany;
+        if (currentComp && currentComp !== 'Todas') {
+            vehicles = vehicles.filter(v => v.empresa === currentComp || v.empresa === 'N/A' || !v.empresa);
+        }
+
         adminVehiclesTable.innerHTML = '';
 
         if (vehicles.length === 0) {

@@ -6,16 +6,51 @@
     const leaderAttendanceTable = document.getElementById('leader-attendance-table');
     const leaderPieceworkTable = document.getElementById('leader-piecework-table');
 
+    let isLeaderSelectInitialized = false;
+
     function setupLeaderView() {
-        const group = currentUser.grupo;
+        const companySelect = document.getElementById('leader-company-select');
+        
+        if (!isLeaderSelectInitialized && companySelect) {
+            let assignedCompanies = [];
+            try {
+                assignedCompanies = currentUser.empresas_asignadas ? JSON.parse(currentUser.empresas_asignadas) : [];
+            } catch(e){}
+            
+            companySelect.innerHTML = '';
+            if (assignedCompanies.length === 0) {
+                // Si no tiene asignadas explícitamente, al menos mostrar su propia empresa
+                const opt = document.createElement('option');
+                opt.value = currentUser.empresa;
+                opt.textContent = currentUser.empresa;
+                companySelect.appendChild(opt);
+                window.AttendanceDB.currentCompany = currentUser.empresa;
+            } else {
+                assignedCompanies.forEach((comp, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = comp;
+                    opt.textContent = comp;
+                    companySelect.appendChild(opt);
+                    if (idx === 0) window.AttendanceDB.currentCompany = comp;
+                });
+            }
 
-        // Obtener miembros del subgrupo
+            companySelect.addEventListener('change', (e) => {
+                window.AttendanceDB.currentCompany = e.target.value;
+                setupLeaderView();
+            });
+            isLeaderSelectInitialized = true;
+        }
+
+        const company = window.AttendanceDB.currentCompany || currentUser.empresa;
+
+        // Obtener miembros de la empresa
         const allUsers = window.AttendanceDB.getUsers();
-        const teamUsers = allUsers.filter(u => u.grupo === group && u.rol === 'usr');
+        const teamUsers = allUsers.filter(u => u.empresa === company && u.rol === 'usr');
 
-        const teamRecords = window.AttendanceDB.getAttendanceByGroup(group);
+        const teamRecords = window.AttendanceDB.getAttendanceByGroup ? window.AttendanceDB.getAttendanceByGroup(company) : window.AttendanceDB._state.attendance.filter(a => teamUsers.some(u => u.id === a.usuarioId));
 
-        // Obtener trabajos entregados (Por Trato) del subgrupo
+        // Obtener trabajos entregados (Por Trato) de la empresa
         const allPiecework = window.AttendanceDB.getPiecework ? window.AttendanceDB.getPiecework() : [];
         const teamPiecework = allPiecework.filter(p => teamUsers.some(u => u.id === p.usuarioId));
 

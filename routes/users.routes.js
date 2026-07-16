@@ -93,7 +93,7 @@ router.get('/users/:id', async (req, res) => {
     }
 });
 router.post('/users', async (req, res) => {
-    const { username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos } = req.body;
+    const { username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos, sueldoBusesDiario, empresas_asignadas_json } = req.body;
     try {
         const existing = await dbGet(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`, [username.trim()]);
         if (existing) {
@@ -127,8 +127,8 @@ router.post('/users', async (req, res) => {
         }
 
         const result = await dbRun(`
-            INSERT INTO users (username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFotoUrl, hasVentasRole, precioDieselBuses, sueldoBusesAcumulado, permisos)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFotoUrl, hasVentasRole, precioDieselBuses, sueldoBusesAcumulado, permisos, sueldoBusesDiario, empresas_asignadas)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             username.toLowerCase().trim(),
             password,
@@ -152,7 +152,9 @@ router.post('/users', async (req, res) => {
             hasVentasRole ? 1 : 0,
             parseFloat(precioDieselBuses) || 30.0,
             parseFloat(sueldoBusesAcumulado) || 0.0,
-            typeof permisos === 'object' ? JSON.stringify(permisos) : (permisos || null)
+            typeof permisos === 'object' ? JSON.stringify(permisos) : (permisos || null),
+            parseFloat(sueldoBusesDiario) || 0.0,
+            empresas_asignadas_json || '[]'
         ]);
 
         if (assignedStores && Array.isArray(assignedStores)) {
@@ -171,7 +173,7 @@ router.post('/users', async (req, res) => {
 });
 router.put('/users/:id', async (req, res) => {
     const userId = parseInt(req.params.id);
-    const { username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos } = req.body;
+    const { username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, adminId, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFoto, hasVentasRole, assignedStores, precioDieselBuses, sueldoBusesAcumulado, permisos, sueldoBusesDiario, empresas_asignadas_json } = req.body;
     try {
         const existing = await dbGet(`SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id != ?`, [username.trim(), userId]);
         if (existing) {
@@ -243,7 +245,7 @@ router.put('/users/:id', async (req, res) => {
 
         let updateQuery = `
             UPDATE users 
-            SET username = ?, nombre = ?, rol = ?, grupo = ?, empresa = ?, tarifaDiurna = ?, tarifaNocturna = ?, frecuenciaPago = ?, préstamoTotal = ?, préstamoCuota = ?, préstamosaldo = ?, préstamoEstadoCuota = ?, tipoPago = ?, horasNormalesMax = ?, rangoMaximoHoras = ?, tarifaHoraExtra = ?, dpi = ?, dpiFotoUrl = ?, hasVentasRole = ?, precioDieselBuses = ?, sueldoBusesAcumulado = ?, permisos = ?
+            SET username = ?, nombre = ?, rol = ?, grupo = ?, empresa = ?, tarifaDiurna = ?, tarifaNocturna = ?, frecuenciaPago = ?, préstamoTotal = ?, préstamoCuota = ?, préstamosaldo = ?, préstamoEstadoCuota = ?, tipoPago = ?, horasNormalesMax = ?, rangoMaximoHoras = ?, tarifaHoraExtra = ?, dpi = ?, dpiFotoUrl = ?, hasVentasRole = ?, precioDieselBuses = ?, sueldoBusesAcumulado = ?, permisos = ?, sueldoBusesDiario = ?, empresas_asignadas = ?
         `;
         let params = [
             username.toLowerCase().trim(),
@@ -267,7 +269,9 @@ router.put('/users/:id', async (req, res) => {
             hasVentasRole ? 1 : 0,
             parseFloat(precioDieselBuses) || 30.0,
             parseFloat(sueldoBusesAcumulado) || 0.0,
-            typeof permisos === 'object' ? JSON.stringify(permisos) : (permisos || null)
+            typeof permisos === 'object' ? JSON.stringify(permisos) : (permisos || null),
+            parseFloat(sueldoBusesDiario) || 0.0,
+            empresas_asignadas_json || '[]'
         ];
 
         if (password) {
@@ -350,7 +354,7 @@ router.get('/companies', async (req, res) => {
     }
 });
 router.post('/companies', async (req, res) => {
-    const { name, encargadoId, adminId } = req.body;
+    const { name, encargadoId, adminId, modules, require_photo } = req.body;
     try {
         const trimName = name.trim();
         if (!trimName) return res.status(400).json({ success: false, message: 'Nombre vacío.' });
@@ -358,7 +362,7 @@ router.post('/companies', async (req, res) => {
         const exists = await dbGet(`SELECT id FROM companies WHERE LOWER(name) = LOWER(?)`, [trimName]);
         if (exists) return res.status(400).json({ success: false, message: 'La empresa ya existe.' });
 
-        await dbRun(`INSERT INTO companies (name, encargadoId) VALUES (?, ?)`, [trimName, encargadoId ? parseInt(encargadoId) : null]);
+        await dbRun(`INSERT INTO companies (name, encargadoId, modules, require_photo) VALUES (?, ?, ?, ?)`, [trimName, encargadoId ? parseInt(encargadoId) : null, modules || '{}', require_photo ? 1 : 0]);
 
         const admin = await dbGet(`SELECT nombre FROM users WHERE id = ?`, [parseInt(adminId)]);
         const adminName = admin ? admin.nombre : 'Admin';
@@ -370,7 +374,7 @@ router.post('/companies', async (req, res) => {
     }
 });
 router.put('/companies', async (req, res) => {
-    const { oldName, newName, encargadoId, employeeIds, adminId } = req.body;
+    const { oldName, newName, encargadoId, employeeIds, adminId, modules, require_photo } = req.body;
     try {
         const old = oldName.trim();
         const nuevo = newName.trim();
@@ -388,7 +392,7 @@ router.put('/companies', async (req, res) => {
         const comp = await dbGet(`SELECT id FROM companies WHERE name = ?`, [old]);
         if (!comp) return res.status(404).json({ success: false, message: 'Empresa no encontrada.' });
 
-        await dbRun(`UPDATE companies SET name = ?, encargadoId = ? WHERE name = ?`, [nuevo, encargadoId ? parseInt(encargadoId) : null, old]);
+        await dbRun(`UPDATE companies SET name = ?, encargadoId = ?, modules = ?, require_photo = ? WHERE name = ?`, [nuevo, encargadoId ? parseInt(encargadoId) : null, modules || '{}', require_photo ? 1 : 0, old]);
         await dbRun(`UPDATE users SET empresa = ? WHERE empresa = ?`, [nuevo, old]);
 
         if (employeeIds && Array.isArray(employeeIds)) {
@@ -484,6 +488,64 @@ router.post('/users/:id/loans/reset-cuota', async (req, res) => {
         res.status(500).json({ success: false, message: e.message });
     }
 });
+router.post('/users/:id/descansos/solicitar', async (req, res) => {
+    const userId = parseInt(req.params.id);
+    const { dias } = req.body;
+    try {
+        const user = await dbGet(`SELECT * FROM users WHERE id = ?`, [userId]);
+        if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+        
+        await dbRun(`
+            UPDATE users 
+            SET descansoEstado = 'Pendiente de Autorizar', descansoDiasSolicitados = ?
+            WHERE id = ?
+        `, [parseInt(dias) || 1, userId]);
+        
+        await addLog(userId, `El usuario solicitó ${dias} día(s) de descanso (vacaciones)`);
+        res.json({ success: true, descansoEstado: 'Pendiente de Autorizar' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+router.post('/users/:id/descansos/autorizar', async (req, res) => {
+    const userId = parseInt(req.params.id);
+    const { adminId } = req.body;
+    try {
+        const user = await dbGet(`SELECT * FROM users WHERE id = ?`, [userId]);
+        if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+        
+        const dias = parseInt(user.descansoDiasSolicitados) || 1;
+        const restantes = (parseInt(user.vacacionesRestantes) || 0) - dias;
+        
+        // Crear registro de asistencia de 8 horas por cada día solicitado
+        const tarifaDiurna = parseFloat(user.tarifaDiurna) || 0;
+        const montoBruto = 8 * tarifaDiurna;
+        const fecha = new Date().toISOString().split('T')[0];
+
+        for (let i=0; i<dias; i++) {
+            await dbRun(`
+                INSERT INTO attendance (usuarioId, fecha, horaEntrada, horaSalida, horasDiurnas, horasNocturnas, horasTrabajadas, montoBruto, descuento, montoNeto, aprobado)
+                VALUES (?, ?, '08:00:00', '16:00:00', 8, 0, 8, ?, 0, ?, 1)
+            `, [userId, fecha, montoBruto, montoBruto]);
+        }
+        
+        await dbRun(`
+            UPDATE users 
+            SET descansoEstado = 'Ninguno', descansoDiasSolicitados = 0, vacacionesRestantes = ?
+            WHERE id = ?
+        `, [restantes, userId]);
+        
+        const admin = await dbGet(`SELECT nombre FROM users WHERE id = ?`, [parseInt(adminId)]);
+        const adminName = admin ? admin.nombre : 'Admin';
+        
+        await addLog(adminId, `${adminName} autorizó ${dias} día(s) de descanso para ${user.nombre}. Se le agregaron 8 horas a su planilla.`);
+        res.json({ success: true, vacacionesRestantes: restantes, descansoEstado: 'Ninguno' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 router.get('/inventories', async (req, res) => {
         try {
             const { usuarioId } = req.query;

@@ -81,7 +81,7 @@
         const cardPieceworkControl = document.getElementById('card-piecework-control');
         const cardBusesControl = document.getElementById('card-buses-control');
 
-        const isBuses = currentUser.empresa && currentUser.empresa.toUpperCase().includes('BUSES');
+        const isBuses = currentUser.tipoPago === 'Pago Fijo Diario';
 
         if (isBuses) {
             if (cardTimerControl) cardTimerControl.classList.add('hidden');
@@ -92,12 +92,15 @@
             renderUserStatsAndTable();
             return;
         } else if (currentUser.tipoPago === 'Destajo' || currentUser.tipoPago === 'Por Trato') {
-            if (cardTimerControl) cardTimerControl.classList.add('hidden');
-            if (cardPieceworkControl) cardPieceworkControl.classList.remove('hidden');
+            if (cardTimerControl) cardTimerControl.classList.remove('hidden');
+            if (cardPieceworkControl) cardPieceworkControl.classList.add('hidden');
+            if (cardBusesControl) cardBusesControl.classList.add('hidden');
+            
+            // Opcional: Ocultar el temporizador si no quieren que se vean las horas
+            // document.getElementById('user-timer').style.display = 'none';
 
             // Cargar tablas y estadísticas de por trato
             renderUserStatsAndTable();
-            return;
         } else {
             if (cardTimerControl) cardTimerControl.classList.remove('hidden');
             if (cardPieceworkControl) cardPieceworkControl.classList.add('hidden');
@@ -217,7 +220,8 @@
                 projectSelect.parentElement.classList.remove('hidden');
                 // Cargar proyectos
                 try {
-                    const res = await fetch('/api/projects');
+                    const currentComp = window.AttendanceDB?.currentCompany || 'Todas';
+                    const res = await fetch(`/api/projects?empresa=${encodeURIComponent(currentComp)}`);
                     const projects = await res.json();
                     projectSelect.innerHTML = '<option value="">-- Sin Proyecto (Operativo) --</option>';
                     projects.forEach(p => {
@@ -258,6 +262,36 @@
             btnConfirmLocation.textContent = 'Obteniendo ubicación...';
             btnConfirmLocation.style.opacity = '0.5';
             btnConfirmLocation.style.cursor = 'not-allowed';
+        }
+
+        // Configurar campos dinámicos de Por Trato y Foto
+        const fotoAsistenciaContainer = document.getElementById('foto-asistencia-container');
+        const destajoFieldsContainer = document.getElementById('destajo-fields-container');
+        const fotoAsistenciaEl = document.getElementById('location-foto-asistencia');
+        const descEl = document.getElementById('destajo-descripcion');
+        const cantEl = document.getElementById('destajo-cantidad');
+        const fotoAntesEl = document.getElementById('destajo-foto-antes');
+        const fotoDespuesEl = document.getElementById('destajo-foto-despues');
+
+        if (fotoAsistenciaEl) fotoAsistenciaEl.value = '';
+        if (descEl) descEl.value = '';
+        if (cantEl) cantEl.value = '';
+        if (fotoAntesEl) fotoAntesEl.value = '';
+        if (fotoDespuesEl) fotoDespuesEl.value = '';
+
+        // Siempre requerimos foto general para marcar Entrada o Salida
+        if (fotoAsistenciaContainer) {
+            fotoAsistenciaContainer.classList.remove('hidden');
+        }
+
+        if (isCheckInAction) {
+            if (destajoFieldsContainer) destajoFieldsContainer.classList.add('hidden');
+        } else {
+            if (currentUser.tipoPago === 'Destajo' || currentUser.tipoPago === 'Por Trato') {
+                if (destajoFieldsContainer) destajoFieldsContainer.classList.remove('hidden');
+            } else {
+                if (destajoFieldsContainer) destajoFieldsContainer.classList.add('hidden');
+            }
         }
 
         // Abrir modal
@@ -356,6 +390,13 @@
         if (e.target === locationModal) closeLocationModal();
     });
 
+    const fileToBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
     // Confirmar marcaje y enviar ubicación
     btnConfirmLocation.addEventListener('click', async () => {
         if (btnConfirmLocation.disabled) return;
@@ -372,7 +413,57 @@
             return;
         }
 
-        closeLocationModal();
+        const fotoAsistenciaContainer = document.getElementById('foto-asistencia-container');
+        const destajoFieldsContainer = document.getElementById('destajo-fields-container');
+        
+        const fotoAsistenciaEl = document.getElementById('location-foto-asistencia');
+        let fotoAsistenciaB64 = null;
+        
+        if (fotoAsistenciaContainer && !fotoAsistenciaContainer.classList.contains('hidden')) {
+            if (!fotoAsistenciaEl.files || fotoAsistenciaEl.files.length === 0) {
+                showToast('Foto Requerida', 'La empresa requiere que tomes una fotografía para registrar tu marcaje.', 'warning');
+                return;
+            }
+            fotoAsistenciaB64 = await fileToBase64(fotoAsistenciaEl.files[0]);
+        }
+
+        let trabajoDescripcion = null;
+        let trabajoCantidad = 0;
+        let fotoAntesB64 = null;
+        let fotoDespuesB64 = null;
+
+        if (!isCheckInAction && destajoFieldsContainer && !destajoFieldsContainer.classList.contains('hidden')) {
+            const descEl = document.getElementById('destajo-descripcion');
+            const cantEl = document.getElementById('destajo-cantidad');
+            const fotoAntesEl = document.getElementById('destajo-foto-antes');
+            const fotoDespuesEl = document.getElementById('destajo-foto-despues');
+
+            trabajoDescripcion = descEl ? descEl.value.trim() : '';
+            trabajoCantidad = cantEl ? parseInt(cantEl.value) : 0;
+
+            if (!trabajoDescripcion) {
+                showToast('Datos de Trato', 'Por favor ingresa la descripción de lo que realizaste.', 'warning');
+                return;
+            }
+            if (!trabajoCantidad || trabajoCantidad <= 0) {
+                showToast('Datos de Trato', 'Por favor ingresa la cantidad válida de unidades realizadas.', 'warning');
+                return;
+            }
+            if (!fotoAntesEl.files || fotoAntesEl.files.length === 0) {
+                showToast('Datos de Trato', 'Por favor adjunta la fotografía de ANTES de iniciar el trabajo.', 'warning');
+                return;
+            }
+            if (!fotoDespuesEl.files || fotoDespuesEl.files.length === 0) {
+                showToast('Datos de Trato', 'Por favor adjunta la fotografía de DESPUÉS de terminar el trabajo.', 'warning');
+                return;
+            }
+
+            fotoAntesB64 = await fileToBase64(fotoAntesEl.files[0]);
+            fotoDespuesB64 = await fileToBase64(fotoDespuesEl.files[0]);
+        }
+
+        btnConfirmLocation.disabled = true;
+        btnConfirmLocation.textContent = 'Enviando...';
 
         // Obtener lat/lng simulados para guardar en DB
         const coordsText = simulatedCoordinates.textContent; // "Lat: 14.6284°, Lng: -90.5222°"
@@ -389,19 +480,27 @@
             // Hacer check-in
             const projectSelect = document.getElementById('location-project-select');
             const proyectoId = projectSelect ? projectSelect.value : null;
-            const record = await window.AttendanceDB.checkIn(currentUser.id, lat, lng, whereValue, whyValue, proyectoId);
+            // Pasamos fotoAsistenciaB64 como fotoEntrada
+            const record = await window.AttendanceDB.checkIn(currentUser.id, lat, lng, whereValue, whyValue, proyectoId, fotoAsistenciaB64);
             if (record) {
-                showToast('Entrada Registrada', `Marcaje de entrada eÉxitoso a las ${record.horaEntrada}`, 'success');
+                showToast('Entrada Registrada', `Marcaje de entrada exitoso a las ${record.horaEntrada}`, 'success');
+                closeLocationModal();
                 setupUserView();
             }
         } else {
             // Hacer check-out
-            const record = await window.AttendanceDB.checkOut(currentUser.id, lat, lng, whereValue, whyValue);
+            // Para checkOut, necesitamos pasar fotoAsistenciaB64 como fotoSalida. 
+            // Vamos a tener que editar AttendanceDB.checkOut en db-client.js para que reciba fotoSalida
+            const record = await window.AttendanceDB.checkOut(currentUser.id, lat, lng, whereValue, whyValue, trabajoDescripcion, trabajoCantidad, fotoAntesB64, fotoDespuesB64, fotoAsistenciaB64);
             if (record) {
-                showToast('Salida Registrada', `Marcaje de salida eÉxitoso. Horas: ${record.horasTrabajadas}`, 'success');
+                showToast('Salida Registrada', `Marcaje de salida exitoso. Horas: ${record.horasTrabajadas}`, 'success');
+                closeLocationModal();
                 setupUserView();
             }
         }
+        
+        btnConfirmLocation.disabled = false;
+        btnConfirmLocation.textContent = 'Confirmar y Marcar';
     });
 
     // --- FLUJO DE MODAL DE ENTREGAR TRABAJO (POR TRATO) ---
@@ -694,7 +793,7 @@
 
         let totalNet = 0;
         let totalPenalties = 0;
-        const isBuses = currentUser.empresa && currentUser.empresa.toUpperCase().includes('BUSES');
+        const isBuses = currentUser.tipoPago === 'Pago Fijo Diario';
 
         if (isBuses) {
             if (usrAttendanceThead) usrAttendanceThead.classList.add('hidden');
@@ -927,12 +1026,9 @@
     });
 
     btnBackToUser.addEventListener('click', () => {
-        // Regresar a la vista principal
-        viewUserPenalties.classList.add('hidden');
-        viewUser.classList.remove('hidden');
-        viewTitle.textContent = 'Control de Asistencia';
-        viewSubtitle.textContent = 'Registra tus marcas diarias y visualiza tus ingresos calculados en Quetzales (Q).';
-        setupUserView();
+        // En lugar de forzar la vista de asistencia (a la cual podrían no tener acceso),
+        // regresamos a la pantalla por defecto según sus permisos limpiando el hash.
+        window.location.hash = '';
     });
 
     function loadUserPenaltiesView() {

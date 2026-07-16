@@ -8,10 +8,11 @@ window.renderAdminFinances = async function() {
     let pettyCashFunds = [];
     
     try {
+        const currentComp = window.AttendanceDB?.currentCompany || 'Todas';
         const [projRes, incRes, pettyRes] = await Promise.all([
-            fetch('/api/projects'),
+            fetch(`/api/projects?empresa=${encodeURIComponent(currentComp)}`),
             fetch('/api/global-incomes'),
-            fetch('/api/petty-cash-funds')
+            fetch(`/api/petty-cash-funds?empresa=${encodeURIComponent(currentComp)}`)
         ]);
         if (projRes.ok) {
             const data = await projRes.json();
@@ -30,9 +31,20 @@ window.renderAdminFinances = async function() {
     }
 
     // Attendance data (Nomina)
-    const attendance = window.AttendanceDB?.getAttendance() || [];
-    const piecework = window.AttendanceDB?.getPiecework() || [];
-    const busRecords = window.AttendanceDB?.getBusRecords() || [];
+    let attendance = window.AttendanceDB?.getAttendance() || [];
+    let piecework = window.AttendanceDB?.getPiecework() || [];
+    let busRecords = window.AttendanceDB?.getBusRecords() || [];
+
+    const currentComp = window.AttendanceDB?.currentCompany;
+    if (currentComp && currentComp !== 'Todas') {
+        const allUsers = window.AttendanceDB?.getUsers() || [];
+        const usersInCompany = allUsers.filter(u => u.empresa === currentComp).map(u => u.id);
+        attendance = attendance.filter(a => usersInCompany.includes(a.usuarioId));
+        piecework = piecework.filter(p => usersInCompany.includes(p.usuarioId));
+        busRecords = busRecords.filter(b => usersInCompany.includes(b.usuarioId));
+        globalIncomes = globalIncomes.filter(g => usersInCompany.includes(g.usuarioId));
+        pettyCashFunds = pettyCashFunds.filter(f => usersInCompany.includes(f.usuario_id));
+    }
 
     // Helper: format YYYY-MM
     function getMonthKey(dateString) {
@@ -235,7 +247,7 @@ window.renderAdminFinances = async function() {
         // Calculate cycle days
         attendance.forEach(a => {
             if (a.horaSalida && (a.aprobado || a.archivado)) {
-                if (!daysByUser[a.usuarioId]) daysByUser[a.usuarioId] = { monthDays: 0, bono14Days: 0, aguiDays: 0 };
+                if (!daysByUser[a.usuarioId]) daysByUser[a.usuarioId] = { monthDays: 0, bono14Days: 0, aguiDays: 0, totalDays: 0 };
                 
                 const recDate = parseDate(a.fecha);
                 
@@ -248,6 +260,9 @@ window.renderAdminFinances = async function() {
                 if (getMonthKey(a.fecha) === selectedMonth) {
                     daysByUser[a.usuarioId].monthDays++;
                 }
+                
+                // Add to total days history
+                daysByUser[a.usuarioId].totalDays++;
             }
         });
 
@@ -262,12 +277,20 @@ window.renderAdminFinances = async function() {
                 const userName = userObj ? userObj.nombre : `Usuario #${uid}`;
                 const data = daysByUser[uid];
                 
+                const tarifaDiurna = userObj ? (parseFloat(userObj.tarifaDiurna) || 0) : 0;
+                const pagoDiario = tarifaDiurna * 8;
+                const bono14Amount = (pagoDiario * data.bono14Days) / 12;
+                const aguiAmount = (pagoDiario * data.aguiDays) / 12;
+                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><strong>${userName}</strong></td>
-                    <td style="text-align: center; color: var(--primary); font-weight: bold;">${data.monthDays} días</td>
-                    <td style="text-align: center; color: var(--success); font-weight: bold;">${data.bono14Days} días</td>
-                    <td style="text-align: center; color: var(--warning); font-weight: bold;">${data.aguiDays} días</td>
+                    <td data-label="Colaborador"><strong>${userName}</strong></td>
+                    <td data-label="Descanso Restante" style="text-align: center; color: var(--text-color); font-weight: bold;">${userObj && userObj.vacacionesRestantes !== undefined ? userObj.vacacionesRestantes : 15} días</td>
+                    <td data-label="Día total laborados" style="text-align: center; color: var(--primary); font-weight: bold;">${data.totalDays} días</td>
+                    <td data-label="Días Bono 14 (Jul-Jun)" style="text-align: center; color: var(--success); font-weight: bold;">${data.bono14Days} días</td>
+                    <td data-label="Pago Bono 14 (Q)" style="text-align: right; color: var(--success);">Q${bono14Amount.toLocaleString('es-GT', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td data-label="Días Aguinaldo (Dic-Nov)" style="text-align: center; color: var(--warning); font-weight: bold;">${data.aguiDays} días</td>
+                    <td data-label="Pago Aguinaldo (Q)" style="text-align: right; color: var(--warning);">Q${aguiAmount.toLocaleString('es-GT', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 `;
                 workedDaysTbody.appendChild(tr);
             });
@@ -285,20 +308,25 @@ window.renderAdminFinances = async function() {
             const presupuesto = parseFloat(p.presupuesto) || 0;
             
             // Calc gastos for project
-            const gastos = parseFloat(p.totalGastos) || 0;
+            const gastosMateriales = parseFloat(p.gastosMateriales) || 0;
+            const gastosPersonal = parseFloat(p.gastosPersonal) || 0;
+            const gastosTotales = parseFloat(p.totalGastos) || 0;
+            const totalIngresos = parseFloat(p.totalIngresos) || 0;
 
-            const ganancia = presupuesto - gastos;
+            const gananciaReal = totalIngresos - gastosTotales;
             
-            let color = ganancia > 0 ? 'text-success' : (ganancia < 0 ? 'text-danger' : '');
-            let estadoP = 'En progreso';
+            let color = gananciaReal > 0 ? 'text-success' : (gananciaReal < 0 ? 'text-danger' : '');
             
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${p.nombre}</strong> <span class="badge ${p.estado === 'Cerrado' ? 'bg-danger' : 'bg-success'}" style="font-size: 0.6rem; margin-left: 5px;">${p.estado || 'Activo'}</span></td>
                 <td>Q${presupuesto.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
-                <td>Q${gastos.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
-                <td class="${color} font-bold">Q${ganancia.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
-                <td><span class="badge ${ganancia < 0 ? 'bg-danger' : 'bg-primary'}">${ganancia < 0 ? 'Pérdida' : 'Estable'}</span></td>
+                <td style="color: var(--success); font-weight: bold;">Q${totalIngresos.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td>Q${gastosMateriales.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td>Q${gastosPersonal.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td class="text-danger">Q${gastosTotales.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td class="${color} font-bold">Q${gananciaReal.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td><span class="badge ${gananciaReal < 0 ? 'bg-danger' : 'bg-primary'}">${gananciaReal < 0 ? 'Pérdida' : 'Estable'}</span></td>
             `;
             tbody.appendChild(tr);
         });

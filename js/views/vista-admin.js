@@ -112,17 +112,32 @@
         const filterGroup = adminGroupFilter ? adminGroupFilter.value : 'all';
         const filterPeriod = adminPeriodFilter ? adminPeriodFilter.value : 'closed_week';
         const filterPaymentType = adminPaymentTypeFilter ? adminPaymentTypeFilter.value : 'all';
-        const allUsers = window.AttendanceDB.getUsers();
+        let allUsers = window.AttendanceDB.getUsers();
+
+        // Aplicar filtro de empresa actual
+        const currentCompany = window.AttendanceDB.currentCompany;
+        if (currentCompany && currentCompany !== 'Todas') {
+            allUsers = allUsers.filter(u => u.empresa === currentCompany);
+        }
+
         let attendance = window.AttendanceDB.getAttendance();
         let penalizations = window.AttendanceDB.getPenalizations();
         let bonuses = window.AttendanceDB.getBonuses();
 
-        // 1. Calcular KPIs Globales (Consolidado Histórico o filtrado por Grupo) para tab-trabajadores-admin
+        // 1. Calcular KPIs Globales (Consolidado Histórico o filtrado por Grupo/Empresa) para tab-trabajadores-admin
         let overallAttendance = window.AttendanceDB.getAttendance();
         let overallBusRecords = window.AttendanceDB.getBusRecords();
         let overallPiecework = window.AttendanceDB.getPiecework();
+
+        if (currentCompany && currentCompany !== 'Todas') {
+            const usersInCompany = allUsers.map(u => u.id);
+            overallAttendance = overallAttendance.filter(a => usersInCompany.includes(a.usuarioId));
+            overallBusRecords = overallBusRecords.filter(a => usersInCompany.includes(a.usuarioId));
+            overallPiecework = overallPiecework.filter(p => usersInCompany.includes(p.usuarioId));
+        }
+
         if (filterGroup !== 'all') {
-            const usersInGroup = allUsers.filter(u => u.grupo === filterGroup).map(u => u.id);
+            const usersInGroup = allUsers.filter(u => u.empresa === filterGroup).map(u => u.id);
             overallAttendance = overallAttendance.filter(a => usersInGroup.includes(a.usuarioId));
             overallBusRecords = overallBusRecords.filter(a => usersInGroup.includes(a.usuarioId));
             overallPiecework = overallPiecework.filter(p => usersInGroup.includes(p.usuarioId));
@@ -153,11 +168,21 @@
             }
         });
 
+        let appliedBusesSalariesKpi = {};
         overallBusRecords.forEach(rec => {
             const user = allUsers.find(u => u.id === rec.usuarioId);
-            const tarifaDia = parseFloat(user ? user.tarifaDiurna : 0) || 0;
-            const shifts = rec.turno ? rec.turno.split(',').length : 1;
-            const bruto = shifts * tarifaDia;
+            let bruto = 0;
+            if (user && user.tipoPago === 'Pago Fijo Diario') {
+                const dateKey = `${user.id}_${rec.fecha.split(' ')[0]}`;
+                if (!appliedBusesSalariesKpi[dateKey]) {
+                    bruto = parseFloat(user.sueldoBusesDiario) || 0;
+                    appliedBusesSalariesKpi[dateKey] = true;
+                }
+            } else {
+                const tarifaDia = parseFloat(user ? user.tarifaDiurna : 0) || 0;
+                const shifts = rec.turno ? rec.turno.split(',').length : 1;
+                bruto = shifts * tarifaDia;
+            }
 
             kpiBruto += bruto;
             kpiNeto += bruto;
@@ -265,7 +290,7 @@
 
         // 3. Filtrar datos según grupo seleccionado
         if (filterGroup !== 'all') {
-            const usersInGroup = allUsers.filter(u => u.grupo === filterGroup).map(u => u.id);
+            const usersInGroup = allUsers.filter(u => u.empresa === filterGroup).map(u => u.id);
             attendance = attendance.filter(a => usersInGroup.includes(a.usuarioId));
             penalizations = penalizations.filter(p => usersInGroup.includes(p.usuarioId));
             bonuses = bonuses.filter(b => usersInGroup.includes(b.usuarioId));
@@ -290,11 +315,21 @@
             }
         });
 
+        let appliedBusesSalariesPrint = {};
         busRecords.forEach(rec => {
             const user = allUsers.find(u => u.id === rec.usuarioId);
-            const tarifaDia = parseFloat(user ? user.tarifaDiurna : 0) || 0;
-            const shifts = rec.turno ? rec.turno.split(',').length : 1;
-            const bruto = shifts * tarifaDia;
+            let bruto = 0;
+            if (user && user.tipoPago === 'Pago Fijo Diario') {
+                const dateKey = `${user.id}_${rec.fecha.split(' ')[0]}`;
+                if (!appliedBusesSalariesPrint[dateKey]) {
+                    bruto = parseFloat(user.sueldoBusesDiario) || 0;
+                    appliedBusesSalariesPrint[dateKey] = true;
+                }
+            } else {
+                const tarifaDia = parseFloat(user ? user.tarifaDiurna : 0) || 0;
+                const shifts = rec.turno ? rec.turno.split(',').length : 1;
+                bruto = shifts * tarifaDia;
+            }
 
             totalGross += bruto;
             if (!rec.aprobado) {
@@ -331,6 +366,7 @@
             renderAdminVehiclesTable();
         } else if (activeTab === 'tab-préstamos') {
             renderAdminLoansTable();
+            if (typeof window.renderAdminVacationsTable === 'function') window.renderAdminVacationsTable();
         } else if (activeTab === 'tab-finanzas') {
             renderAdminFinances();
         } else if (activeTab === 'tab-proyectos') {
@@ -426,6 +462,7 @@
             }
         });
 
+        let appliedBusesSalariesPayroll = {};
         busRecords.forEach(rec => {
             const uid = rec.usuarioId;
             if (!grouped[uid]) {
@@ -453,8 +490,23 @@
             grouped[uid].ingresoTotal += (rec.ingresoDinero || 0);
             grouped[uid].gastoTotal += (rec.montoGasto || 0);
 
-            // Usamos totalDiurnas para guardar los das trabajados
+            // Usamos totalDiurnas para guardar los dias trabajados
             grouped[uid].totalDiurnas += 1;
+
+            const user = allUsers.find(u => u.id === rec.usuarioId);
+            let bruto = 0;
+            if (user && user.tipoPago === 'Pago Fijo Diario') {
+                const dateKey = `${user.id}_${rec.fecha.split(' ')[0]}`;
+                if (!appliedBusesSalariesPayroll[dateKey]) {
+                    bruto = parseFloat(user.sueldoBusesDiario) || 0;
+                    appliedBusesSalariesPayroll[dateKey] = true;
+                }
+            } else {
+                const tarifaDia = parseFloat(user ? user.tarifaDiurna : 0) || 0;
+                const shifts = rec.turno ? rec.turno.split(',').length : 1;
+                bruto = shifts * tarifaDia;
+            }
+            grouped[uid].totalBruto += bruto;
 
             if (!rec.aprobado) {
                 grouped[uid].allApproved = false;
@@ -499,8 +551,8 @@
         Object.values(grouped).forEach(group => {
             const user = allUsers.find(u => u.id === group.userId);
             const nombre = user ? user.nombre : 'Desconocido';
-            const grupo = user ? user.grupo : 'N/A';
-            const isBuses = user && user.empresa && user.empresa.toUpperCase().includes('BUSES');
+            const empresaText = user ? user.empresa : 'N/A';
+            const isBuses = user && user.tipoPago === 'Pago Fijo Diario';
             const isPiecework = user && (user.tipoPago === 'Por Trato' || user.tipoPago === 'Destajo');
 
             // Deducción de préstamo
@@ -527,8 +579,7 @@
 
             if (isBuses) {
                 const ganancia = group.ingresoTotal - group.gastoTotal;
-                const tarifaDia = parseFloat(user.tarifaDiurna) || 0;
-                group.totalBruto = group.totalDiurnas * tarifaDia;
+                // group.totalBruto was calculated dynamically in the loop above
                 group.totalNeto = group.totalBruto + group.totalBono - group.totalDescuento;
 
                 const netFinal = Math.max(0, group.totalNeto - loanDeduction);
@@ -587,7 +638,6 @@
                         <strong>${nombre}</strong>
                     </div>
                 </td>
-                <td><span class="role-badge ${user?.rol || ''}">${grupo}</span></td>
                 <td>${diurnasText}</td>
                 <td>${nocturnasText}</td>
                 <td>${brutoText}</td>
@@ -869,8 +919,8 @@ fragment.appendChild(trMain);
                 subrowsHtml += `
                     <tr style="background: rgba(255, 255, 255, 0.08); font-weight: bold; border-top: 2px solid var(--border-color);">
                         <td colspan="3" style="text-align: right; color: var(--primary);">Suma Final:</td>
-                        <td>${totalDiurnas.toFixed(1)} hrs</td>
-                        <td>${totalNocturnas.toFixed(1)} hrs</td>
+                        <td>${totalDiurnas.toFixed(2)} hrs</td>
+                        <td>${totalNocturnas.toFixed(2)} hrs</td>
                         <td>Q${totalBruto.toFixed(2)}</td>
                         <td class="text-success">+Q${totalBonos.toFixed(2)}</td>
                         <td class="text-danger">-Q${(totalDescuentos + loanDeductVal).toFixed(2)}</td>
@@ -1326,7 +1376,7 @@ fragment.appendChild(trMain);
             allUsers.filter(u => u.rol === 'usr' || u.rol === 'leader').forEach(u => {
                 const option = document.createElement('option');
                 option.value = u.id;
-                option.textContent = `${u.nombre} (@${u.username}) [${u.grupo || 'Sin Grupo'}]`;
+                option.textContent = `${u.nombre} (@${u.username}) [${u.empresa || 'Sin Empresa'}]`;
                 if (preselectedUserId && parseInt(preselectedUserId) === u.id) {
                     option.selected = true;
                 }
@@ -1497,7 +1547,8 @@ fragment.appendChild(trMain);
 
         if (allProjects.length === 0) {
             try {
-                const res = await fetch('/api/projects');
+                const currentComp = window.AttendanceDB?.currentCompany || 'Todas';
+                const res = await fetch(`/api/projects?empresa=${encodeURIComponent(currentComp)}`);
                 const pData = await res.json();
                 allProjects = pData;
             } catch (e) {
@@ -1624,10 +1675,19 @@ fragment.appendChild(trMain);
                     detailsHtml += `<h5 style="margin: 15px 0 5px 0; color: #555;">Buses</h5>`;
                     Object.keys(group.buses).forEach(day => {
                         detailsHtml += `<div style="font-weight: bold; margin-top: 5px; margin-bottom: 5px; font-size: 0.95rem;">${day}</div>`;
+                        let appliedDailySalary = false;
                         group.buses[day].forEach(b => {
-                            const tarifaDia = parseFloat(group.user.tarifaDiurna) || 0;
-                            const shifts = b.turno ? b.turno.split(',').length : 1;
-                            const bruto = shifts * tarifaDia;
+                            let bruto = 0;
+                            if (group.user.tipoPago === 'Pago Fijo Diario') {
+                                if (!appliedDailySalary) {
+                                    bruto = parseFloat(group.user.sueldoBusesDiario) || 0;
+                                    appliedDailySalary = true;
+                                }
+                            } else {
+                                const tarifaDia = parseFloat(group.user.tarifaDiurna) || 0;
+                                const shifts = b.turno ? b.turno.split(',').length : 1;
+                                bruto = shifts * tarifaDia;
+                            }
                             detailsHtml += `
                                 <div style="font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; background: var(--bg-color); padding: 8px 10px; border-radius: 6px; margin-bottom: 5px;">
                                     <div style="flex: 1; padding-right: 10px;">

@@ -3,6 +3,51 @@ const router = express.Router();
 const { dbRun, dbAll, dbGet, addLog } = require('../config/db');
 const { getUploadPath } = require('../utils/fileHelpers');
 
+async function getAccumulatedHours(userId, fechaStr, frecuenciaPago, currentRecordId) {
+    const checkoutDateObj = new Date(fechaStr + 'T00:00:00');
+    let startDate = '';
+    let endDate = '';
+    
+    if (frecuenciaPago === 'Quincenal') {
+        const year = checkoutDateObj.getFullYear();
+        const month = String(checkoutDateObj.getMonth() + 1).padStart(2, '0');
+        const day = checkoutDateObj.getDate();
+        if (day <= 15) {
+            startDate = `${year}-${month}-01`;
+            endDate = `${year}-${month}-15`;
+        } else {
+            startDate = `${year}-${month}-16`;
+            const lastDay = new Date(year, checkoutDateObj.getMonth() + 1, 0).getDate();
+            endDate = `${year}-${month}-${lastDay}`;
+        }
+    } else if (frecuenciaPago === 'Mensual') {
+        const year = checkoutDateObj.getFullYear();
+        const month = String(checkoutDateObj.getMonth() + 1).padStart(2, '0');
+        startDate = `${year}-${month}-01`;
+        const lastDay = new Date(year, checkoutDateObj.getMonth() + 1, 0).getDate();
+        endDate = `${year}-${month}-${lastDay}`;
+    } else {
+        // Semanal / Default (Lunes a Domingo)
+        const day = checkoutDateObj.getDay(); // 0 is Sunday, 1 is Monday
+        const diffToMonday = day === 0 ? -6 : 1 - day;
+        const startMonday = new Date(checkoutDateObj);
+        startMonday.setDate(checkoutDateObj.getDate() + diffToMonday);
+        const endSunday = new Date(startMonday);
+        endSunday.setDate(startMonday.getDate() + 6);
+        
+        startDate = startMonday.toISOString().split('T')[0];
+        endDate = endSunday.toISOString().split('T')[0];
+    }
+    
+    const accumulatedRow = await dbGet(`
+        SELECT SUM(horasTrabajadas) as totalAcumulado
+        FROM attendance
+        WHERE usuarioId = ? AND fecha >= ? AND fecha <= ? AND id != ?
+    `, [userId, startDate, endDate, currentRecordId]);
+    
+    return accumulatedRow && accumulatedRow.totalAcumulado ? parseFloat(accumulatedRow.totalAcumulado) : 0;
+}
+
 router.get('/attendance', async (req, res) => {
     try {
         const rows = await dbAll(`
@@ -57,8 +102,9 @@ router.get('/attendance/active/:userId', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+const fs = require('fs');
 router.post('/attendance/checkin', async (req, res) => {
-    const { usuarioId, lat, lng, justificacionLugar, justificacionMotivo, proyectoId } = req.body;
+    const { usuarioId, lat, lng, justificacionLugar, justificacionMotivo, proyectoId, fotoEntrada } = req.body;
     try {
         const user = await dbGet(`SELECT * FROM users WHERE id = ?`, [parseInt(usuarioId)]);
         if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
@@ -75,10 +121,22 @@ router.post('/attendance/checkin', async (req, res) => {
         const dateStr = `${year}-${month}-${day}`;
         const timeStr = now.toTimeString().split(' ')[0];
 
+        // Procesar Foto Entrada
+        let fotoEntradaPath = null;
+        if (fotoEntrada && fotoEntrada.startsWith('data:image')) {
+            const base64Data = fotoEntrada.replace(/^data:image\/\w+;base64,/, "");
+            const matchExt = fotoEntrada.split(';')[0].match(/jpeg|png|gif/);
+            const ext = matchExt ? matchExt[0] : 'jpg';
+            const filename = `entrada_${user.id}_${Date.now()}.${ext}`;
+            const { filepath, publicUrl } = getUploadPath(__dirname, 'attendance', user.id, filename);
+            fs.writeFileSync(filepath, base64Data, 'base64');
+            fotoEntradaPath = publicUrl;
+        }
+
         const result = await dbRun(`
-            INSERT INTO attendance (usuarioId, fecha, horaEntrada, horaSalida, horasDiurnas, horasNocturnas, horasTrabajadas, montoBruto, descuento, bono, montoNeto, aprobado, aprobadoPor, aprobadoFecha, latEntrada, lngEntrada, justificacionLugarEntrada, justificacionMotivoEntrada, proyectoId)
-            VALUES (?, ?, ?, NULL, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, ?, ?, ?, ?, ?)
-        `, [user.id, dateStr, timeStr, lat || null, lng || null, justificacionLugar || null, justificacionMotivo || null, proyectoId || null]);
+            INSERT INTO attendance (usuarioId, fecha, horaEntrada, horaSalida, horasDiurnas, horasNocturnas, horasTrabajadas, montoBruto, descuento, bono, montoNeto, aprobado, aprobadoPor, aprobadoFecha, latEntrada, lngEntrada, justificacionLugarEntrada, justificacionMotivoEntrada, proyectoId, fotoEntrada)
+            VALUES (?, ?, ?, NULL, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, ?, ?, ?, ?, ?, ?)
+        `, [user.id, dateStr, timeStr, lat || null, lng || null, justificacionLugar || null, justificacionMotivo || null, proyectoId || null, fotoEntradaPath]);
 
         await addLog(user.id, `${user.nombre} registró entrada (Check-in) a las ${timeStr}. Ubicación: "${justificacionLugar || 'N/A'}", Actividad: "${justificacionMotivo || 'N/A'}", Proyecto: ${proyectoId || 'Ninguno'}`);
 
@@ -89,7 +147,7 @@ router.post('/attendance/checkin', async (req, res) => {
     }
 });
 router.post('/attendance/checkout', async (req, res) => {
-    const { usuarioId, lat, lng, justificacionLugar, justificacionMotivo } = req.body;
+    const { usuarioId, lat, lng, justificacionLugar, justificacionMotivo, trabajoDescripcion, trabajoCantidad, fotoAntes, fotoDespues, fotoSalida } = req.body;
     try {
         const user = await dbGet(`SELECT * FROM users WHERE id = ?`, [parseInt(usuarioId)]);
         if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
@@ -152,26 +210,41 @@ router.post('/attendance/checkout', async (req, res) => {
 
         let bruto = 0;
         if (user.tipoPago === 'Destajo' || user.tipoPago === 'Por Trato') {
-            bruto = parseFloat(tarifaDiurna.toFixed(2));
+            let cantidadParaCalculo = trabajoCantidad && parseInt(trabajoCantidad) > 0 ? parseInt(trabajoCantidad) : 1;
+            bruto = parseFloat((tarifaDiurna * cantidadParaCalculo).toFixed(2));
         } else {
-            const horasNormalesLimit = parseFloat(user.horasNormalesMax) || 8.0;
-            let horasNormalesTrabajadas = Math.min(horas, horasNormalesLimit);
-            let horasExtrasTrabajadas = Math.max(0, horas - horasNormalesLimit);
+            const horasAcumuladas = await getAccumulatedHours(user.id, record.fecha, user.frecuenciaPago, record.id);
+            const rangoMaximo = parseFloat(user.rangoMaximoHoras) || 44.0;
+            const tarifaExtra = parseFloat(user.tarifaHoraExtra) || 0.0;
+            
+            let horasExtrasTrabajadas = 0;
+            
+            if (horasAcumuladas >= rangoMaximo) {
+                horasExtrasTrabajadas = horas;
+            } else {
+                const horasDisponiblesNormales = Math.max(0, rangoMaximo - horasAcumuladas);
+                if (horas > horasDisponiblesNormales) {
+                    horasExtrasTrabajadas = horas - horasDisponiblesNormales;
+                }
+            }
 
-            let propDiurna = horas > 0 ? (horasDiurnas / horas) : 1;
-            let propNocturna = horas > 0 ? (horasNocturnas / horas) : 0;
+            let diurnasNormales = horasDiurnas;
+            let nocturnasNormales = horasNocturnas;
 
-            let diurnasNormales = horasNormalesTrabajadas * propDiurna;
-            let nocturnasNormales = horasNormalesTrabajadas * propNocturna;
-
-            let diurnasExtras = horasExtrasTrabajadas * propDiurna;
-            let nocturnasExtras = horasExtrasTrabajadas * propNocturna;
+            if (horasExtrasTrabajadas > 0) {
+                if (diurnasNormales >= horasExtrasTrabajadas) {
+                    diurnasNormales -= horasExtrasTrabajadas;
+                } else {
+                    let remainingExtra = horasExtrasTrabajadas - diurnasNormales;
+                    diurnasNormales = 0;
+                    nocturnasNormales = Math.max(0, nocturnasNormales - remainingExtra);
+                }
+            }
 
             bruto = parseFloat((
                 (diurnasNormales * tarifaDiurna) +
                 (nocturnasNormales * tarifaNocturna) +
-                (diurnasExtras * tarifaDiurna * 2) +
-                (nocturnasExtras * tarifaNocturna * 2)
+                (horasExtrasTrabajadas * tarifaExtra)
             ).toFixed(2));
         }
 
@@ -183,13 +256,26 @@ router.post('/attendance/checkout', async (req, res) => {
 
         const neto = Math.max(0, parseFloat((bruto + bonos - descuentos).toFixed(2)));
 
+        // Procesar Foto Salida
+        let fotoSalidaPath = null;
+        if (fotoSalida && fotoSalida.startsWith('data:image')) {
+            const base64Data = fotoSalida.replace(/^data:image\/\w+;base64,/, "");
+            const matchExt = fotoSalida.split(';')[0].match(/jpeg|png|gif/);
+            const ext = matchExt ? matchExt[0] : 'jpg';
+            const filename = `salida_${user.id}_${Date.now()}.${ext}`;
+            const { filepath, publicUrl } = getUploadPath(__dirname, 'attendance', user.id, filename);
+            fs.writeFileSync(filepath, base64Data, 'base64');
+            fotoSalidaPath = publicUrl;
+        }
+
         await dbRun(`
             UPDATE attendance 
-            SET horaSalida = ?, horasDiurnas = ?, horasNocturnas = ?, horasTrabajadas = ?, montoBruto = ?, descuento = ?, bono = ?, montoNeto = ?, latSalida = ?, lngSalida = ?, justificacionLugarSalida = ?, justificacionMotivoSalida = ?
+            SET horaSalida = ?, horasDiurnas = ?, horasNocturnas = ?, horasTrabajadas = ?, montoBruto = ?, descuento = ?, bono = ?, montoNeto = ?, latSalida = ?, lngSalida = ?, justificacionLugarSalida = ?, justificacionMotivoSalida = ?, trabajoDescripcion = ?, trabajoCantidad = ?, fotoAntes = ?, fotoDespues = ?, fotoSalida = ?
             WHERE id = ?
-        `, [timeStr, horasDiurnas, horasNocturnas, horas, bruto, descuentos, bonos, neto, lat || null, lng || null, justificacionLugar || null, justificacionMotivo || null, record.id]);
+        `, [timeStr, horasDiurnas, horasNocturnas, horas, bruto, descuentos, bonos, neto, lat || null, lng || null, justificacionLugar || null, justificacionMotivo || null, trabajoDescripcion || null, trabajoCantidad || 0, fotoAntes || null, fotoDespues || null, fotoSalidaPath, record.id]);
 
-        await addLog(user.id, `${user.nombre} registró salida (Check-out) a las ${timeStr}. Diurnas: ${horasDiurnas}h, Nocturnas: ${horasNocturnas}h, Total: ${horas}h, Bruto: Q${bruto}, Extras: Q${bonos}, Deducciones: Q${descuentos}. Ubicación: "${justificacionLugar || 'N/A'}", Actividad: "${justificacionMotivo || 'N/A'}"`);
+        let extraLog = user.tipoPago === 'Por Trato' ? `Trato: ${trabajoCantidad} unidades.` : `Total: ${horas}h,`;
+        await addLog(user.id, `${user.nombre} registró salida (Check-out) a las ${timeStr}. ${extraLog} Bruto: Q${bruto}. Ubicación: "${justificacionLugar || 'N/A'}"`);
 
         const updatedRecord = await dbGet(`SELECT * FROM attendance WHERE id = ?`, [record.id]);
         res.json({ success: true, record: updatedRecord });
@@ -230,23 +316,38 @@ router.post('/attendance/adjust/:id', async (req, res) => {
         if (user.tipoPago === 'Destajo' || user.tipoPago === 'Por Trato') {
             bruto = parseFloat(tarifaDiurna.toFixed(2));
         } else {
-            const horasNormalesLimit = parseFloat(user.horasNormalesMax) || 8.0;
-            let horasNormalesTrabajadas = Math.min(newHoras, horasNormalesLimit);
-            let horasExtrasTrabajadas = Math.max(0, newHoras - horasNormalesLimit);
+            const horasAcumuladas = await getAccumulatedHours(user.id, record.fecha, user.frecuenciaPago, record.id);
+            const rangoMaximo = parseFloat(user.rangoMaximoHoras) || 44.0;
+            const tarifaExtra = parseFloat(user.tarifaHoraExtra) || 0.0;
+            
+            let horasExtrasTrabajadas = 0;
+            
+            if (horasAcumuladas >= rangoMaximo) {
+                horasExtrasTrabajadas = newHoras;
+            } else {
+                const horasDisponiblesNormales = Math.max(0, rangoMaximo - horasAcumuladas);
+                if (newHoras > horasDisponiblesNormales) {
+                    horasExtrasTrabajadas = newHoras - horasDisponiblesNormales;
+                }
+            }
 
-            let propDiurna = newHoras > 0 ? (horasDiurnas / newHoras) : 1;
-            let propNocturna = newHoras > 0 ? (horasNocturnas / newHoras) : 0;
+            let diurnasNormales = horasDiurnas;
+            let nocturnasNormales = horasNocturnas;
 
-            let diurnasNormales = horasNormalesTrabajadas * propDiurna;
-            let nocturnasNormales = horasNormalesTrabajadas * propNocturna;
-            let diurnasExtras = horasExtrasTrabajadas * propDiurna;
-            let nocturnasExtras = horasExtrasTrabajadas * propNocturna;
+            if (horasExtrasTrabajadas > 0) {
+                if (diurnasNormales >= horasExtrasTrabajadas) {
+                    diurnasNormales -= horasExtrasTrabajadas;
+                } else {
+                    let remainingExtra = horasExtrasTrabajadas - diurnasNormales;
+                    diurnasNormales = 0;
+                    nocturnasNormales = Math.max(0, nocturnasNormales - remainingExtra);
+                }
+            }
 
             bruto = parseFloat((
                 (diurnasNormales * tarifaDiurna) +
                 (nocturnasNormales * tarifaNocturna) +
-                (diurnasExtras * tarifaDiurna * 2) +
-                (nocturnasExtras * tarifaNocturna * 2)
+                (horasExtrasTrabajadas * tarifaExtra)
             ).toFixed(2));
         }
 
@@ -602,7 +703,13 @@ router.delete('/piecework/:id', async (req, res) => {
 });
 router.get('/attendance/cuts', async (req, res) => {
     try {
-        const cuts = await dbAll("SELECT * FROM payroll_cuts ORDER BY id DESC");
+        const { empresa } = req.query;
+        let cuts;
+        if (empresa && empresa !== 'Todas') {
+            cuts = await dbAll("SELECT * FROM payroll_cuts WHERE empresa = ? ORDER BY id DESC", [empresa]);
+        } else {
+            cuts = await dbAll("SELECT * FROM payroll_cuts ORDER BY id DESC");
+        }
         res.json({ success: true, cuts });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -819,10 +926,38 @@ router.put('/attendance/correction/:id', async (req, res) => {
             if (user.tipoPago === 'Destajo' || user.tipoPago === 'Por Trato') {
                 bruto = parseFloat(td.toFixed(2));
             } else {
-                const hl = parseFloat(user.horasNormalesMax) || 8.0;
-                let hn = Math.min(horas, hl);
-                let he = Math.max(0, horas - hl);
-                bruto = (horasDiurnas * td) + (horasNocturnas * tn) + (he * (parseFloat(user.tarifaExtra) || 0));
+                const horasAcumuladas = await getAccumulatedHours(user.id, fecha, user.frecuenciaPago, id);
+                const rangoMaximo = parseFloat(user.rangoMaximoHoras) || 44.0;
+                const tarifaExtra = parseFloat(user.tarifaHoraExtra) || 0.0;
+                
+                let horasExtrasTrabajadas = 0;
+                if (horasAcumuladas >= rangoMaximo) {
+                    horasExtrasTrabajadas = horas;
+                } else {
+                    const horasDisponiblesNormales = Math.max(0, rangoMaximo - horasAcumuladas);
+                    if (horas > horasDisponiblesNormales) {
+                        horasExtrasTrabajadas = horas - horasDisponiblesNormales;
+                    }
+                }
+                
+                let diurnasNormales = horasDiurnas;
+                let nocturnasNormales = horasNocturnas;
+
+                if (horasExtrasTrabajadas > 0) {
+                    if (diurnasNormales >= horasExtrasTrabajadas) {
+                        diurnasNormales -= horasExtrasTrabajadas;
+                    } else {
+                        let remainingExtra = horasExtrasTrabajadas - diurnasNormales;
+                        diurnasNormales = 0;
+                        nocturnasNormales = Math.max(0, nocturnasNormales - remainingExtra);
+                    }
+                }
+
+                bruto = parseFloat((
+                    (diurnasNormales * td) +
+                    (nocturnasNormales * tn) +
+                    (horasExtrasTrabajadas * tarifaExtra)
+                ).toFixed(2));
             }
         }
         

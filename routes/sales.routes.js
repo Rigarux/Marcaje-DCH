@@ -99,12 +99,23 @@ router.post('/clients', async (req, res) => {
 });
 router.get('/projects', async (req, res) => {
         try {
-            const rows = await dbAll(`
+            const { empresa } = req.query;
+            let query = `
                 SELECT p.*, 
-                    COALESCE((SELECT SUM(monto) FROM project_expenses WHERE proyectoId = p.id), 0) + 
-                    COALESCE((SELECT SUM(montoBruto) FROM attendance WHERE proyectoId = p.id), 0) as totalGastos 
+                    COALESCE((SELECT SUM(monto * COALESCE(cantidad, 1)) FROM project_expenses WHERE proyectoId = p.id), 0) as gastosMateriales,
+                    COALESCE((SELECT SUM(montoBruto) FROM attendance WHERE proyectoId = p.id), 0) as gastosPersonal,
+                    (COALESCE((SELECT SUM(monto * COALESCE(cantidad, 1)) FROM project_expenses WHERE proyectoId = p.id), 0) + 
+                     COALESCE((SELECT SUM(montoBruto) FROM attendance WHERE proyectoId = p.id), 0)) as totalGastos,
+                    COALESCE((SELECT SUM(monto) FROM project_incomes WHERE proyectoId = p.id), 0) as totalIngresos
                 FROM projects p
-            `);
+            `;
+            let params = [];
+            if (empresa && empresa !== 'Todas') {
+                query += ` WHERE p.empresa = ?`;
+                params.push(empresa);
+            }
+
+            const rows = await dbAll(query, params);
             res.json(rows);
         } catch (e) {
             res.status(500).json({ success: false, message: e.message });
@@ -125,21 +136,22 @@ router.get('/projects/:id', async (req, res) => {
                 WHERE a.proyectoId = ? AND a.montoBruto > 0
                 ORDER BY a.fecha DESC
             `, [id]);
+            const incomes = await dbAll(`SELECT * FROM project_incomes WHERE proyectoId = ? ORDER BY fecha DESC, id DESC`, [id]);
             
-            res.json({ success: true, project, expenses, attendances });
+            res.json({ success: true, project, expenses, attendances, incomes });
         } catch (e) {
             res.status(500).json({ success: false, message: e.message });
         }
     });
 router.post('/projects', async (req, res) => {
         try {
-            const { nombre, descripcion, fechaInicio, fechaFin, presupuesto } = req.body;
+            const { nombre, descripcion, fechaInicio, fechaFin, presupuesto, empresa } = req.body;
             if (!nombre) return res.status(400).json({ success: false, message: 'El nombre es obligatorio' });
             
             const result = await dbRun(`
-                INSERT INTO projects (nombre, descripcion, fechaInicio, fechaFin, presupuesto) 
-                VALUES (?, ?, ?, ?, ?)
-            `, [nombre, descripcion, fechaInicio, fechaFin, parseFloat(presupuesto) || 0]);
+                INSERT INTO projects (nombre, descripcion, fechaInicio, fechaFin, presupuesto, empresa) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            `, [nombre, descripcion, fechaInicio, fechaFin, parseFloat(presupuesto) || 0, empresa || null]);
             
             res.json({ success: true, id: result.lastID });
         } catch (e) {
@@ -149,14 +161,14 @@ router.post('/projects', async (req, res) => {
 router.put('/projects/:id', async (req, res) => {
         try {
             const { id } = req.params;
-            const { nombre, descripcion, fechaInicio, fechaFin, presupuesto } = req.body;
+            const { nombre, descripcion, fechaInicio, fechaFin, presupuesto, empresa } = req.body;
             if (!nombre) return res.status(400).json({ success: false, message: 'El nombre es obligatorio' });
             
             await dbRun(`
                 UPDATE projects 
-                SET nombre = ?, descripcion = ?, fechaInicio = ?, fechaFin = ?, presupuesto = ? 
+                SET nombre = ?, descripcion = ?, fechaInicio = ?, fechaFin = ?, presupuesto = ?, empresa = ? 
                 WHERE id = ?
-            `, [nombre, descripcion, fechaInicio, fechaFin, parseFloat(presupuesto) || 0, id]);
+            `, [nombre, descripcion, fechaInicio, fechaFin, parseFloat(presupuesto) || 0, empresa || null, id]);
             
             res.json({ success: true });
         } catch (e) {
@@ -205,6 +217,46 @@ router.delete('/projects/expenses/:id', async (req, res) => {
         try {
             const { id } = req.params;
             await dbRun(`DELETE FROM project_expenses WHERE id = ?`, [id]);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+router.post('/projects/:id/incomes', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { descripcion, monto, fecha, fotoBase64 } = req.body;
+            if (!monto) {
+                return res.status(400).json({ success: false, message: 'El monto es obligatorio' });
+            }
+            
+            let fotoUrl = null;
+            if (fotoBase64 && fotoBase64.startsWith('data:image')) {
+                const matches = fotoBase64.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
+                if (matches && matches.length === 3) {
+                    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+                    const dataBuffer = Buffer.from(matches[2], 'base64');
+                    const filename = `proj_income_${id}_${Date.now()}.${ext}`;
+                    const { filepath, publicUrl } = getUploadPath(__dirname, 'finances', 'incomes', filename);
+                    require('fs').writeFileSync(filepath, dataBuffer);
+                    fotoUrl = publicUrl;
+                }
+            }
+
+            const result = await dbRun(`
+                INSERT INTO project_incomes (proyectoId, monto, fecha, descripcion, fotoComprobanteUrl) 
+                VALUES (?, ?, ?, ?, ?)
+            `, [id, parseFloat(monto) || 0, fecha, descripcion || '', fotoUrl]);
+            
+            res.json({ success: true, id: result.lastID });
+        } catch (e) {
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+router.delete('/projects/incomes/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+            await dbRun(`DELETE FROM project_incomes WHERE id = ?`, [id]);
             res.json({ success: true });
         } catch (e) {
             res.status(500).json({ success: false, message: e.message });
