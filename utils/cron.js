@@ -103,17 +103,23 @@ function startCron() {
             processAutomaticCut();
         }
 
-        // Lógica de reseteo de vacaciones (5 de enero)
-        const isJan5 = now.getMonth() === 0 && now.getDate() === 5;
-        if (isJan5 && !global.hasRunVacationResetToday) {
-            global.hasRunVacationResetToday = true;
-            console.log("Detectado 5 de enero: Reiniciando contadores de vacaciones a 15...");
-            dbRun("UPDATE users SET vacacionesRestantes = 15")
-                .then(() => console.log("Vacaciones reiniciadas exitosamente."))
-                .catch(e => console.error("Error al reiniciar vacaciones:", e));
+        // Lógica de reseteo de vacaciones (Aniversario)
+        if (now.getHours() === 0 && now.getMinutes() === 1 && !global.hasRunAnniversaryCheckToday) {
+            global.hasRunAnniversaryCheckToday = true;
+            console.log("Ejecutando revisión diaria de aniversarios para vacaciones...");
+            
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const year = now.getFullYear();
+            const todayStr = `${year}-${month}-${day}`;
+            const anniversarySuffix = `-${month}-${day}`;
+            
+            dbRun(`UPDATE users SET vacacionesRestantes = COALESCE(vacacionesRestantes, 0) + 15 WHERE fechaIngreso LIKE ? AND fechaIngreso != ?`, [`%${anniversarySuffix}`, todayStr])
+                .then(() => console.log("Vacaciones actualizadas para los aniversarios de hoy."))
+                .catch(e => console.error("Error al actualizar vacaciones por aniversario:", e));
         }
-        if (!isJan5) {
-            global.hasRunVacationResetToday = false;
+        if (now.getHours() !== 0 || now.getMinutes() !== 1) {
+            global.hasRunAnniversaryCheckToday = false;
         }
     }, 60000); // Revisar cada minuto
 }

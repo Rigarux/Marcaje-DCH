@@ -139,7 +139,11 @@
             }
         };
 
+        const currentComp = window.AttendanceDB.currentCompany || 'Todas';
+
         attendance.forEach(rec => {
+            const u = allUsers.find(user => user.id === rec.usuarioId);
+            if (currentComp !== 'Todas' && u && u.empresa !== currentComp) return;
             initGroup(rec.usuarioId);
             grouped[rec.usuarioId].attendanceRecords.push(rec);
             grouped[rec.usuarioId].totalHoras += rec.horasTrabajadas || 0;
@@ -151,6 +155,8 @@
         });
 
         busRecords.forEach(rec => {
+            const u = allUsers.find(user => user.id === rec.usuarioId);
+            if (currentComp !== 'Todas' && u && u.empresa !== currentComp) return;
             initGroup(rec.usuarioId);
             grouped[rec.usuarioId].busRecords.push(rec);
             grouped[rec.usuarioId].totalNeto += (rec.ingresoDinero || 0) - (rec.montoGasto || 0);
@@ -219,7 +225,7 @@
 
             tr.style.cursor = 'pointer';
             tr.innerHTML = `
-                <td>
+                <td data-label="Colaborador">
                     <div style="display:flex; align-items:center; gap:6px;">
                         <svg class="toggle-icon-cut" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="transition: transform 0.2s;">
                             <polyline points="9 18 15 12 9 6"></polyline>
@@ -227,14 +233,14 @@
                         <strong>${group.userName}</strong>
                     </div>
                 </td>
-                <td><span class="role-badge">${group.grupo}</span></td>
-                <td>${group.totalHoras.toFixed(2)} h</td>
-                <td>Q${group.totalBruto.toFixed(2)}</td>
-                <td class="text-success">Q${group.totalBono.toFixed(2)}</td>
-                <td class="text-danger">-Q${group.totalDescuento.toFixed(2)}</td>
-                <td class="text-danger">-Q${loanCuota.toFixed(2)}</td>
-                <td><strong>Q${netFinal.toFixed(2)}</strong></td>
-                <td>${confirmationHtml}</td>
+                <td data-label="Grupo"><span class="role-badge">${group.grupo}</span></td>
+                <td data-label="H. Totales">${group.totalHoras.toFixed(2)} h</td>
+                <td data-label="Bruto">Q${group.totalBruto.toFixed(2)}</td>
+                <td class="text-success" data-label="Bonos">Q${group.totalBono.toFixed(2)}</td>
+                <td class="text-danger" data-label="Descuentos">-Q${group.totalDescuento.toFixed(2)}</td>
+                <td class="text-danger" data-label="Préstamo">-Q${loanCuota.toFixed(2)}</td>
+                <td data-label="Neto Final"><strong>Q${netFinal.toFixed(2)}</strong></td>
+                <td data-label="Confirmación">${confirmationHtml}</td>
             `;
 
             const trSub = document.createElement('tr');
@@ -258,22 +264,42 @@
             if (group.attendanceRecords.length === 0 && group.busRecords.length === 0) {
                 subHtml += `<tr><td colspan="6" style="text-align:center; padding: 10px; font-size: 0.8rem; color: var(--text-muted);">Sin registros individuales.</td></tr>`;
             } else {
+                let currentDay = '';
                 group.attendanceRecords.forEach(a => {
+                    const formattedDate = typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(a.fecha) : a.fecha;
+                    if (formattedDate !== currentDay) {
+                        currentDay = formattedDate;
+                        subHtml += `<tr class="day-group-header" style="background-color: rgba(255, 255, 255, 0.05); font-weight: bold; color: var(--primary-color); border-bottom: 1px solid var(--border-color);"><td colspan="6" style="padding: 4px 10px; font-size: 0.9rem;">${currentDay}</td></tr>`;
+                    }
+
+                    let photosHtml = '';
+                    if (a.fotoEntrada) {
+                        photosHtml += `<a href="${a.fotoEntrada}" target="_blank" style="margin-right:4px;"><img src="${a.fotoEntrada}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; display:inline-block;" title="Foto Entrada"></a>`;
+                    }
+                    if (a.fotoSalida) {
+                        photosHtml += `<a href="${a.fotoSalida}" target="_blank"><img src="${a.fotoSalida}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; display:inline-block;" title="Foto Salida"></a>`;
+                    }
+                    
                     subHtml += `<tr>
-                        <td style="font-size: 0.8rem; padding: 6px;">${a.fecha}</td>
-                        <td style="font-size: 0.8rem; padding: 6px;">${a.horaEntrada || '-'}</td>
-                        <td style="font-size: 0.8rem; padding: 6px;">${a.horaSalida || '-'}</td>
-                        <td style="font-size: 0.8rem; padding: 6px;">${(a.horasTrabajadas || 0).toFixed(2)} h</td>
-                        <td style="font-size: 0.8rem; padding: 6px;">Q${(a.montoBruto || 0).toFixed(2)}</td>
-                        <td style="font-size: 0.8rem; padding: 6px; text-align: center;"><button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${a.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button></td>
+                        <td data-label="Fecha" style="font-size: 0.8rem; padding: 6px;">${formattedDate}</td>
+                        <td data-label="Entrada" style="font-size: 0.8rem; padding: 6px;">${a.horaEntrada || '-'}</td>
+                        <td data-label="Salida" style="font-size: 0.8rem; padding: 6px;">${a.horaSalida || '-'}</td>
+                        <td data-label="Horas" style="font-size: 0.8rem; padding: 6px;">${(a.horasTrabajadas || 0).toFixed(2)} h</td>
+                        <td data-label="Monto Bruto" style="font-size: 0.8rem; padding: 6px;">Q${(a.montoBruto || 0).toFixed(2)}</td>
+                        <td data-label="Acciones" style="font-size: 0.8rem; padding: 6px; text-align: center;">
+                            <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; flex-wrap:wrap;">
+                                ${photosHtml}
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${a.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                            </div>
+                        </td>
                     </tr>`;
                 });
                 group.busRecords.forEach(a => {
                     subHtml += `<tr>
-                        <td style="font-size: 0.8rem; padding: 6px;">${a.fecha ? a.fecha.split(' ')[0] : '-'}</td>
-                        <td style="font-size: 0.8rem; padding: 6px;" colspan="3">Registro de Bus - Turnos: ${a.turno ? a.turno.split(',').length : 1}</td>
-                        <td style="font-size: 0.8rem; padding: 6px;">Q${((a.ingresoDinero || 0) - (a.montoGasto || 0)).toFixed(2)} (Neto)</td>
-                        <td style="font-size: 0.8rem; padding: 6px;"></td>
+                        <td data-label="Fecha" style="font-size: 0.8rem; padding: 6px;">${a.fecha ? a.fecha.split(' ')[0] : '-'}</td>
+                        <td data-label="Detalle" style="font-size: 0.8rem; padding: 6px;" colspan="3">Registro de Bus - Turnos: ${a.turno ? a.turno.split(',').length : 1}</td>
+                        <td data-label="Neto" style="font-size: 0.8rem; padding: 6px;">Q${((a.ingresoDinero || 0) - (a.montoGasto || 0)).toFixed(2)} (Neto)</td>
+                        <td data-label="Acciones" style="font-size: 0.8rem; padding: 6px;"></td>
                     </tr>`;
                 });
             }
@@ -463,7 +489,11 @@
             }
         };
 
+        const currentComp = window.AttendanceDB.currentCompany || 'Todas';
+
         filteredAttendance.forEach(rec => {
+            const u = allUsers.find(user => user.id === rec.usuarioId);
+            if (currentComp !== 'Todas' && u && u.empresa !== currentComp) return;
             initGroup(rec.usuarioId);
             grouped[rec.usuarioId].records.push(rec);
             grouped[rec.usuarioId].totalDiurnas += rec.horasDiurnas || 0;
@@ -475,6 +505,8 @@
         });
 
         filteredBuses.forEach(rec => {
+            const u = allUsers.find(user => user.id === rec.usuarioId);
+            if (currentComp !== 'Todas' && u && u.empresa !== currentComp) return;
             initGroup(rec.usuarioId);
             grouped[rec.usuarioId].busRecords.push(rec);
             grouped[rec.usuarioId].totalNeto += (rec.ingresoDinero || 0) - (rec.montoGasto || 0);
@@ -523,25 +555,23 @@
                         </div>
                     </div>
                     <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                        <thead>
-                            <tr style="background-color: #f9fafb; border-bottom: 1px solid #e5e7eb; color: #374151;">
-                                <th style="padding: 8px; text-align: left;">Fecha</th>
-                                <th style="padding: 8px; text-align: center;">In/Out</th>
-                                <th style="padding: 8px; text-align: center;">H. Diurnas</th>
-                                <th style="padding: 8px; text-align: center;">H. Noct.</th>
-                                <th style="padding: 8px; text-align: right;">Monto Bruto</th>
-                                <th style="padding: 8px; text-align: right;">Bono</th>
-                                <th style="padding: 8px; text-align: right;">Descuento</th>
-                                <th style="padding: 8px; text-align: right;">Monto Neto</th>
-                            </tr>
-                        </thead>
                         <tbody>
+                            <tr style="background-color: #f3f4f6; border-bottom: 1px solid #d1d5db; color: #000000; font-weight: bold;">
+                                <td style="padding: 8px; text-align: left;">Fecha</td>
+                                <td style="padding: 8px; text-align: center;">In/Out</td>
+                                <td style="padding: 8px; text-align: center;">H. Diurnas</td>
+                                <td style="padding: 8px; text-align: center;">H. Noct.</td>
+                                <td style="padding: 8px; text-align: right;">Monto Bruto</td>
+                                <td style="padding: 8px; text-align: right;">Bono</td>
+                                <td style="padding: 8px; text-align: right;">Descuento</td>
+                                <td style="padding: 8px; text-align: right;">Monto Neto</td>
+                            </tr>
             `;
 
             group.records.forEach(rec => {
                 html += `
                     <tr style="border-bottom: 1px solid #f3f4f6;">
-                        <td style="padding: 8px;">${rec.fecha}</td>
+                        <td style="padding: 8px;">${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(rec.fecha) : rec.fecha}</td>
                         <td style="padding: 8px; text-align: center;">${rec.horaEntrada} - ${rec.horaSalida || 'N/A'}</td>
                         <td style="padding: 8px; text-align: center;">${rec.horaSalida ? formatDecimalHours(rec.horasDiurnas) : '-'}</td>
                         <td style="padding: 8px; text-align: center;">${rec.horaSalida ? formatDecimalHours(rec.horasNocturnas) : '-'}</td>
@@ -557,7 +587,7 @@
                 const gananciaLocal = (rec.ingresoDinero || 0) - (rec.montoGasto || 0);
                 html += `
                     <tr style="border-bottom: 1px solid #f3f4f6;">
-                        <td style="padding: 8px;">${rec.fecha}</td>
+                        <td style="padding: 8px;">${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(rec.fecha) : rec.fecha}</td>
                         <td style="padding: 8px; text-align: center;" colspan="3">Bus / Ruta (${rec.turno || 'Día'})</td>
                         <td style="padding: 8px; text-align: right;">Q${(rec.ingresoDinero || 0).toFixed(2)}</td>
                         <td style="padding: 8px; text-align: right; color: #000000;">Q0.00</td>

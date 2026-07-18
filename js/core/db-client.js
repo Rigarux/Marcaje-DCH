@@ -41,6 +41,7 @@ window.AttendanceDB = {
                 const updatedUser = this._state.users.data.find(u => u.id === window.currentUser.id);
                 if (updatedUser) {
                     window.currentUser = updatedUser;
+                    sessionStorage.setItem('dch_current_user', JSON.stringify(updatedUser));
                 }
             }
             this._state.groups = await groupsRes.json();
@@ -182,11 +183,11 @@ window.AttendanceDB = {
         return null;
     },
 
-    async applyPenalization(asistenciaId, usuarioId, motivo, monto, adminId, foto = null) {
+    async applyPenalization(asistenciaId, usuarioId, motivo, monto, adminId, foto = null, fecha = null) {
         const res = await fetch('/api/penalizations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ asistenciaId, usuarioId, motivo, monto, adminId, foto })
+            body: JSON.stringify({ asistenciaId, usuarioId, motivo, monto, adminId, foto, fecha })
         });
         const data = await res.json();
         if (data.success) {

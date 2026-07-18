@@ -22,13 +22,16 @@ function formatDecimalHours(decimalHours) {
     return parts.join(' ') + ` (${decimalHours.toFixed(4)}h)`;
 }
 
-// Helper global para formatear fecha de YYYY-MM-DD a DD-MM-YYYY
+// Helper global para formatear fecha de YYYY-MM-DD a DD-MM-YYYY con Día de la semana
 function formatDateDDMMYYYY(dateString) {
     if (!dateString) return '-';
     // dateString puede venir como "YYYY-MM-DD HH:MM:SS" o "YYYY-MM-DD"
     const parts = dateString.split(' ')[0].split('-');
     if (parts.length === 3) {
-        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const dayName = days[d.getDay()];
+        return `${dayName} ${parts[2]}-${parts[1]}-${parts[0]}`;
     }
     return dateString;
 }
@@ -120,11 +123,11 @@ function handleHashChange() {
     if (!currentUser) return;
     let hash = decodeURIComponent(window.location.hash.substring(1));
     
-    if (!hash) {
+    if (!hash || !document.querySelector(`[data-subview="${hash}"]`)) {
         const firstTab = document.querySelector('.sidebar-nav-link');
         if (firstTab) {
             hash = firstTab.getAttribute('data-subview');
-            window.location.hash = hash;
+            window.location.replace('#' + hash);
             return;
         } else {
             hash = 'view-user'; // Fallback
@@ -202,6 +205,7 @@ function showLogin() {
     dashboardContainer.classList.add('hidden');
     currentUser = null;
     sessionStorage.removeItem('dch_current_user');
+    localStorage.removeItem('dch_current_company');
     clearInterval(timerInterval);
 }
 
@@ -215,8 +219,9 @@ function showDashboard() {
 
     // Asignar etiqueta de rol legible
     let roleText = 'Usuario';
-    if (currentUser.rol === 'leader') roleText = 'Líder de Grupo';
-    if ((currentUser.rol === 'admin' || currentUser.rol === 'superadmin')) roleText = 'Supervisor';
+    if (currentUser.rol === 'leader') roleText = 'Supervisor';
+    if (currentUser.rol === 'admin') roleText = 'Gerente';
+    if (currentUser.rol === 'superadmin') roleText = 'Gerente';
     userRoleBadge.textContent = roleText;
     userRoleBadge.className = `role-badge ${currentUser.rol}`;
 
@@ -225,13 +230,13 @@ function showDashboard() {
 
     if (currentUser.rol === 'leader' || currentUser.rol === 'admin' || currentUser.rol === 'superadmin') {
         let assigned = [];
-        if (currentUser.rol === 'leader') {
+        if (currentUser.rol === 'leader' || currentUser.rol === 'admin') {
             try { assigned = JSON.parse(currentUser.empresas_asignadas || '[]'); } catch(e){}
         } else {
-            // Admin sees all companies
+            // Superadmin sees all companies
             const allComps = window.AttendanceDB.getCompanies();
             assigned = allComps.map(c => c.name);
-            assigned.unshift('Todas'); // Add an "All" option for Admin
+            assigned.unshift('Todas'); // Add an "All" option for Superadmin
         }
 
         if (assigned.length > 0) {
@@ -242,7 +247,10 @@ function showDashboard() {
                 opt.textContent = c;
                 globalCompanySelector.appendChild(opt);
             });
-            if (!window.AttendanceDB.currentCompany && assigned.length > 0) {
+            const cachedCompany = localStorage.getItem('dch_current_company');
+            if (cachedCompany && assigned.includes(cachedCompany)) {
+                window.AttendanceDB.currentCompany = cachedCompany;
+            } else if (!window.AttendanceDB.currentCompany && assigned.length > 0) {
                 window.AttendanceDB.currentCompany = assigned[0];
             } else if (window.AttendanceDB.currentCompany && !assigned.includes(window.AttendanceDB.currentCompany)) {
                 window.AttendanceDB.currentCompany = assigned[0];
@@ -253,9 +261,11 @@ function showDashboard() {
             // Remover listeners previos
             const newSelector = globalCompanySelector.cloneNode(true);
             globalCompanySelector.parentNode.replaceChild(newSelector, globalCompanySelector);
+            newSelector.value = window.AttendanceDB.currentCompany;
             
             newSelector.addEventListener('change', () => {
                 window.AttendanceDB.currentCompany = newSelector.value;
+                localStorage.setItem('dch_current_company', newSelector.value);
                 const newFirstTab = setupSidebarMenu(); // Refrescar los apartados según la empresa
                 
                 // Si la pestaña actual ya no es válida para esta empresa, redirigir
@@ -286,10 +296,9 @@ function showDashboard() {
     }
 
     if (!window.location.hash || window.location.hash === '#') {
-        window.location.replace('#' + defaultTab);
-    } else {
-        handleHashChange();
+        window.history.replaceState(null, null, '#' + defaultTab);
     }
+    handleHashChange();
 }
 
 
@@ -326,6 +335,13 @@ function setupSidebarMenu() {
     } else if (currentUser.rol === 'admin' || currentUser.rol === 'superadmin' || currentUser.rol === 'leader') {
         const isLeader = currentUser.rol === 'leader';
         
+        if (isLeader && compPerms.asistencia !== false && userPerms.control_asistencia !== false) {
+            menuItems.push({ id: 'nav-control-asistencia', label: 'Mi Marcaje', icon: '<polygon points="5 3 19 12 5 21 5 3"></polygon>', subView: 'view-user' });
+            if (userPerms.mi_historial !== false) {
+                menuItems.push({ id: 'nav-user-history', label: 'Mi Historial', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>', subView: 'view-user-history' });
+            }
+        }
+        
         if (compPerms.trabajadores !== false) menuItems.push({ id: 'nav-admin-trabajadores', label: 'Trabajadores', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>', subView: 'tab-trabajadores-admin' });
         if (compPerms.descuentos !== false) menuItems.push({ id: 'nav-admin-descuentos', label: 'Descuentos', icon: '<circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line>', subView: 'tab-descuentos' });
         
@@ -333,12 +349,12 @@ function setupSidebarMenu() {
             menuItems.push({ id: 'nav-admin-empresas', label: 'Empresas', icon: '<rect x="2" y="2" width="20" height="20" rx="2" ry="2"></rect><path d="M10 22V14h4v8"></path><path d="M8 6h2v2H8V6zm8 0h2v2H8V6zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2z"></path>', subView: 'tab-empresas' });
         }
         
-        if (compPerms.vehiculos !== false && (!isLeader || userPerms.vehiculos !== false)) menuItems.push({ id: 'nav-admin-vehículos', label: 'Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'tab-vehículos' });
-        if (compPerms.prestamos !== false && (!isLeader || userPerms.prestamos !== false)) menuItems.push({ id: 'nav-admin-préstamos', label: 'Préstamos', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'tab-préstamos' });
-        if (compPerms.proyectos !== false && (!isLeader || userPerms.proyectos !== false)) menuItems.push({ id: 'nav-admin-proyectos', label: 'Proyectos', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>', subView: 'tab-proyectos' });
-        if (compPerms.finanzas !== false && (!isLeader || userPerms.ingresos_gastos !== false)) menuItems.push({ id: 'nav-admin-finanzas', label: 'Finanzas', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'tab-finanzas' });
-        if (compPerms.finanzas !== false && (!isLeader || userPerms.caja_chica !== false)) menuItems.push({ id: 'nav-admin-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
-        if (compPerms.asistencia !== false && (!isLeader || userPerms.control_asistencia !== false)) menuItems.push({ id: 'nav-admin-diapago', label: 'Día de Pago', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M12 14l2 2 4-4"></path>', subView: 'tab-asistencia', isSpecial: true });
+        if (compPerms.vehiculos !== false && userPerms.vehiculos !== false) menuItems.push({ id: 'nav-admin-vehículos', label: 'Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'tab-vehículos' });
+        if (compPerms.prestamos !== false && userPerms.prestamos !== false) menuItems.push({ id: 'nav-admin-préstamos', label: 'Préstamos', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'tab-préstamos' });
+        if (compPerms.proyectos !== false && userPerms.proyectos !== false) menuItems.push({ id: 'nav-admin-proyectos', label: 'Proyectos', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>', subView: 'tab-proyectos' });
+        if (compPerms.finanzas !== false && userPerms.ingresos_gastos !== false) menuItems.push({ id: 'nav-admin-finanzas', label: 'Finanzas', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'tab-finanzas' });
+        if (compPerms.finanzas !== false && userPerms.caja_chica !== false) menuItems.push({ id: 'nav-admin-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
+        if (compPerms.asistencia !== false && userPerms.control_asistencia !== false) menuItems.push({ id: 'nav-admin-diapago', label: 'Día de Pago', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M12 14l2 2 4-4"></path>', subView: 'tab-asistencia', isSpecial: true });
     }
 
     // Todos los roles tienen acceso a Ingresos Globales
@@ -574,7 +590,7 @@ function loadRoleView() {
             if (typeof loadUserPenaltiesView === 'function') {
                 loadUserPenaltiesView();
             }
-        } else if (currentUser.rol === 'usr') {
+        } else if (activeTab === 'view-user') {
             viewUser.classList.remove('hidden');
             viewTitle.textContent = 'Control de Asistencia';
             viewSubtitle.textContent = 'Registra tus marcas diarias y visualiza tus ingresos calculados en Quetzales (Q).';
@@ -601,7 +617,7 @@ function loadRoleView() {
 
         // Título y subtítulo dinámico según pestaña
         if (activeTab === 'tab-trabajadores-admin') {
-            viewTitle.textContent = 'Fichas y Resumen de Trabajadores';
+            viewTitle.textContent = `${currentUser.nombre.toUpperCase()} | Fichas y Resumen`;
             viewSubtitle.textContent = 'Listado principal de empleados, métricas de pago e historial detallado de marcajes.';
         } else if (activeTab === 'tab-asistencia') {
             viewTitle.textContent = 'Aprobación de Pagos (Día de Pago)';

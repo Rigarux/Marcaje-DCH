@@ -12,8 +12,15 @@
         container.innerHTML = '<p class="text-muted">Cargando proyectos...</p>';
 
         try {
-            const currentComp = window.AttendanceDB?.currentCompany || 'Todas';
-            const res = await fetch(`/api/projects?empresa=${encodeURIComponent(currentComp)}`);
+            const currentComp = window.AttendanceDB?.currentCompany;
+            if (currentUser.rol !== 'superadmin' && (!currentComp || currentComp === 'Todas')) {
+                container.innerHTML = '<p class="text-muted" style="grid-column: 1/-1;">Debes seleccionar una empresa para ver sus proyectos.</p>';
+                window.projectsList = [];
+                return;
+            }
+
+            const compToFetch = currentComp || 'Todas';
+            const res = await fetch(`/api/projects?empresa=${encodeURIComponent(compToFetch)}`);
             const projects = await res.json();
             window.projectsList = projects; // Guardar en lista global
 
@@ -177,20 +184,22 @@
             balanceEl.className = balancePresupuesto < 0 ? 'value text-danger' : 'value text-success';
 
             // Render table
-            const tbody = document.getElementById('project-expenses-table-body');
+            const tbody = document.getElementById('project-expenses-container') || document.getElementById('project-expenses-table-body');
             tbody.innerHTML = '';
             if (expenses.length === 0) {
                 tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-muted" style="text-align: center; padding: 20px;">
-                            No hay gastos registrados para este proyecto.
-                        </td>
-                    </tr>
+                    <div class="text-muted" style="text-align: center; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        No hay gastos registrados para este proyecto.
+                    </div>
                 `;
             } else {
                 const fragmentExpenses = document.createDocumentFragment();
                 expenses.forEach(e => {
-                    const tr = document.createElement('tr');
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = 'card';
+                    cardDiv.style.padding = '0';
+                    cardDiv.style.marginBottom = '15px';
+                    cardDiv.style.overflow = 'hidden';
 
                     // Limpieza del prefijo [Motivo] para mostrar en la interfaz
                     let descClean = e.descripcion || '';
@@ -204,20 +213,40 @@
                     const invoiceHtml = e.fotoFacturaUrl
                         ? `<a href="${e.fotoFacturaUrl}" target="_blank" class="badge badge-success" style="padding: 4px 8px; text-decoration: none; font-size: 0.75rem;">Ver Factura</a>`
                         : '-';
+                        
+                    const displayDate = typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(e.fecha) : e.fecha;
 
-                    tr.innerHTML = `
-                        <td>${e.fecha}</td>
-                        <td>${descClean}</td>
-                        <td style="text-align: right;">${e.cantidad || 1}</td>
-                        <td style="text-align: right; font-weight: 500;">Q${Number(e.monto).toFixed(2)}</td>
-                        <td style="text-align: center;">${invoiceHtml}</td>
-                        <td style="text-align: center;">
-                            <button type="button" class="btn-table-action delete-expense-btn" data-id="${e.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--danger); border-color: var(--danger);">
-                                Eliminar
-                            </button>
-                        </td>
+                    cardDiv.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.9em;">
+                            <span style="color: var(--text-muted); padding-right: 15px;">Fecha</span>
+                            <span style="color: var(--text-color); text-align: right;">${displayDate}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.9em;">
+                            <span style="color: var(--text-muted); padding-right: 15px;">Descripción</span>
+                            <span style="color: var(--text-color); text-align: right;">${descClean}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.9em;">
+                            <span style="color: var(--text-muted); padding-right: 15px;">Cantidad</span>
+                            <span style="color: var(--text-color); text-align: right;">${e.cantidad || 1}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.9em;">
+                            <span style="color: var(--text-muted); padding-right: 15px;">Monto</span>
+                            <span style="color: var(--danger); font-weight: 500; text-align: right;">Q${Number(e.monto).toFixed(2)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.9em;">
+                            <span style="color: var(--text-muted); padding-right: 15px;">Comprobante</span>
+                            <span style="text-align: right;">${invoiceHtml}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 15px;">
+                            <span style="color: var(--text-muted); padding-right: 15px;">Acciones</span>
+                            <span style="text-align: right;">
+                                <button type="button" class="btn-table-action delete-expense-btn" data-id="${e.id}" style="padding: 4px 10px; font-size: 0.75rem; width: auto; background-color: var(--danger); border-color: var(--danger);">
+                                    Eliminar
+                                </button>
+                            </span>
+                        </div>
                     `;
-                    fragmentExpenses.appendChild(tr);
+                    fragmentExpenses.appendChild(cardDiv);
                 });
                 tbody.appendChild(fragmentExpenses);
 
@@ -237,21 +266,19 @@
             }
 
             // Render table for Attendances
-            const tbodyAttendances = document.getElementById('project-attendances-table-body');
+            const containerAttendances = document.getElementById('project-attendances-container') || document.getElementById('project-attendances-table-body');
             const payrollBadge = document.getElementById('project-total-payroll-badge');
             if (payrollBadge) {
                 payrollBadge.textContent = 'Total: Q' + totalPlanilla.toFixed(2);
             }
 
-            if (tbodyAttendances) {
-                tbodyAttendances.innerHTML = '';
+            if (containerAttendances) {
+                containerAttendances.innerHTML = '';
                 if (attendances.length === 0) {
-                    tbodyAttendances.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="text-muted" style="text-align: center; padding: 20px;">
-                                No hay empleados registrados en este proyecto.
-                            </td>
-                        </tr>
+                    containerAttendances.innerHTML = `
+                        <div class="text-muted" style="text-align: center; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            No hay empleados registrados en este proyecto.
+                        </div>
                     `;
                 } else {
                     // Group attendances by date
@@ -278,28 +305,64 @@
 
                     const fragmentAttendances = document.createDocumentFragment();
                     sortedDates.forEach(date => {
-                        // Add daily header
-                        const trHeader = document.createElement('tr');
-                        trHeader.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                        trHeader.innerHTML = `
-                            <td colspan="3" style="font-weight: 700; color: var(--primary-color);">Día: ${date}</td>
-                            <td style="text-align: right; font-weight: 700; color: var(--primary-color);">Total Día: Q${attByDate[date].total.toFixed(2)}</td>
-                        `;
-                        fragmentAttendances.appendChild(trHeader);
+                        // Add daily card
+                        const dayCard = document.createElement('div');
+                        dayCard.className = 'card';
+                        dayCard.style.padding = '0';
+                        dayCard.style.marginBottom = '15px';
+                        dayCard.style.overflow = 'hidden';
 
-                        // Add records for the day
-                        attByDate[date].records.forEach(a => {
-                            const tr = document.createElement('tr');
-                            tr.innerHTML = `
-                                <td>${a.fecha}</td>
-                                <td style="font-weight: 500;">${a.empleadoNombre}</td>
-                                <td style="text-align: right;">${Number(a.horasTrabajadas).toFixed(2)} hrs</td>
-                                <td style="text-align: right; font-weight: 500; color: var(--danger);">Q${Number(a.pago).toFixed(2)}</td>
+                        // Day Header
+                        const dayHeader = document.createElement('div');
+                        dayHeader.style.padding = '15px';
+                        dayHeader.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+                        dayHeader.style.borderBottom = '2px solid rgba(255,255,255,0.1)';
+                        const headerDisplayDate = typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(date) : date;
+                        dayHeader.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 700; color: var(--text-muted); font-size: 0.9em; text-transform: uppercase;">Día / Fecha</span>
+                                <span style="font-weight: 700; color: #fff; font-size: 1.1em;">${headerDisplayDate}</span>
+                            </div>
+                        `;
+                        dayCard.appendChild(dayHeader);
+
+                        // Records for the day
+                        attByDate[date].records.forEach((a, index) => {
+                            const recordDiv = document.createElement('div');
+                            
+                            recordDiv.innerHTML = `
+                                <div style="padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; background-color: rgba(0, 0, 0, 0.2);">
+                                    <span style="font-weight: 600; color: var(--text-color);">${a.empleadoNombre}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.9em;">
+                                    <span style="color: var(--text-muted); padding-right: 15px;">Tiempo</span>
+                                    <span style="color: var(--text-color); text-align: right;">${Number(a.horasTrabajadas).toFixed(2)} hrs</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 15px; ${index < attByDate[date].records.length - 1 ? 'border-bottom: 1px solid rgba(255,255,255,0.1);' : ''}">
+                                    <span style="color: var(--text-muted); font-size: 0.9em; padding-right: 15px;">Pago</span>
+                                    <span style="font-weight: 500; color: var(--danger); text-align: right;">Q${Number(a.pago).toFixed(2)}</span>
+                                </div>
                             `;
-                            fragmentAttendances.appendChild(tr);
+                            
+                            dayCard.appendChild(recordDiv);
                         });
+
+                        // Day Footer
+                        const dayFooter = document.createElement('div');
+                        dayFooter.style.padding = '15px';
+                        dayFooter.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+                        dayFooter.style.borderTop = '2px solid rgba(255,255,255,0.1)';
+                        dayFooter.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 700; color: var(--text-muted); font-size: 0.9em; text-transform: uppercase;">Total Día</span>
+                                <span style="font-weight: 700; color: #fff; font-size: 1.1em;">Q${attByDate[date].total.toFixed(2)}</span>
+                            </div>
+                        `;
+                        dayCard.appendChild(dayFooter);
+                        
+                        fragmentAttendances.appendChild(dayCard);
                     });
-                    tbodyAttendances.appendChild(fragmentAttendances);
+                    containerAttendances.appendChild(fragmentAttendances);
                 }
             }
 
@@ -323,7 +386,7 @@
                             ? `<a href="${inc.fotoComprobanteUrl}" target="_blank" class="badge badge-success" style="padding: 4px 8px; text-decoration: none; font-size: 0.75rem; background-color: var(--success);">Ver Comprobante</a>`
                             : '-';
                         tr.innerHTML = `
-                            <td>${inc.fecha}</td>
+                            <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(inc.fecha) : inc.fecha}</td>
                             <td>${inc.descripcion}</td>
                             <td style="text-align: right; font-weight: 500; color: var(--success);">Q${Number(inc.monto).toFixed(2)}</td>
                             <td style="text-align: center;">${invoiceHtml}</td>

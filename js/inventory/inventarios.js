@@ -381,7 +381,7 @@
             data.forEach(audit => {
                 container.innerHTML += `
                     <div class="card" style="padding: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.2);">
-                        <p style="margin-bottom: 5px;"><strong>Fecha de Envío:</strong> ${audit.fecha}</p>
+                        <p style="margin-bottom: 5px;"><strong>Fecha de Envío:</strong> ${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(audit.fecha) : audit.fecha}</p>
                         ${audit.comentarios ? `<p style="margin-bottom: 10px;"><strong>Comentarios:</strong> ${audit.comentarios}</p>` : ''}
                         <div style="text-align: center;">
                             <img src="${audit.fotoUrl}" alt="Auditoría" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color);">
@@ -536,7 +536,7 @@ async function fetchUserAudits(userId) {
         data.forEach(audit => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${audit.fecha}</td>
+                <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(audit.fecha) : audit.fecha}</td>
                 <td>${audit.comentarios || '-'}</td>
                 <td>
                     <a href="${audit.fotoUrl}" target="_blank" style="color: var(--primary);">Ver Foto</a>

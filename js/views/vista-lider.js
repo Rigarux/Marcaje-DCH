@@ -168,6 +168,32 @@
             leaderAttendanceTable.appendChild(fragmentAttendance);
         }
 
+        // Renderizar Historial de Descansos Registrados para el Lider
+        const leaderVacationsHistoryTable = document.getElementById('leader-vacations-history-table');
+        if (leaderVacationsHistoryTable) {
+            leaderVacationsHistoryTable.innerHTML = '';
+            let vacationRecords = teamRecords.filter(a => a.justificacionMotivoEntrada === 'Descanso (Vacaciones)');
+            vacationRecords.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+            if (vacationRecords.length === 0) {
+                leaderVacationsHistoryTable.innerHTML = `<tr><td colspan="4" class="text-muted" style="text-align:center; padding:20px;">No hay descansos registrados.</td></tr>`;
+            } else {
+                const frag = document.createDocumentFragment();
+                vacationRecords.forEach(rec => {
+                    const usr = allUsers.find(u => u.id === rec.usuarioId);
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${usr ? usr.nombre : 'Desconocido'}</strong></td>
+                        <td>${usr ? usr.empresa : '-'}</td>
+                        <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(rec.fecha) : rec.fecha}</td>
+                        <td>Q${parseFloat(rec.montoNeto || 0).toFixed(2)}</td>
+                    `;
+                    frag.appendChild(tr);
+                });
+                leaderVacationsHistoryTable.appendChild(frag);
+            }
+        }
+
         // 4. Renderizar tabla de Últimos Trabajos Entregados
         if (leaderPieceworkTable) {
             leaderPieceworkTable.innerHTML = '';

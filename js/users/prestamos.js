@@ -14,8 +14,16 @@
         let users = window.AttendanceDB.getUsers();
         
         const currentComp = window.AttendanceDB.currentCompany;
-        if (currentComp && currentComp !== 'Todas') {
-            users = users.filter(u => u.empresa === currentComp);
+        if (currentUser.rol === 'superadmin') {
+            if (currentComp && currentComp !== 'Todas') {
+                users = users.filter(u => u.empresa === currentComp || u.empresas_asignadas?.includes(currentComp));
+            }
+        } else {
+            if (currentComp && currentComp !== 'Todas') {
+                users = users.filter(u => u.empresa === currentComp || u.empresas_asignadas?.includes(currentComp));
+            } else {
+                users = [];
+            }
         }
         
         loanUserSelect.innerHTML = '<option value="" disabled selected>Seleccione un colaborador...</option>';
@@ -32,10 +40,20 @@
         let loans = window.AttendanceDB.getLoans();
         
         const currentComp = window.AttendanceDB.currentCompany;
-        if (currentComp && currentComp !== 'Todas') {
-            const allUsers = window.AttendanceDB.getUsers();
-            const usersInCompany = allUsers.filter(u => u.empresa === currentComp).map(u => u.id);
-            loans = loans.filter(l => usersInCompany.includes(l.usuarioId));
+        const allUsers = window.AttendanceDB.getUsers();
+        
+        if (currentUser.rol === 'superadmin') {
+            if (currentComp && currentComp !== 'Todas') {
+                const usersInCompany = allUsers.filter(u => u.empresa === currentComp || u.empresas_asignadas?.includes(currentComp)).map(u => u.id);
+                loans = loans.filter(l => usersInCompany.includes(l.usuarioId));
+            }
+        } else {
+            if (currentComp && currentComp !== 'Todas') {
+                const usersInCompany = allUsers.filter(u => u.empresa === currentComp || u.empresas_asignadas?.includes(currentComp)).map(u => u.id);
+                loans = loans.filter(l => usersInCompany.includes(l.usuarioId));
+            } else {
+                loans = [];
+            }
         }
 
         adminLoansTable.innerHTML = '';
@@ -64,7 +82,7 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${l.nombreEmpleado || 'Colaborador'}</strong></td>
-                <td>${l.fecha}</td>
+                <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(l.fecha) : l.fecha}</td>
                 <td>Q${(l.monto || 0).toFixed(2)}</td>
                 <td>Q${(l.cuotaMonto || (l.monto / l.cuotas)).toFixed(2)} / pago</td>
                 <td><span class="table-badge ${statusClass}">${l.estado}</span></td>
@@ -206,6 +224,8 @@
             return;
         }
 
+        let attendanceRecords = window.AttendanceDB.getAttendance();
+
         allUsers.forEach(u => {
             let statusClass = u.descansoEstado === 'Pendiente de Autorizar' ? 'pending' : 'approved';
             let actions = '';
@@ -216,11 +236,23 @@
                 actions = `<span class="text-muted">-</span>`;
             }
 
+            let userPastVacations = attendanceRecords.filter(a => a.usuarioId === u.id && a.justificacionMotivoEntrada === 'Descanso (Vacaciones)');
+            let datesEnjoyed = userPastVacations.map((a, idx) => `${idx + 1}. ${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(a.fecha) : a.fecha}`).join('<br>');
+            let daysEnjoyedHtml = userPastVacations.length > 0 ? `<strong>${userPastVacations.length} Días</strong><div style="font-size:0.75em; color:var(--text-muted); margin-top:5px;">${datesEnjoyed}</div>` : '0 Días';
+
+            let datesRequestedHtml = '-';
+            if (u.descansoFechas) {
+                let requestedDates = u.descansoFechas.split(',').map(f => f.trim()).filter(f => f);
+                datesRequestedHtml = requestedDates.map((d, idx) => `${idx + 1}. ${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(d) : d}`).join('<br>');
+            }
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${u.nombre}</strong></td>
                 <td>${u.vacacionesRestantes !== undefined ? u.vacacionesRestantes : 15} Días</td>
+                <td>${daysEnjoyedHtml}</td>
                 <td>${u.descansoDiasSolicitados || 0} Días</td>
+                <td style="max-width:200px; white-space:normal; font-size:0.85em;">${datesRequestedHtml}</td>
                 <td><span class="table-badge ${statusClass}">${u.descansoEstado || 'Ninguno'}</span></td>
                 <td>${actions}</td>
             `;
@@ -230,6 +262,33 @@
             }
             adminVacationsTable.appendChild(tr);
         });
+
+        const historyTable = document.getElementById('admin-vacations-history-table');
+        if (historyTable) {
+            historyTable.innerHTML = '';
+            let attendance = window.AttendanceDB.getAttendance();
+            const allowedUserIds = allUsers.map(u => u.id); // Filtered by company already
+            let vacationRecords = attendance.filter(a => a.justificacionMotivoEntrada === 'Descanso (Vacaciones)' && allowedUserIds.includes(a.usuarioId));
+            
+            // Sort by date descending
+            vacationRecords.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+            if (vacationRecords.length === 0) {
+                historyTable.innerHTML = `<tr><td colspan="4" class="text-muted" style="text-align:center; padding:20px;">No hay descansos registrados.</td></tr>`;
+            } else {
+                vacationRecords.forEach(rec => {
+                    const usr = allUsers.find(u => u.id === rec.usuarioId);
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${usr ? usr.nombre : 'Desconocido'}</strong></td>
+                        <td>${usr ? usr.empresa : '-'}</td>
+                        <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(rec.fecha) : rec.fecha}</td>
+                        <td>Q${parseFloat(rec.montoNeto || 0).toFixed(2)}</td>
+                    `;
+                    historyTable.appendChild(tr);
+                });
+            }
+        }
 
         adminVacationsTable.querySelectorAll('.authorize-vacation-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -250,13 +309,10 @@
                     });
                     const data = await res.json();
                     if (data.success) {
-                        showToast('Vacaciones Autorizadas', 'Se han autorizado las vacaciones y creado los marcajes automáticos.', 'success');
-                        window.AttendanceDB.fetchInitialData().then(() => {
-                            window.renderAdminVacationsTable();
-                            if (typeof renderAdminLoansTable === 'function') renderAdminLoansTable();
-                        });
+                        alert('Se han autorizado las vacaciones y creado los marcajes automáticos.');
+                        window.location.reload();
                     } else {
-                        showToast('Error', data.message || 'Error al autorizar', 'danger');
+                        alert('Error al autorizar: ' + (data.message || ''));
                     }
                 } catch(err) {
                     console.error(err);
@@ -264,6 +320,133 @@
                 }
             });
         });
+
+        // Configurar formulario de asignación manual de vacaciones por el Gerente
+        const adminAssignForm = document.getElementById('admin-assign-vacation-form');
+        const adminUserSelect = document.getElementById('admin-vacation-user');
+        const adminDateInput = document.getElementById('admin-vacation-date');
+        const adminBtnAddDate = document.getElementById('admin-btn-add-vacation-date');
+        const adminDatesListEl = document.getElementById('admin-vacation-dates-list');
+
+        if (adminAssignForm && adminUserSelect) {
+            // Poblar select
+            adminUserSelect.innerHTML = '<option value="">Seleccionar...</option>';
+            allUsers.forEach(u => {
+                // Solo si no tienen solicitud pendiente, para no sobrescribir, o dejar que sobrescriba
+                if (u.descansoEstado !== 'Pendiente de Autorizar') {
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = `${u.nombre} (Restantes: ${u.vacacionesRestantes !== undefined ? u.vacacionesRestantes : 15})`;
+                    adminUserSelect.appendChild(opt);
+                }
+            });
+
+            if (!window.adminVacationDatesArr) window.adminVacationDatesArr = [];
+
+            const renderAdminDatesList = () => {
+                if (!adminDatesListEl) return;
+                adminDatesListEl.innerHTML = '';
+                window.adminVacationDatesArr.forEach((date, index) => {
+                    const badge = document.createElement('span');
+                    badge.style.cssText = 'background: var(--primary); color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;';
+                    badge.innerHTML = `
+                        ${date}
+                        <span style="cursor: pointer; font-weight: bold; margin-left: 5px;" data-index="${index}">&times;</span>
+                    `;
+                    adminDatesListEl.appendChild(badge);
+                });
+                
+                adminDatesListEl.querySelectorAll('span[data-index]').forEach(closeBtn => {
+                    closeBtn.addEventListener('click', (e) => {
+                        const idx = parseInt(e.target.getAttribute('data-index'));
+                        window.adminVacationDatesArr.splice(idx, 1);
+                        renderAdminDatesList();
+                    });
+                });
+            };
+
+            if (adminBtnAddDate && !adminBtnAddDate.hasAttribute('data-listener-attached')) {
+                adminBtnAddDate.setAttribute('data-listener-attached', 'true');
+                adminBtnAddDate.addEventListener('click', () => {
+                    const startStr = adminDateInput.value;
+                    const endInput = document.getElementById('admin-vacation-date-end');
+                    const endStr = endInput ? endInput.value : '';
+
+                    if (!startStr) {
+                        showToast('Aviso', 'Debe seleccionar al menos la fecha de inicio.', 'warning');
+                        return;
+                    }
+
+                    let datesToAdd = [];
+                    if (endStr && endStr >= startStr) {
+                        let current = new Date(startStr + 'T12:00:00Z');
+                        const end = new Date(endStr + 'T12:00:00Z');
+                        while (current <= end) {
+                            datesToAdd.push(current.toISOString().split('T')[0]);
+                            current.setDate(current.getDate() + 1);
+                        }
+                    } else if (endStr && endStr < startStr) {
+                        showToast('Aviso', 'La fecha de fin no puede ser anterior a la de inicio.', 'warning');
+                        return;
+                    } else {
+                        datesToAdd.push(startStr);
+                    }
+
+                    let addedCount = 0;
+                    datesToAdd.forEach(d => {
+                        if (!window.adminVacationDatesArr.includes(d)) {
+                            window.adminVacationDatesArr.push(d);
+                            addedCount++;
+                        }
+                    });
+
+                    if (addedCount > 0) {
+                        renderAdminDatesList();
+                        adminDateInput.value = '';
+                        if (endInput) endInput.value = '';
+                    } else {
+                        showToast('Aviso', 'Las fechas seleccionadas ya están en la lista.', 'warning');
+                    }
+                });
+            }
+            renderAdminDatesList();
+
+            if (!adminAssignForm.hasAttribute('data-listener-attached')) {
+                adminAssignForm.setAttribute('data-listener-attached', 'true');
+                adminAssignForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const targetUserId = adminUserSelect.value;
+                    if (!targetUserId) {
+                        showToast('Aviso', 'Debe seleccionar un colaborador.', 'warning');
+                        return;
+                    }
+                    if (window.adminVacationDatesArr.length === 0) {
+                        showToast('Aviso', 'Debe seleccionar al menos una fecha.', 'warning');
+                        return;
+                    }
+                    
+                    const fechas = window.adminVacationDatesArr.join(',');
+                    
+                    try {
+                        const res = await fetch(`/api/users/${targetUserId}/descansos/solicitar`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fechas })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            alert('Descanso asignado. Se requiere autorización.');
+                            window.location.reload();
+                        } else {
+                            alert('Error al asignar: ' + (data.message || ''));
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showToast('Error', 'Error de red', 'danger');
+                    }
+                });
+            }
+        }
     };
 
 
@@ -350,12 +533,33 @@
                 loans.forEach(l => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${l.fecha}</td>
+                        <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(l.fecha) : l.fecha}</td>
                         <td>Q${(l.monto || 0).toFixed(2)}</td>
                         <td>Q${(l.cuotaMonto || (l.monto / l.cuotas)).toFixed(2)}</td>
                         <td>${l.estado}</td>
                     `;
                     userLoansTable.appendChild(tr);
+                });
+            }
+        }
+        
+        const userVacationsHistoryTable = document.getElementById('user-vacations-history-table');
+        if (userVacationsHistoryTable) {
+            userVacationsHistoryTable.innerHTML = '';
+            let attendance = window.AttendanceDB.getAttendance();
+            let myVacations = attendance.filter(a => a.usuarioId === currentUser.id && a.justificacionMotivoEntrada === 'Descanso (Vacaciones)');
+            myVacations.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            
+            if (myVacations.length === 0) {
+                userVacationsHistoryTable.innerHTML = '<tr><td colspan="2" class="text-center text-muted">No tienes descansos registrados.</td></tr>';
+            } else {
+                myVacations.forEach(v => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(v.fecha) : v.fecha}</td>
+                        <td>Q${(v.montoNeto || 0).toFixed(2)}</td>
+                    `;
+                    userVacationsHistoryTable.appendChild(tr);
                 });
             }
         }
@@ -397,6 +601,81 @@
         }
 
         const formRequestVacation = document.getElementById('form-request-vacation');
+        const dateInput = document.getElementById('request-vacation-date');
+        const btnAddDate = document.getElementById('btn-add-vacation-date');
+        const datesListEl = document.getElementById('vacation-dates-list');
+        
+        // Use a persistent array attached to the form or module scope
+        if (!window.vacationDatesArr) window.vacationDatesArr = [];
+        
+        const renderDatesList = () => {
+            if (!datesListEl) return;
+            datesListEl.innerHTML = '';
+            window.vacationDatesArr.forEach((date, index) => {
+                const badge = document.createElement('span');
+                badge.style.cssText = 'background: var(--primary); color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;';
+                badge.innerHTML = `
+                    ${date}
+                    <span style="cursor: pointer; font-weight: bold; margin-left: 5px;" data-index="${index}">&times;</span>
+                `;
+                datesListEl.appendChild(badge);
+            });
+            
+            datesListEl.querySelectorAll('span[data-index]').forEach(closeBtn => {
+                closeBtn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.getAttribute('data-index'));
+                    window.vacationDatesArr.splice(idx, 1);
+                    renderDatesList();
+                });
+            });
+        };
+        
+        if (btnAddDate && !btnAddDate.hasAttribute('data-listener-attached')) {
+            btnAddDate.setAttribute('data-listener-attached', 'true');
+            btnAddDate.addEventListener('click', () => {
+                const startStr = dateInput.value;
+                const endInput = document.getElementById('request-vacation-date-end');
+                const endStr = endInput ? endInput.value : '';
+
+                if (!startStr) {
+                    showToast('Aviso', 'Debe seleccionar al menos la fecha de inicio.', 'warning');
+                    return;
+                }
+
+                let datesToAdd = [];
+                if (endStr && endStr >= startStr) {
+                    let current = new Date(startStr + 'T12:00:00Z');
+                    const end = new Date(endStr + 'T12:00:00Z');
+                    while (current <= end) {
+                        datesToAdd.push(current.toISOString().split('T')[0]);
+                        current.setDate(current.getDate() + 1);
+                    }
+                } else if (endStr && endStr < startStr) {
+                    showToast('Aviso', 'La fecha de fin no puede ser anterior a la de inicio.', 'warning');
+                    return;
+                } else {
+                    datesToAdd.push(startStr);
+                }
+
+                let addedCount = 0;
+                datesToAdd.forEach(d => {
+                    if (!window.vacationDatesArr.includes(d)) {
+                        window.vacationDatesArr.push(d);
+                        addedCount++;
+                    }
+                });
+
+                if (addedCount > 0) {
+                    renderDatesList();
+                    dateInput.value = '';
+                    if (endInput) endInput.value = '';
+                } else {
+                    showToast('Aviso', 'Las fechas seleccionadas ya están en la lista.', 'warning');
+                }
+            });
+        }
+        renderDatesList();
+
         if (formRequestVacation && !formRequestVacation.hasAttribute('data-listener-attached')) {
             formRequestVacation.setAttribute('data-listener-attached', 'true');
             formRequestVacation.addEventListener('submit', async (e) => {
@@ -405,24 +684,25 @@
                     showToast('Aviso', 'Ya tienes una solicitud pendiente.', 'warning');
                     return;
                 }
-                const daysInput = document.getElementById('request-vacation-days');
-                const days = parseInt(daysInput.value) || 1;
+                if (window.vacationDatesArr.length === 0) {
+                    showToast('Aviso', 'Debe seleccionar al menos una fecha.', 'warning');
+                    return;
+                }
+                const days = window.vacationDatesArr.length;
+                const fechas = window.vacationDatesArr.join(',');
                 
                 try {
                     const res = await fetch(`/api/users/${currentUser.id}/descansos/solicitar`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ dias: days })
+                        body: JSON.stringify({ dias: days, fechas: fechas })
                     });
                     const data = await res.json();
                     if (data.success) {
-                        showToast('Solicitud Enviada', 'Tu solicitud de descanso ha sido enviada.', 'success');
-                        daysInput.value = '';
-                        currentUser.descansoEstado = 'Pendiente de Autorizar';
-                        currentUser.descansoDiasSolicitados = days;
-                        window.setupUserLoanView();
+                        alert('Tu solicitud de descanso ha sido enviada.');
+                        window.location.reload();
                     } else {
-                        showToast('Error', data.message || 'Error al enviar solicitud', 'danger');
+                        alert('Error al enviar solicitud: ' + (data.message || ''));
                     }
                 } catch(err) {
                     console.error(err);

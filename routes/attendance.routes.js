@@ -422,7 +422,7 @@ router.get('/penalizations/user/:userId', async (req, res) => {
     }
 });
 router.post('/penalizations', async (req, res) => {
-    const { asistenciaId, usuarioId, motivo, monto, adminId, foto } = req.body;
+    const { asistenciaId, usuarioId, motivo, monto, adminId, foto, fecha } = req.body;
     try {
         let finalAsistenciaId = asistenciaId ? parseInt(asistenciaId) : null;
         let finalUsuarioId = usuarioId ? parseInt(usuarioId) : null;
@@ -433,19 +433,34 @@ router.post('/penalizations', async (req, res) => {
                 finalUsuarioId = record.usuarioId;
             }
         } else if (finalUsuarioId) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${day}`;
+            let targetDate = fecha;
+            if (!targetDate) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                targetDate = `${year}-${month}-${day}`;
+            }
 
-            const record = await dbGet(`SELECT id FROM attendance WHERE usuarioId = ? AND fecha = ? ORDER BY id DESC LIMIT 1`, [finalUsuarioId, dateStr]);
+            const record = await dbGet(`SELECT id FROM attendance WHERE usuarioId = ? AND fecha = ? ORDER BY id DESC LIMIT 1`, [finalUsuarioId, targetDate]);
             if (record) {
                 finalAsistenciaId = record.id;
             } else {
-                const lastRecord = await dbGet(`SELECT id FROM attendance WHERE usuarioId = ? ORDER BY fecha DESC, id DESC LIMIT 1`, [finalUsuarioId]);
-                if (lastRecord) {
-                    finalAsistenciaId = lastRecord.id;
+                if (fecha) {
+                    // Create an empty attendance record for this specific date so the penalty can be attached and tracked
+                    await dbRun(`
+                        INSERT INTO attendance (usuarioId, fecha, horaEntrada, montoBruto, descuento, bono, montoNeto, aprobado)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `, [finalUsuarioId, targetDate, 'N/A', 0, 0, 0, 0, 0]);
+                    const newRec = await dbGet(`SELECT id FROM attendance WHERE usuarioId = ? AND fecha = ? ORDER BY id DESC LIMIT 1`, [finalUsuarioId, targetDate]);
+                    if (newRec) {
+                        finalAsistenciaId = newRec.id;
+                    }
+                } else {
+                    const lastRecord = await dbGet(`SELECT id FROM attendance WHERE usuarioId = ? ORDER BY fecha DESC, id DESC LIMIT 1`, [finalUsuarioId]);
+                    if (lastRecord) {
+                        finalAsistenciaId = lastRecord.id;
+                    }
                 }
             }
         }
@@ -479,7 +494,14 @@ router.post('/penalizations', async (req, res) => {
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
+        let dateStr = `${year}-${month}-${day}`;
+        
+        if (finalAsistenciaId) {
+            const asisRec = await dbGet(`SELECT fecha FROM attendance WHERE id = ?`, [finalAsistenciaId]);
+            if (asisRec && asisRec.fecha) {
+                dateStr = asisRec.fecha;
+            }
+        }
 
         await dbRun(`
             INSERT INTO penalizations (asistenciaId, usuarioId, fecha, motivo, monto, creadoPor, fotoUrl)

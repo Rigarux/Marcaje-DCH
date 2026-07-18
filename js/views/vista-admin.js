@@ -18,7 +18,6 @@
     const btnCancelPenalize = document.getElementById('btn-cancel-penalize');
     const penalizationForm = document.getElementById('penalization-form');
     const penalizeRecordSelect = document.getElementById('penalize-record-select');
-    const penalizeReasonInput = document.getElementById('penalize-reason');
     const penalizeAmountInput = document.getElementById('penalize-amount');
 
     // Gestión de Pestañas
@@ -116,8 +115,18 @@
 
         // Aplicar filtro de empresa actual
         const currentCompany = window.AttendanceDB.currentCompany;
-        if (currentCompany && currentCompany !== 'Todas') {
-            allUsers = allUsers.filter(u => u.empresa === currentCompany);
+        if (currentUser.rol === 'superadmin') {
+            if (currentCompany && currentCompany !== 'Todas') {
+                allUsers = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+            }
+        } else {
+            // Líderes y Admins (Gerentes no-super) DEBEN tener una empresa seleccionada para ver datos
+            if (currentCompany && currentCompany !== 'Todas') {
+                allUsers = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+            } else {
+                // No company selected or they tried to select 'Todas', return nobody
+                allUsers = [];
+            }
         }
 
         let attendance = window.AttendanceDB.getAttendance();
@@ -630,7 +639,7 @@
             trMain.className = 'main-grouped-row';
             trMain.setAttribute('data-target-subtable', `subtable-${group.userId}`);
             trMain.innerHTML = `
-                <td>
+                <td data-label="Colaborador">
                     <div style="display:flex; align-items:center; gap:6px;">
                         <svg class="toggle-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="transform: rotate(${rotationDeg}); transition: transform 0.2s;">
                             <polyline points="9 18 15 12 9 6"></polyline>
@@ -638,14 +647,14 @@
                         <strong>${nombre}</strong>
                     </div>
                 </td>
-                <td>${diurnasText}</td>
-                <td>${nocturnasText}</td>
-                <td>${brutoText}</td>
-                <td>${bonoText}</td>
-                <td>${descuentoText}</td>
-                <td>${loanText}</td>
-                <td><strong>${netText}</strong></td>
-                <td>
+                <td data-label="H. Diurnas">${diurnasText}</td>
+                <td data-label="H. Nocturnas">${nocturnasText}</td>
+                <td data-label="Bruto Acumulado">${brutoText}</td>
+                <td class="text-success" data-label="Bonos (+)">${bonoText}</td>
+                <td class="text-danger" data-label="Descuentos (-)">${descuentoText}</td>
+                <td class="text-danger" data-label="Deducción Préstamo">${loanText}</td>
+                <td data-label="Monto Neto Final"><strong>${netText}</strong></td>
+                <td data-label="Acciones">
                     <div style="display:flex; flex-direction:column; gap:6px;">
                         <div style="display:flex; gap:6px;">
                             <button class="btn-table-action approve toggle-details-btn" data-uid="${group.userId}" style="background-color: var(--primary); border-color: var(--primary); padding: 4px 8px; font-size:0.75rem; width: auto;">Detalles</button>
@@ -680,7 +689,7 @@ fragment.appendChild(trMain);
                 const sortedDays = Object.keys(grouped).sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
                 
                 sortedDays.forEach(day => {
-                    html += `<tr class="day-group-header hide-on-mobile" style="background-color: rgba(255, 255, 255, 0.05); font-weight: bold; color: var(--primary-color); border-bottom: 1px solid var(--border-color);"><td colspan="${colSpan}" style="padding: 4px 10px;">${day}</td></tr>`;
+                    html += `<tr class="day-group-header" style="background-color: rgba(255, 255, 255, 0.05); font-weight: bold; color: var(--primary-color); border-bottom: 1px solid var(--border-color);"><td colspan="${colSpan}" style="padding: 4px 10px; font-size: 0.9rem;">${day}</td></tr>`;
                     grouped[day].forEach((rec, index) => {
                         let rowHtml = renderFunc(rec).replace('<tr>', '<tr class="day-group-row">');
                         if (index === 0) {
@@ -726,12 +735,12 @@ fragment.appendChild(trMain);
 
                     return `
                         <tr>
-                            <td>${formatDateDDMMYYYY(rec.fecha)}</td>
-                            <td>Q${pagoDiario.toFixed(2)}</td>
-                            <td>${diasLaborados}</td>
-                            <td><strong>${rNeto}</strong></td>
-                            <td>${subAction}</td>
-                            <td>${tipoPagoCell}</td>
+                            <td data-label="Fecha de Pago">${formatDateDDMMYYYY(rec.fecha)}</td>
+                            <td data-label="Pago Diario (Q)">Q${pagoDiario.toFixed(2)}</td>
+                            <td data-label="Días Laborados">${diasLaborados}</td>
+                            <td data-label="Monto Total (Q)"><strong>${rNeto}</strong></td>
+                            <td data-label="Estado/Acción">${subAction}</td>
+                            <td data-label="Tipo de pago">${tipoPagoCell}</td>
                         </tr>
                     `;
                 }, 6);
@@ -740,28 +749,28 @@ fragment.appendChild(trMain);
                     let subAction = '';
                     if (rec.estado === 'Confirmado') {
                         subAction = `
-                            <div style="display:flex; gap:4px; align-items:center;">
-                                <span class="table-badge approved" style="font-size:0.7rem; padding: 2px 6px;">Aprobado</span>
-                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                            <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content: flex-end;">
+                                <span class="table-badge approved" style="font-size:0.65rem; padding: 2px 4px;">Aprobado</span>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
                             </div>
                         `;
                     } else {
                         subAction = `
-                            <div style="display:flex; gap:4px; align-items:center;">
-                                <button class="btn-table-action approve approve-single-piecework-admin" data-recid="${rec.id}" data-uid="${group.userId}" style="padding: 2px 6px; font-size: 0.7rem; width: auto;">Aprobar</button>
-                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                            <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content: flex-end;">
+                                <button class="btn-table-action approve approve-single-piecework-admin" data-recid="${rec.id}" data-uid="${group.userId}" style="padding: 2px 4px; font-size: 0.65rem; width: auto;">Aprobar</button>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
                             </div>
                         `;
                     }
 
                     return `
                         <tr>
-                            <td>${formatDateDDMMYYYY(rec.fecha)}</td>
-                            <td>${rec.trabajo}</td>
-                            <td>Q${(rec.precio || 0).toFixed(2)}</td>
-                            <td>${rec.cantidad}</td>
-                            <td><strong>Q${(rec.total || 0).toFixed(2)}</strong></td>
-                            <td>${subAction}</td>
+                            <td data-label="Fecha">${formatDateDDMMYYYY(rec.fecha)}</td>
+                            <td data-label="Trabajo">${rec.trabajo}</td>
+                            <td data-label="Costo por unidad">Q${(rec.precio || 0).toFixed(2)}</td>
+                            <td data-label="Cantidad">${rec.cantidad}</td>
+                            <td data-label="Cantidad total"><strong>Q${(rec.total || 0).toFixed(2)}</strong></td>
+                            <td data-label="Estado/Acción">${subAction}</td>
                         </tr>
                     `;
                 }, 6);
@@ -778,25 +787,25 @@ fragment.appendChild(trMain);
                     let subAction = '';
                     if (!rec.horaSalida) {
                         subAction = `
-                            <div style="display:flex; gap:4px; align-items:center;">
-                                <span class="text-muted" style="font-size:0.75rem;">Jornada en Curso</span>
-                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                            <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content: flex-end;">
+                                <span class="text-muted" style="font-size:0.65rem;">Jornada en Curso</span>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
                             </div>
                         `;
                     } else if (rec.aprobado) {
                         subAction = `
-                            <div style="display:flex; gap:4px; align-items:center;">
-                                <span class="table-badge approved" style="font-size:0.7rem; padding: 2px 6px;">Aprobado</span>
-                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                            <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content: flex-end;">
+                                <span class="table-badge approved" style="font-size:0.65rem; padding: 2px 4px;">Aprobado</span>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
                             </div>
                         `;
                     } else {
                         subAction = `
-                            <div style="display:flex; gap:4px; align-items:center;">
-                                <button class="btn-table-action approve approve-single-rec" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto;">Aprobar</button>
-                                <button class="btn-table-action approve-row-bonus-btn" data-recid="${rec.id}" style="background-color: var(--success); border-color: var(--success); padding: 2px 6px; font-size: 0.7rem; width: auto;">+ Bono</button>
-                                <button class="btn-table-action penalize penalize-single-rec" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto;">Penalizar</button>
-                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${rec.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                            <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content: flex-end;">
+                                <button class="btn-table-action approve approve-single-rec" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto;">Aprobar</button>
+                                <button class="btn-table-action approve-row-bonus-btn" data-recid="${rec.id}" style="background-color: var(--success); border-color: var(--success); padding: 2px 4px; font-size: 0.65rem; width: auto;">+ Bono</button>
+                                <button class="btn-table-action penalize penalize-single-rec" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto;">Penalizar</button>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
                             </div>
                         `;
                     }
@@ -815,18 +824,31 @@ fragment.appendChild(trMain);
                         </div>`;
                     }
 
+                    let photosHtml = '';
+                    if (rec.fotoEntrada) {
+                        photosHtml += `<a href="${rec.fotoEntrada}" target="_blank" style="margin-right:4px;"><img src="${rec.fotoEntrada}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; display:inline-block;" title="Foto Entrada"></a>`;
+                    }
+                    if (rec.fotoSalida) {
+                        photosHtml += `<a href="${rec.fotoSalida}" target="_blank"><img src="${rec.fotoSalida}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; display:inline-block;" title="Foto Salida"></a>`;
+                    }
+
                     return `
                         <tr>
-                            <td>${formatDateDDMMYYYY(rec.fecha)}</td>
-                            <td>${rec.horaEntrada} ${inJustification}</td>
-                            <td>${outTime} ${outJustification}</td>
-                            <td>${rDiurnas}</td>
-                            <td>${rNocturnas}</td>
-                            <td>${rBruto}</td>
-                            <td class="bonuses-col">${rBono}</td>
-                            <td class="penalties-col">${rDesc}</td>
-                            <td><strong>${rNeto}</strong></td>
-                            <td>${subAction}</td>
+                            <td data-label="Fecha">${formatDateDDMMYYYY(rec.fecha)}</td>
+                            <td data-label="Entrada">${rec.horaEntrada} ${inJustification}</td>
+                            <td data-label="Salida">${outTime} ${outJustification}</td>
+                            <td data-label="H. Diurnas">${rDiurnas}</td>
+                            <td data-label="H. Nocturnas">${rNocturnas}</td>
+                            <td data-label="Monto Bruto">${rBruto}</td>
+                            <td class="bonuses-col" data-label="Bono">${rBono}</td>
+                            <td class="penalties-col" data-label="Descuento">${rDesc}</td>
+                            <td data-label="Monto Neto"><strong>${rNeto}</strong></td>
+                            <td data-label="Estado/Acción">
+                                <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom: 4px;">
+                                    ${photosHtml}
+                                </div>
+                                ${subAction}
+                            </td>
                         </tr>
                     `;
                 }, 10);
@@ -840,33 +862,33 @@ fragment.appendChild(trMain);
                 if (isBuses) {
                     subrowsHtml += `
                         <tr style="background: rgba(253, 224, 71, 0.04); font-weight: 500;">
-                            <td colspan="2">
+                            <td colspan="2" data-label="Concepto">
                                 <span style="color:var(--warning); font-weight:700;">Préstamo / Adelanto</span> (Saldo Pendiente: Q${parseFloat(user.préstamosaldo).toFixed(2)})
                             </td>
-                            <td>-</td>
-                            <td class="text-danger">${loanDeductVal > 0 ? `-Q${loanCuota.toFixed(2)}` : 'Q0.00'}</td>
-                            <td>
+                            <td data-label="Dias laborados">-</td>
+                            <td class="text-danger" data-label="Descuento">${loanDeductVal > 0 ? `-Q${loanCuota.toFixed(2)}` : 'Q0.00'}</td>
+                            <td data-label="Acción">
                                 <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem;">
                                     <input type="checkbox" class="loan-deduct-checkbox" data-uid="${group.userId}" ${isDeducted ? 'checked' : ''}>
                                     Descontar Q${loanCuota.toFixed(2)}
                                 </label>
                             </td>
-                            <td>-</td>
+                            <td data-label="Tipo de pago">-</td>
                         </tr>
                     `;
                 } else {
                     subrowsHtml += `
                         <tr style="background: rgba(253, 224, 71, 0.04); font-weight: 500;">
-                            <td colspan="3">
+                            <td colspan="3" data-label="Concepto">
                                 <span style="color:var(--warning); font-weight:700;">Préstamo / Adelanto</span> (Saldo Pendiente: Q${parseFloat(user.préstamosaldo).toFixed(2)})
                             </td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td class="text-danger">${loanDeductVal > 0 ? `-Q${loanCuota.toFixed(2)}` : 'Q0.00'}</td>
-                            <td><strong>${loanDeductVal > 0 ? `-Q${loanCuota.toFixed(2)}` : 'Q0.00'}</strong></td>
-                            <td>
+                            <td data-label="H. Diurnas">-</td>
+                            <td data-label="H. Nocturnas">-</td>
+                            <td data-label="Monto Bruto">-</td>
+                            <td data-label="Bono">-</td>
+                            <td class="text-danger" data-label="Descuento">${loanDeductVal > 0 ? `-Q${loanCuota.toFixed(2)}` : 'Q0.00'}</td>
+                            <td data-label="Monto Neto"><strong>${loanDeductVal > 0 ? `-Q${loanCuota.toFixed(2)}` : 'Q0.00'}</strong></td>
+                            <td data-label="Acción">
                                 <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem;">
                                     <input type="checkbox" class="loan-deduct-checkbox" data-uid="${group.userId}" ${isDeducted ? 'checked' : ''}>
                                     Descontar Q${loanCuota.toFixed(2)}
@@ -889,11 +911,11 @@ fragment.appendChild(trMain);
 
                 subrowsHtml += `
                     <tr style="background: rgba(255, 255, 255, 0.08); font-weight: bold; border-top: 2px solid var(--border-color);">
-                        <td colspan="2" style="text-align: right; color: var(--primary);">Suma Final:</td>
-                        <td>${totalDias} Das</td>
-                        <td><span style="font-size: 0.95rem; color: var(--primary);">Ganancia: Q${totalGanancia.toFixed(2)}</span></td>
-                        <td>-</td>
-                        <td>-</td>
+                        <td colspan="2" style="text-align: right; color: var(--primary);" data-label="Resumen">Suma Final:</td>
+                        <td data-label="Total Dias">${totalDias} Dias</td>
+                        <td data-label="Ganancia Total"><span style="font-size: 0.95rem; color: var(--primary);">Ganancia: Q${totalGanancia.toFixed(2)}</span></td>
+                        <td data-label="Estado/Acción">-</td>
+                        <td data-label="Tipo de pago">-</td>
                     </tr>
                 `;
             } else {
@@ -918,13 +940,13 @@ fragment.appendChild(trMain);
 
                 subrowsHtml += `
                     <tr style="background: rgba(255, 255, 255, 0.08); font-weight: bold; border-top: 2px solid var(--border-color);">
-                        <td colspan="3" style="text-align: right; color: var(--primary);">Suma Final:</td>
-                        <td>${totalDiurnas.toFixed(2)} hrs</td>
-                        <td>${totalNocturnas.toFixed(2)} hrs</td>
-                        <td>Q${totalBruto.toFixed(2)}</td>
-                        <td class="text-success">+Q${totalBonos.toFixed(2)}</td>
-                        <td class="text-danger">-Q${(totalDescuentos + loanDeductVal).toFixed(2)}</td>
-                        <td colspan="2"><span style="font-size: 0.95rem; color: var(--primary);">Q${finalNeto.toFixed(2)}</span></td>
+                        <td colspan="3" style="text-align: right; color: var(--primary);" data-label="Resumen">Suma Final:</td>
+                        <td data-label="Total H. Diurnas">${totalDiurnas.toFixed(2)} hrs</td>
+                        <td data-label="Total H. Nocturnas">${totalNocturnas.toFixed(2)} hrs</td>
+                        <td data-label="Total Bruto">Q${totalBruto.toFixed(2)}</td>
+                        <td class="text-success" data-label="Total Bonos">+Q${totalBonos.toFixed(2)}</td>
+                        <td class="text-danger" data-label="Total Descuentos">-Q${(totalDescuentos + loanDeductVal).toFixed(2)}</td>
+                        <td colspan="2" data-label="Total Neto"><span style="font-size: 0.95rem; color: var(--primary);">Q${finalNeto.toFixed(2)}</span></td>
                     </tr>
                 `;
             }
@@ -1162,7 +1184,7 @@ fragment.appendChild(trMain);
             btn.addEventListener('click', (e) => {
                 const recid = e.target.getAttribute('data-recid');
                 const rec = window.AttendanceDB.getAttendance().find(a => a.id === parseInt(recid));
-                openModal(rec ? rec.usuarioId : null);
+                openModal(rec ? rec.usuarioId : null, recid);
             });
         });
 
@@ -1359,21 +1381,47 @@ fragment.appendChild(trMain);
         if (e.target === penalizeModal) closeModal();
     });
 
-    function openModal(preselectedUserId = null) {
+    function openModal(preselectedUserId = null, preselectedRecordId = null) {
         penalizeModal.classList.remove('hidden');
+        penalizeModal.setAttribute('data-target-recid', preselectedRecordId || '');
 
         // Limpiar formulario
         const artInput = document.getElementById('penalize-article');
         if (artInput) artInput.value = '';
-        penalizeReasonInput.value = '';
         penalizeAmountInput.value = '';
+        
+        const dateInput = document.getElementById('penalize-date');
+        if (dateInput) {
+            dateInput.value = '';
+            if (preselectedRecordId) {
+                const rec = window.AttendanceDB.getAttendance().find(a => a.id === parseInt(preselectedRecordId));
+                if (rec && rec.fecha) {
+                    dateInput.value = rec.fecha;
+                }
+            }
+        }
 
         // Cargar colaboradores en el selector
         const allUsers = window.AttendanceDB.getUsers();
         const userSelect = document.getElementById('penalize-user-select');
         if (userSelect) {
             userSelect.innerHTML = '';
-            allUsers.filter(u => u.rol === 'usr' || u.rol === 'leader').forEach(u => {
+            
+            let filteredUsers = allUsers.filter(u => u.rol === 'usr' || u.rol === 'leader' || u.rol === 'admin');
+            const currentCompany = window.AttendanceDB.currentCompany;
+            if (currentUser.rol === 'superadmin') {
+                if (currentCompany && currentCompany !== 'Todas') {
+                    filteredUsers = filteredUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+                }
+            } else {
+                if (currentCompany && currentCompany !== 'Todas') {
+                    filteredUsers = filteredUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+                } else {
+                    filteredUsers = [];
+                }
+            }
+
+            filteredUsers.forEach(u => {
                 const option = document.createElement('option');
                 option.value = u.id;
                 option.textContent = `${u.nombre} (@${u.username}) [${u.empresa || 'Sin Empresa'}]`;
@@ -1395,16 +1443,16 @@ fragment.appendChild(trMain);
         e.preventDefault();
         const userSelect = document.getElementById('penalize-user-select');
         const userId = userSelect ? userSelect.value : null;
-        const article = document.getElementById('penalize-article') ? document.getElementById('penalize-article').value.trim() : '';
-        const justification = penalizeReasonInput.value.trim();
+        const motivo = document.getElementById('penalize-article') ? document.getElementById('penalize-article').value.trim() : '';
         const monto = parseFloat(penalizeAmountInput.value);
+        
+        const dateInput = document.getElementById('penalize-date');
+        const fecha = dateInput ? dateInput.value : null;
 
         if (!userId) {
             showToast('Operación Inválida', 'Debes seleccionar un colaborador válido.', 'danger');
             return;
         }
-
-        const motivo = `Artículo: ${article} | Justificación: ${justification}`;
 
         let fotoBase64 = null;
         const photoInput = document.getElementById('penalize-photo-input');
@@ -1417,7 +1465,10 @@ fragment.appendChild(trMain);
             });
         }
 
-        const success = await window.AttendanceDB.applyPenalization(null, userId, motivo, monto, currentUser.id, fotoBase64);
+        const targetRecIdAttr = penalizeModal.getAttribute('data-target-recid');
+        const targetRecId = targetRecIdAttr ? parseInt(targetRecIdAttr) : null;
+
+        const success = await window.AttendanceDB.applyPenalization(targetRecId, userId, motivo, monto, currentUser.id, fotoBase64, fecha);
 
         if (success) {
             showToast('Descuento Aplicada', `Se aplicó descuento de Q${monto.toFixed(2)} al colaborador.`, 'success');
@@ -1464,7 +1515,22 @@ fragment.appendChild(trMain);
         bonusAmountInput.value = '';
 
         const allUsers = window.AttendanceDB.getUsers();
-        const pendingRecords = window.AttendanceDB.getAttendance().filter(a => a.horaSalida && !a.aprobado);
+        let pendingRecords = window.AttendanceDB.getAttendance().filter(a => a.horaSalida && !a.aprobado);
+
+        const currentCompany = window.AttendanceDB.currentCompany;
+        if (currentUser.rol === 'superadmin') {
+            if (currentCompany && currentCompany !== 'Todas') {
+                const allowedUserIds = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany)).map(u => u.id);
+                pendingRecords = pendingRecords.filter(rec => allowedUserIds.includes(rec.usuarioId));
+            }
+        } else {
+            if (currentCompany && currentCompany !== 'Todas') {
+                const allowedUserIds = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany)).map(u => u.id);
+                pendingRecords = pendingRecords.filter(rec => allowedUserIds.includes(rec.usuarioId));
+            } else {
+                pendingRecords = [];
+            }
+        }
 
         bonusRecordSelect.innerHTML = '';
         if (pendingRecords.length === 0) {
@@ -1562,10 +1628,26 @@ fragment.appendChild(trMain);
             return p ? p.nombre : 'Desconocido';
         };
 
-        const allUsers = window.AttendanceDB.getUsers();
-        let pendingAttendance = window.AttendanceDB.getAttendance().filter(a => a.horaSalida && !a.aprobado && !a.archivado);
-        let pendingPiecework = window.AttendanceDB.getPiecework().filter(p => p.estado === 'Pendiente' && !p.archivado);
-        let pendingBuses = window.AttendanceDB.getBusRecords().filter(b => !b.aprobado && !b.archivado);
+        let allUsers = window.AttendanceDB.getUsers();
+        
+        const currentCompany = window.AttendanceDB.currentCompany;
+        if (currentUser.rol === 'superadmin') {
+            if (currentCompany && currentCompany !== 'Todas') {
+                allUsers = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+            }
+        } else {
+            if (currentCompany && currentCompany !== 'Todas') {
+                allUsers = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+            } else {
+                allUsers = [];
+            }
+        }
+        
+        const allowedUserIds = allUsers.map(u => u.id);
+
+        let pendingAttendance = window.AttendanceDB.getAttendance().filter(a => a.horaSalida && !a.aprobado && !a.archivado && allowedUserIds.includes(a.usuarioId));
+        let pendingPiecework = window.AttendanceDB.getPiecework().filter(p => p.estado === 'Pendiente' && !p.archivado && allowedUserIds.includes(p.usuarioId));
+        let pendingBuses = window.AttendanceDB.getBusRecords().filter(b => !b.aprobado && !b.archivado && allowedUserIds.includes(b.usuarioId));
 
         // Group by user
         let grouped = {};

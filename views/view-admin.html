@@ -224,9 +224,19 @@
                             <div class="card table-card card-inner">
                                 <div class="card-header" style="border-bottom:none; margin-bottom:0; display:flex; justify-content:space-between; align-items:center;">
                                     <h3>Listado de Usuarios</h3>
-                                    <button id="btn-open-user-modal" class="btn-primary" style="width:auto; padding:8px 16px; font-size:0.85rem;">
-                                        <span>Crear Usuario</span>
-                                    </button>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button id="btn-download-db" class="btn-secondary" style="width:auto; padding:8px 16px; font-size:0.85rem; background-color: var(--warning); border-color: var(--warning); color: #fff;">
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="7 10 12 15 17 10"></polyline>
+                                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                                            </svg>
+                                            <span>Descargar Base de Datos</span>
+                                        </button>
+                                        <button id="btn-open-user-modal" class="btn-primary" style="width:auto; padding:8px 16px; font-size:0.85rem;">
+                                            <span>Crear Usuario</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="table-responsive">
                                     <table>
@@ -561,22 +571,8 @@
                                                 </button>
                                             </div>
                                         </div>
-                                        <div class="table-responsive">
-                                            <table id="project-expenses-table-element">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Fecha</th>
-                                                        <th>Descripción (Razón)</th>
-                                                        <th style="text-align: right;">Cantidad</th>
-                                                        <th style="text-align: right;">Monto (Q)</th>
-                                                        <th style="text-align: center;">Comprobante</th>
-                                                        <th style="text-align: center; width: 80px;">Acciones</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="project-expenses-table-body">
-                                                    <!-- Carga dinámica -->
-                                                </tbody>
-                                            </table>
+                                        <div id="project-expenses-container" style="display: flex; flex-direction: column; gap: 15px; padding: 15px;">
+                                            <!-- Carga dinámica -->
                                         </div>
                                     </div>
 
@@ -588,20 +584,8 @@
                                                 Planilla y Pagos a Empleados
                                             </h3>
                                         </div>
-                                        <div class="table-responsive">
-                                            <table id="project-attendances-table-element">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Fecha</th>
-                                                        <th>Empleado</th>
-                                                        <th style="text-align: right;">Horas Trabajadas</th>
-                                                        <th style="text-align: right;">Pago Bruto (Q)</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="project-attendances-table-body">
-                                                    <!-- Carga dinámica -->
-                                                </tbody>
-                                            </table>
+                                        <div id="project-attendances-container" style="display: flex; flex-direction: column; gap: 15px;">
+                                            <!-- Carga dinámica -->
                                         </div>
                                     </div>
                                 </div>

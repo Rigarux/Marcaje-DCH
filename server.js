@@ -34,6 +34,7 @@ const salesRoutes = require('./routes/sales.routes');
 const inventoryRoutes = require('./routes/inventory.routes');
 const financesRoutes = require('./routes/finances.routes');
 const vehiclesRoutes = require('./routes/vehicles.routes');
+const systemRoutes = require('./routes/system.routes');
 
 app.use('/api', usersRoutes);
 app.use('/api', attendanceRoutes);
@@ -41,6 +42,7 @@ app.use('/api', salesRoutes);
 app.use('/api', inventoryRoutes);
 app.use('/api', financesRoutes);
 app.use('/api', vehiclesRoutes);
+app.use('/api/system', systemRoutes);
 
 // Iniciar cron jobs
 const { startCron } = require('./utils/cron');

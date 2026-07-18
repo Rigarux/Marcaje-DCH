@@ -1,5 +1,6 @@
     // --- GESTIÓN DE USUARIOS (RRHH Daniel) ---
     const btnOpenUserModal = document.getElementById('btn-open-user-modal');
+    const btnDownloadDb = document.getElementById('btn-download-db');
     const userModal = document.getElementById('user-modal');
     const btnCloseUserModal = document.getElementById('btn-close-user-modal');
     const btnCancelUser = document.getElementById('btn-cancel-user');
@@ -34,9 +35,9 @@
         const permVehiculos = document.getElementById('perm-vehiculos');
         const permInventario = document.getElementById('perm-inventario');
         const permCajaChica = document.getElementById('perm-caja-chica');
-        const permVentas = document.getElementById('perm-ventas');
         const permProyectos = document.getElementById('perm-proyectos');
         const permIngresosGastos = document.getElementById('perm-ingresos-gastos');
+        const permMiHistorial = document.getElementById('perm-mi-historial');
 
         let leaderPerms = null;
         if (currentUser && currentUser.rol === 'leader' && currentUser.permisos) {
@@ -58,9 +59,9 @@
             if (permVehiculos && permVehiculos.parentElement) permVehiculos.parentElement.style.display = canSee(modules.vehiculos, 'vehiculos') ? 'flex' : 'none';
             if (permInventario && permInventario.parentElement) permInventario.parentElement.style.display = canSee(modules.inventario, 'inventario') ? 'flex' : 'none';
             if (permCajaChica && permCajaChica.parentElement) permCajaChica.parentElement.style.display = canSee(modules.finanzas, 'caja_chica') ? 'flex' : 'none';
-            if (permVentas && permVentas.parentElement) permVentas.parentElement.style.display = canSee(modules.ventas, 'ventas') ? 'flex' : 'none';
             if (permProyectos && permProyectos.parentElement) permProyectos.parentElement.style.display = canSee(modules.proyectos, 'proyectos') ? 'flex' : 'none';
             if (permIngresosGastos && permIngresosGastos.parentElement) permIngresosGastos.parentElement.style.display = canSee(modules.finanzas, 'ingresos_gastos') ? 'flex' : 'none';
+            if (permMiHistorial && permMiHistorial.parentElement) permMiHistorial.parentElement.style.display = canSee(modules.asistencia, 'mi_historial') ? 'flex' : 'none';
         } else {
             // Default show all if no company logic, but still check leader perms
             if (permAsistencia && permAsistencia.parentElement) permAsistencia.parentElement.style.display = canSee(true, 'control_asistencia') ? 'flex' : 'none';
@@ -68,9 +69,9 @@
             if (permVehiculos && permVehiculos.parentElement) permVehiculos.parentElement.style.display = canSee(true, 'vehiculos') ? 'flex' : 'none';
             if (permInventario && permInventario.parentElement) permInventario.parentElement.style.display = canSee(true, 'inventario') ? 'flex' : 'none';
             if (permCajaChica && permCajaChica.parentElement) permCajaChica.parentElement.style.display = canSee(true, 'caja_chica') ? 'flex' : 'none';
-            if (permVentas && permVentas.parentElement) permVentas.parentElement.style.display = canSee(true, 'ventas') ? 'flex' : 'none';
             if (permProyectos && permProyectos.parentElement) permProyectos.parentElement.style.display = canSee(true, 'proyectos') ? 'flex' : 'none';
             if (permIngresosGastos && permIngresosGastos.parentElement) permIngresosGastos.parentElement.style.display = canSee(true, 'ingresos_gastos') ? 'flex' : 'none';
+            if (permMiHistorial && permMiHistorial.parentElement) permMiHistorial.parentElement.style.display = canSee(true, 'mi_historial') ? 'flex' : 'none';
         }
     }
 
@@ -100,7 +101,7 @@
         const companyContainer = document.getElementById('user-company-container');
         const companiesMultiContainer = document.getElementById('user-companies-multi-container');
 
-        if (role === 'leader') {
+        if (role === 'leader' || role === 'admin') {
             if (companyContainer) companyContainer.classList.add('hidden');
             if (companiesMultiContainer) companiesMultiContainer.classList.remove('hidden');
             if (userCompanySelect) userCompanySelect.required = false;
@@ -181,7 +182,7 @@
         if (!userCompanySelect) return;
         let companies = window.AttendanceDB.getCompanies();
 
-        if (currentUser && currentUser.rol === 'leader') {
+        if (currentUser && (currentUser.rol === 'leader' || currentUser.rol === 'admin')) {
             let assigned = [];
             try { assigned = JSON.parse(currentUser.empresas_asignadas || '[]'); } catch(e){}
             companies = companies.filter(c => assigned.includes(typeof c === 'string' ? c : c.name) || (typeof c === 'string' ? c : c.name) === 'N/A');
@@ -207,7 +208,12 @@
 
     function renderAdminCompaniesTable() {
         if (!adminCompaniesTable) return;
-        const companies = window.AttendanceDB.getCompanies();
+        let companies = window.AttendanceDB.getCompanies();
+        if (currentUser && (currentUser.rol === 'leader' || currentUser.rol === 'admin')) {
+            let assigned = [];
+            try { assigned = JSON.parse(currentUser.empresas_asignadas || '[]'); } catch(e){}
+            companies = companies.filter(c => assigned.includes(typeof c === 'string' ? c : c.name));
+        }
         const allUsers = window.AttendanceDB.getUsers();
 
         adminCompaniesTable.innerHTML = '';
@@ -319,7 +325,6 @@
             document.getElementById('comp-perm-trabajadores').checked = mods.trabajadores !== false;
             document.getElementById('comp-perm-finanzas').checked = mods.finanzas !== false;
             document.getElementById('comp-perm-inventario').checked = mods.inventario !== false;
-            document.getElementById('comp-perm-ventas').checked = mods.ventas !== false;
             document.getElementById('comp-perm-proyectos').checked = mods.proyectos !== false;
             document.getElementById('comp-perm-prestamos').checked = mods.prestamos !== false;
             document.getElementById('comp-perm-vehiculos').checked = mods.vehiculos !== false;
@@ -336,7 +341,6 @@
             document.getElementById('comp-perm-trabajadores').checked = true;
             document.getElementById('comp-perm-finanzas').checked = true;
             document.getElementById('comp-perm-inventario').checked = true;
-            document.getElementById('comp-perm-ventas').checked = true;
             document.getElementById('comp-perm-proyectos').checked = true;
             document.getElementById('comp-perm-prestamos').checked = true;
             document.getElementById('comp-perm-vehiculos').checked = true;
@@ -408,7 +412,6 @@
                 trabajadores: document.getElementById('comp-perm-trabajadores').checked,
                 finanzas: document.getElementById('comp-perm-finanzas').checked,
                 inventario: document.getElementById('comp-perm-inventario').checked,
-                ventas: document.getElementById('comp-perm-ventas').checked,
                 proyectos: document.getElementById('comp-perm-proyectos').checked,
                 prestamos: document.getElementById('comp-perm-prestamos').checked,
                 vehiculos: document.getElementById('comp-perm-vehiculos').checked,
@@ -668,8 +671,16 @@
     function renderAdminUsersTable() {
         let allUsers = window.AttendanceDB.getUsers();
         const currentCompany = window.AttendanceDB.currentCompany;
-        if (currentCompany && currentCompany !== 'Todas') {
-            allUsers = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+        if (currentUser.rol === 'superadmin') {
+            if (currentCompany && currentCompany !== 'Todas') {
+                allUsers = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+            }
+        } else {
+            if (currentCompany && currentCompany !== 'Todas') {
+                allUsers = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+            } else {
+                allUsers = [];
+            }
         }
         
         adminUsersTable.innerHTML = '';
@@ -688,7 +699,15 @@
         const fragment = document.createDocumentFragment();
 
         allUsers.forEach(user => {
-            const companyText = user.empresa || 'N/A';
+            let companyText = user.empresa || 'N/A';
+            if ((user.rol === 'leader' || user.rol === 'admin') && user.empresas_asignadas) {
+                try {
+                    const parsed = JSON.parse(user.empresas_asignadas);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        companyText = parsed.join(', ');
+                    }
+                } catch (e) {}
+            }
             const rateText = user.rol === 'usr'
                 ? `Q${(user.tarifaDiurna || 0).toFixed(2)} (D) / Q${(user.tarifaNocturna || 0).toFixed(2)} (N)`
                 : '-';
@@ -760,6 +779,13 @@
         });
     }
 
+    // Botón de Descargar Base de Datos
+    if (btnDownloadDb) {
+        btnDownloadDb.addEventListener('click', () => {
+            window.location.href = '/api/system/download-db';
+        });
+    }
+
     const closeUserModal = () => {
         userModal.classList.add('hidden');
     };
@@ -783,6 +809,11 @@
             userPasswordInput.required = false; // No obligatorio en edición
             userPasswordHelp.classList.remove('hidden');
             userRoleSelect.value = user.rol;
+            const leaderOpt = userRoleSelect.querySelector('option[value="leader"]');
+            if (leaderOpt) {
+                leaderOpt.style.display = 'block';
+                leaderOpt.disabled = false;
+            }
             userCompanySelect.value = user.empresa || 'N/A';
             if (userRateDiurnaInput) userRateDiurnaInput.value = user.tarifaDiurna !== undefined ? user.tarifaDiurna : '';
             if (userRateNocturnaInput) userRateNocturnaInput.value = user.tarifaNocturna !== undefined ? user.tarifaNocturna : '';
@@ -857,6 +888,11 @@
             userPasswordInput.required = true; // Obligatorio en creación
             userPasswordHelp.classList.add('hidden');
             userRoleSelect.value = 'usr';
+            const leaderOpt = userRoleSelect.querySelector('option[value="leader"]');
+            if (leaderOpt) {
+                leaderOpt.style.display = 'block';
+                leaderOpt.disabled = false;
+            }
             userCompanySelect.value = 'N/A';
             if (userGroupSelect) userGroupSelect.value = 'N/A';
             if (userRateDiurnaInput) userRateDiurnaInput.value = '';
@@ -912,7 +948,12 @@
         const userCompaniesList = document.getElementById('user-companies-list');
         if (userCompaniesList) {
             userCompaniesList.innerHTML = '';
-            const allCompanies = window.AttendanceDB.getCompanies();
+            let allCompanies = window.AttendanceDB.getCompanies();
+            if (currentUser && (currentUser.rol === 'leader' || currentUser.rol === 'admin')) {
+                let assigned = [];
+                try { assigned = JSON.parse(currentUser.empresas_asignadas || '[]'); } catch(e){}
+                allCompanies = allCompanies.filter(c => assigned.includes(c.name));
+            }
             let assignedCompanies = [];
             if (userId) {
                 const user = window.AttendanceDB.getUserById(userId);
@@ -970,7 +1011,7 @@
             const horasNormalesMax = userHorasNormalesInput ? parseFloat(userHorasNormalesInput.value) : 8.0;
 
             let empresas_asignadas = [];
-            if (rol === 'leader') {
+            if (rol === 'leader' || rol === 'admin') {
                 const userCompaniesList = document.getElementById('user-companies-list');
                 if (userCompaniesList) {
                     userCompaniesList.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
@@ -1346,7 +1387,15 @@
         if (companyFilter && companyFilter.options.length <= 1 && window.AttendanceDB._state.companies) {
             const currentVal = companyFilter.value;
             companyFilter.innerHTML = '<option value="">Todas las empresas</option>';
-            window.AttendanceDB._state.companies.forEach(c => {
+            
+            let allowedComps = window.AttendanceDB._state.companies;
+            if (typeof currentUser !== 'undefined' && (currentUser.rol === 'leader' || currentUser.rol === 'admin')) {
+                let assigned = [];
+                try { assigned = JSON.parse(currentUser.empresas_asignadas || '[]'); } catch(e){}
+                allowedComps = allowedComps.filter(c => assigned.includes(c.name));
+            }
+            
+            allowedComps.forEach(c => {
                 companyFilter.innerHTML += `<option value="${c.name}">${c.name}</option>`;
             });
             companyFilter.value = currentVal;
@@ -1367,10 +1416,10 @@
             companyFilter.style.display = 'block';
         }
 
-        let workers = allUsers.filter(u => u.rol === 'usr' || (currentUser && currentUser.rol !== 'leader' && u.rol === 'leader'));
+        let workers = allUsers.filter(u => u.rol === 'usr' || (currentUser && currentUser.rol !== 'leader' && (u.rol === 'leader' || u.rol === 'admin')));
 
         if (filterValue) {
-            workers = workers.filter(u => u.empresa === filterValue);
+            workers = workers.filter(u => u.empresa === filterValue || u.empresas_asignadas?.includes(filterValue));
         }
 
         if (workers.length === 0) {
@@ -1495,7 +1544,7 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${rec.fecha}</td>
+                    <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(rec.fecha) : rec.fecha}</td>
                     <td>${rec.horaEntrada}</td>
                     <td>${rec.horaSalida || '-'}</td>
                     <td>${timeStr}</td>
@@ -1515,6 +1564,33 @@
                 const detailSection = document.getElementById('worker-detail-section');
                 if (detailSection) detailSection.classList.add('hidden');
                 openUserModal(worker.id);
+            };
+        }
+        
+        // Ver Historial Descansos
+        const btnViewVacations = document.getElementById('btn-view-worker-vacations');
+        if (btnViewVacations) {
+            btnViewVacations.onclick = () => {
+                const modal = document.getElementById('worker-vacations-modal');
+                const tBody = document.getElementById('worker-vacations-table-body');
+                
+                const allAttendance = window.AttendanceDB.getAttendance();
+                const userDescansos = allAttendance.filter(a => a.usuarioId === worker.id && a.justificacionMotivoEntrada === 'Descanso (Vacaciones)');
+                
+                tBody.innerHTML = '';
+                if (userDescansos.length === 0) {
+                    tBody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">No hay descansos registrados.</td></tr>';
+                } else {
+                    userDescansos.forEach(d => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(d.fecha) : d.fecha}</td>
+                            <td>${d.horasTrabajadas} hrs</td>
+                        `;
+                        tBody.appendChild(tr);
+                    });
+                }
+                modal.classList.remove('hidden');
             };
         }
 
@@ -1544,9 +1620,23 @@
             if (containerBtnCloseMarcaje) containerBtnCloseMarcaje.classList.remove('hidden');
             if (btnCloseWorkerMarcaje) {
                 btnCloseWorkerMarcaje.onclick = async () => {
+                    const penaltyInput = await appPrompt('Cierre Administrativo', 'Ingresa el monto de penalización (Q) por cerrar el marcaje de forma administrativa:', 'number');
+                    if (penaltyInput === null || penaltyInput.trim() === '') {
+                        showToast('Aviso', 'Debes ingresar un monto de penalización para poder cerrar el marcaje.', 'warning');
+                        return;
+                    }
+                    const penaltyAmount = parseFloat(penaltyInput);
+                    if (isNaN(penaltyAmount) || penaltyAmount < 0) {
+                        showToast('Aviso', 'El monto de penalización debe ser un número válido.', 'warning');
+                        return;
+                    }
+
                     // Utiliza location null o vacio y una justificación administrativa
-                    const record = await window.AttendanceDB.checkOut(worker.id, null, null, 'Cierre Administrativo', 'Marcaje cerrado manualmente por supervisor/admin.');
+                    const record = await window.AttendanceDB.checkOut(worker.id, null, null, 'Cierre Administrativo', `Marcaje cerrado manualmente. Penalización: Q${penaltyAmount.toFixed(2)}`);
                     if (record) {
+                        if (penaltyAmount > 0) {
+                            await window.AttendanceDB.applyPenalization(record.id, worker.id, 'Cierre Administrativo de Turno', penaltyAmount, currentUser.id);
+                        }
                         showToast('Marcaje Cerrado', `Se ha cerrado el marcaje de ${worker.nombre} exitosamente.`, 'success');
                         if (workerDetailModal) workerDetailModal.classList.add('hidden');
                         if (typeof setupAdminView === 'function') {

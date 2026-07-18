@@ -163,7 +163,7 @@
 
         const isAdmin = (currentUser.rol === 'admin' || currentUser.rol === 'superadmin');
         if (titleEl) {
-            titleEl.textContent = isAdmin ? 'Historial de Ingresos' : 'Mis Ingresos Recientes (Últimas 24h)';
+            titleEl.textContent = isAdmin ? 'Historial de Ingresos y Gastos' : 'Mis Ingresos y Gastos Recientes (Últimas 24h)';
         }
 
         tbody.innerHTML = `<tr><td colspan="${isAdmin ? 6 : 5}" class="text-center text-muted">Cargando ingresos...</td></tr>`;
@@ -177,6 +177,12 @@
 
                 if (isAdmin) {
                     userCol.classList.remove('hidden');
+                    const currentComp = window.AttendanceDB?.currentCompany;
+                    if (currentComp && currentComp !== 'Todas') {
+                        const allUsers = window.AttendanceDB.getUsers();
+                        const allowedUserIds = allUsers.filter(u => u.empresa === currentComp || u.empresas_asignadas?.includes(currentComp)).map(u => u.id);
+                        incomes = incomes.filter(i => allowedUserIds.includes(i.usuarioId));
+                    }
                 } else {
                     userCol.classList.add('hidden');
                     // Filter to only user's incomes from the last 24 hours
@@ -227,7 +233,7 @@
 
                     tr.innerHTML = `
                         ${userTd}
-                        <td>${inc.fecha}</td>
+                        <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(inc.fecha) : inc.fecha}</td>
                         <td>${inc.motivo}</td>
                         <td style="text-align: center;">${tipoBadge}</td>
                         <td class="${amountColor}"><strong>${amountPrefix} Q${Number(inc.monto).toFixed(2)}</strong></td>

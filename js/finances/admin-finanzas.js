@@ -8,11 +8,21 @@ window.renderAdminFinances = async function() {
     let pettyCashFunds = [];
     
     try {
-        const currentComp = window.AttendanceDB?.currentCompany || 'Todas';
+        const currentComp = window.AttendanceDB?.currentCompany;
+        if (currentUser.rol !== 'superadmin' && (!currentComp || currentComp === 'Todas')) {
+            // Leader/Admin with no specific company sees no finances
+            document.getElementById('finance-nomina-pagada').textContent = 'Q0.00';
+            document.getElementById('finance-ingresos').textContent = 'Q0.00';
+            document.getElementById('finance-gastos').textContent = 'Q0.00';
+            document.getElementById('finance-user-list').innerHTML = `<tr><td colspan="3" class="text-muted" style="text-align:center; padding:20px;">Debes seleccionar una empresa para ver sus finanzas.</td></tr>`;
+            return;
+        }
+
+        const compToFetch = currentComp || 'Todas';
         const [projRes, incRes, pettyRes] = await Promise.all([
-            fetch(`/api/projects?empresa=${encodeURIComponent(currentComp)}`),
+            fetch(`/api/projects?empresa=${encodeURIComponent(compToFetch)}`),
             fetch('/api/global-incomes'),
-            fetch(`/api/petty-cash-funds?empresa=${encodeURIComponent(currentComp)}`)
+            fetch(`/api/petty-cash-funds?empresa=${encodeURIComponent(compToFetch)}`)
         ]);
         if (projRes.ok) {
             const data = await projRes.json();
@@ -35,15 +45,33 @@ window.renderAdminFinances = async function() {
     let piecework = window.AttendanceDB?.getPiecework() || [];
     let busRecords = window.AttendanceDB?.getBusRecords() || [];
 
-    const currentComp = window.AttendanceDB?.currentCompany;
-    if (currentComp && currentComp !== 'Todas') {
-        const allUsers = window.AttendanceDB?.getUsers() || [];
-        const usersInCompany = allUsers.filter(u => u.empresa === currentComp).map(u => u.id);
-        attendance = attendance.filter(a => usersInCompany.includes(a.usuarioId));
-        piecework = piecework.filter(p => usersInCompany.includes(p.usuarioId));
-        busRecords = busRecords.filter(b => usersInCompany.includes(b.usuarioId));
-        globalIncomes = globalIncomes.filter(g => usersInCompany.includes(g.usuarioId));
-        pettyCashFunds = pettyCashFunds.filter(f => usersInCompany.includes(f.usuario_id));
+    const currentCompCheck = window.AttendanceDB?.currentCompany;
+    if (currentUser.rol === 'superadmin') {
+        if (currentCompCheck && currentCompCheck !== 'Todas') {
+            const allUsers = window.AttendanceDB?.getUsers() || [];
+            const usersInCompany = allUsers.filter(u => u.empresa === currentCompCheck || u.empresas_asignadas?.includes(currentCompCheck)).map(u => u.id);
+            attendance = attendance.filter(a => usersInCompany.includes(a.usuarioId));
+            piecework = piecework.filter(p => usersInCompany.includes(p.usuarioId));
+            busRecords = busRecords.filter(b => usersInCompany.includes(b.usuarioId));
+            globalIncomes = globalIncomes.filter(g => usersInCompany.includes(g.usuarioId));
+            pettyCashFunds = pettyCashFunds.filter(f => usersInCompany.includes(f.usuario_id));
+        }
+    } else {
+        if (currentCompCheck && currentCompCheck !== 'Todas') {
+            const allUsers = window.AttendanceDB?.getUsers() || [];
+            const usersInCompany = allUsers.filter(u => u.empresa === currentCompCheck || u.empresas_asignadas?.includes(currentCompCheck)).map(u => u.id);
+            attendance = attendance.filter(a => usersInCompany.includes(a.usuarioId));
+            piecework = piecework.filter(p => usersInCompany.includes(p.usuarioId));
+            busRecords = busRecords.filter(b => usersInCompany.includes(b.usuarioId));
+            globalIncomes = globalIncomes.filter(g => usersInCompany.includes(g.usuarioId));
+            pettyCashFunds = pettyCashFunds.filter(f => usersInCompany.includes(f.usuario_id));
+        } else {
+            attendance = [];
+            piecework = [];
+            busRecords = [];
+            globalIncomes = [];
+            pettyCashFunds = [];
+        }
     }
 
     // Helper: format YYYY-MM
@@ -277,10 +305,11 @@ window.renderAdminFinances = async function() {
                 const userName = userObj ? userObj.nombre : `Usuario #${uid}`;
                 const data = daysByUser[uid];
                 
-                const tarifaDiurna = userObj ? (parseFloat(userObj.tarifaDiurna) || 0) : 0;
-                const pagoDiario = tarifaDiurna * 8;
-                const bono14Amount = (pagoDiario * data.bono14Days) / 12;
-                const aguiAmount = (pagoDiario * data.aguiDays) / 12;
+                const minWageInput = document.getElementById('fin-min-wage');
+                const salarioMinimoMensual = minWageInput ? parseFloat(minWageInput.value) || 4252.28 : 4252.28;
+                
+                const bono14Amount = salarioMinimoMensual * (data.bono14Days / 365);
+                const aguiAmount = salarioMinimoMensual * (data.aguiDays / 365);
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -368,7 +397,7 @@ window.showPayrollDetails = function(uid, userName) {
             }
             html += `
                 <tr>
-                    <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">${d.fecha}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(d.fecha) : d.fecha}</td>
                     <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">${d.tipo}</td>
                     <td style="padding: 10px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.05); color: ${colorMonto};">Q${d.monto.toFixed(2)}</td>
                 </tr>
@@ -391,3 +420,20 @@ window.showPayrollDetails = function(uid, userName) {
         alert("No se pudo cargar SweetAlert, pero los detalles son: " + JSON.stringify(details));
     }
 };
+
+// Configurar el input de Salario Mínimo globalmente
+document.addEventListener('DOMContentLoaded', () => {
+    const minWageInput = document.getElementById('fin-min-wage');
+    const btnUpdateWage = document.getElementById('btn-update-min-wage');
+    
+    if (minWageInput && btnUpdateWage) {
+        const savedWage = localStorage.getItem('dch_min_wage');
+        if (savedWage) minWageInput.value = savedWage;
+        
+        btnUpdateWage.addEventListener('click', () => {
+            localStorage.setItem('dch_min_wage', minWageInput.value);
+            alert('Cambios realizados');
+            window.location.reload();
+        });
+    }
+});

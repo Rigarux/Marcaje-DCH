@@ -20,9 +20,21 @@
 
     function populateDriversSelect() {
         if (!vehicleDriverSelect) return;
-        const users = window.AttendanceDB.getUsers();
+        let users = window.AttendanceDB.getUsers().filter(u => u.rol === 'usr' || u.rol === 'leader' || u.rol === 'admin');
+        const currentComp = window.AttendanceDB.currentCompany;
+        if (currentUser.rol === 'superadmin') {
+            if (currentComp && currentComp !== 'Todas') {
+                users = users.filter(u => u.empresa === currentComp || u.empresas_asignadas?.includes(currentComp));
+            }
+        } else {
+            if (currentComp && currentComp !== 'Todas') {
+                users = users.filter(u => u.empresa === currentComp || u.empresas_asignadas?.includes(currentComp));
+            } else {
+                users = [];
+            }
+        }
         vehicleDriverSelect.innerHTML = '<option value="">Ninguno (Disponible)</option>';
-        users.filter(u => u.rol === 'usr' || u.rol === 'leader').forEach(u => {
+        users.forEach(u => {
             const opt = document.createElement('option');
             opt.value = u.id;
             opt.textContent = `${u.nombre} (@${u.username})`;
@@ -35,8 +47,16 @@
         let vehicles = window.AttendanceDB.getVehicles();
         
         const currentComp = window.AttendanceDB.currentCompany;
-        if (currentComp && currentComp !== 'Todas') {
-            vehicles = vehicles.filter(v => v.empresa === currentComp || v.empresa === 'N/A' || !v.empresa);
+        if (currentUser.rol === 'superadmin') {
+            if (currentComp && currentComp !== 'Todas') {
+                vehicles = vehicles.filter(v => v.empresa === currentComp || v.empresa === 'N/A' || !v.empresa);
+            }
+        } else {
+            if (currentComp && currentComp !== 'Todas') {
+                vehicles = vehicles.filter(v => v.empresa === currentComp);
+            } else {
+                vehicles = [];
+            }
         }
 
         adminVehiclesTable.innerHTML = '';
@@ -134,8 +154,32 @@
         if (!vehicleAssigneesModal) return;
         vehicleAssigneesModal.classList.remove('hidden');
 
-        const vehicles = window.AttendanceDB.getVehicles();
-        const users = window.AttendanceDB.getUsers().filter(u => u.rol === 'usr' || u.rol === 'leader');
+        const currentComp = window.AttendanceDB.currentCompany;
+        let vehicles = window.AttendanceDB.getVehicles();
+        if (currentUser.rol === 'superadmin') {
+            if (currentComp && currentComp !== 'Todas') {
+                vehicles = vehicles.filter(v => v.empresa === currentComp || v.empresa === 'N/A' || !v.empresa);
+            }
+        } else {
+            if (currentComp && currentComp !== 'Todas') {
+                vehicles = vehicles.filter(v => v.empresa === currentComp);
+            } else {
+                vehicles = [];
+            }
+        }
+        
+        let users = window.AttendanceDB.getUsers().filter(u => u.rol === 'usr' || u.rol === 'leader' || u.rol === 'admin');
+        if (currentUser.rol === 'superadmin') {
+            if (currentComp && currentComp !== 'Todas') {
+                users = users.filter(u => u.empresa === currentComp || u.empresas_asignadas?.includes(currentComp));
+            }
+        } else {
+            if (currentComp && currentComp !== 'Todas') {
+                users = users.filter(u => u.empresa === currentComp || u.empresas_asignadas?.includes(currentComp));
+            } else {
+                users = [];
+            }
+        }
 
         if (!vehicleAssigneesTableBody) return;
         vehicleAssigneesTableBody.innerHTML = '';

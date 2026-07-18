@@ -15,11 +15,20 @@
         try {
             let url = '/api/petty-cash-funds';
             const queryParams = new URLSearchParams();
+            const currentComp = window.AttendanceDB?.currentCompany;
+            
+            if (currentUser.rol !== 'superadmin' && currentUser.rol !== 'usr' && (!currentComp || currentComp === 'Todas')) {
+                container.innerHTML = '<p class="text-muted">Debes seleccionar una empresa para ver sus fondos de caja chica.</p>';
+                headerActions.innerHTML = '';
+                return;
+            }
+
             if (currentUser.rol === 'usr') {
                 queryParams.append('usuarioId', currentUser.id);
             }
-            if (['admin', 'superadmin', 'leader'].includes(currentUser.rol) && window.AttendanceDB?.currentCompany) {
-                queryParams.append('empresa', window.AttendanceDB.currentCompany);
+            if (['admin', 'superadmin', 'leader'].includes(currentUser.rol) && currentComp) {
+                const compToFetch = currentComp || 'Todas';
+                queryParams.append('empresa', compToFetch);
             }
             if (queryParams.toString()) {
                 url += `?${queryParams.toString()}`;

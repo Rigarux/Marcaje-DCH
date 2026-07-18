@@ -31,7 +31,15 @@
 
     // Cierre de sesión
     btnLogout.addEventListener('click', async () => {
-        if (currentUser) {
+        if (currentUser && currentUser.rol === 'leader') {
+            const monto = await appPrompt('Cierre de Turno', 'Declara el monto total en penalizaciones del turno (Q):', 'number');
+            if (monto === null || monto === '') {
+                showToast('Aviso', 'Debes declarar el monto para poder cerrar sesión.', 'warning');
+                return; // Cancel logout
+            }
+            await window.AttendanceDB.addLog(currentUser.id, `Cierre de sesión de Supervisor. Penalizaciones declaradas: Q${parseFloat(monto).toFixed(2)}`);
+            showToast('Sesión Cerrada', 'Has salido del sistema de forma segura.', 'info');
+        } else if (currentUser) {
             await window.AttendanceDB.addLog(currentUser.id, 'Cierre de sesión voluntario');
             showToast('Sesión Cerrada', 'Has salido del sistema de forma segura.', 'info');
         }
@@ -77,6 +85,11 @@
     function setupUserView() {
         clearInterval(timerInterval);
 
+        const userTurnoTitle = document.getElementById('user-turno-title');
+        if (userTurnoTitle && currentUser) {
+            userTurnoTitle.textContent = `Control de Turno - ${currentUser.nombre.toUpperCase()}`;
+        }
+
         const cardTimerControl = document.getElementById('card-timer-control');
         const cardPieceworkControl = document.getElementById('card-piecework-control');
         const cardBusesControl = document.getElementById('card-buses-control');
@@ -84,13 +97,13 @@
         const isBuses = currentUser.tipoPago === 'Pago Fijo Diario';
 
         if (isBuses) {
-            if (cardTimerControl) cardTimerControl.classList.add('hidden');
+            if (cardTimerControl) cardTimerControl.classList.remove('hidden'); // Se muestran para todos los usuarios
             if (cardPieceworkControl) cardPieceworkControl.classList.add('hidden');
             if (cardBusesControl) cardBusesControl.classList.remove('hidden');
 
             // Cargar tablas y estadísticas de buses
             renderUserStatsAndTable();
-            return;
+            // Ya no hay early return para que se ejecute la verificación del marcaje activo (los controles de tiempo)
         } else if (currentUser.tipoPago === 'Destajo' || currentUser.tipoPago === 'Por Trato') {
             if (cardTimerControl) cardTimerControl.classList.remove('hidden');
             if (cardPieceworkControl) cardPieceworkControl.classList.add('hidden');
@@ -782,6 +795,40 @@
             }
         });
     }
+    function populateUserHistoryMonthFilter(records) {
+        const monthFilterSelect = document.getElementById('usr-history-month-filter');
+        if (!monthFilterSelect) return;
+        
+        const currentValue = monthFilterSelect.value;
+        const uniqueMonths = new Set();
+        
+        records.forEach(r => {
+            if (r.fecha && typeof r.fecha === 'string' && r.fecha.length >= 7) {
+                uniqueMonths.add(r.fecha.substring(0, 7));
+            }
+        });
+        
+        const sortedMonths = Array.from(uniqueMonths).sort((a, b) => b.localeCompare(a));
+        
+        monthFilterSelect.innerHTML = '<option value="">Todos los meses</option>';
+        sortedMonths.forEach(m => {
+            const parts = m.split('-');
+            const year = parts[0];
+            const monthNum = parseInt(parts[1], 10);
+            const dateObj = new Date(year, monthNum - 1, 1);
+            const monthName = dateObj.toLocaleDateString('es-GT', { month: 'long', year: 'numeric' });
+            const label = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+            
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = label;
+            monthFilterSelect.appendChild(opt);
+        });
+        
+        if (currentValue && sortedMonths.includes(currentValue)) {
+            monthFilterSelect.value = currentValue;
+        }
+    }
 
     function renderUserStatsAndTable() {
         const usrAttendanceThead = document.getElementById('usr-attendance-thead');
@@ -802,8 +849,15 @@
             if (usrAttendanceTable) usrAttendanceTable.classList.add('hidden');
             if (usrPieceworkTable) usrPieceworkTable.classList.add('hidden');
             if (usrBusesTable) usrBusesTable.classList.remove('hidden');
-
-            const busRecords = window.AttendanceDB.getBusRecordsByUser(currentUser.id);
+            
+            const allBusRecords = window.AttendanceDB.getBusRecordsByUser(currentUser.id);
+            populateUserHistoryMonthFilter(allBusRecords);
+            
+            const monthFilter = document.getElementById('usr-history-month-filter') ? document.getElementById('usr-history-month-filter').value : '';
+            let busRecords = allBusRecords;
+            if (monthFilter) {
+                busRecords = busRecords.filter(b => b.fecha && b.fecha.startsWith(monthFilter));
+            }
             if (busRecords.length === 0) {
                 usrBusesTable.innerHTML = `<tr><td colspan="6" class="text-muted" style="text-align:center;">No hay reportes de efectivo.</td></tr>`;
             } else {
@@ -814,12 +868,12 @@
                     let hasReceipt = b.fotoFacturaUrl ? `<br><a href="${b.fotoFacturaUrl}" target="_blank" style="font-size:0.8rem;">Ver Recibo</a>` : '';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${formatDateDDMMYYYY(b.fecha)}</td>
-                        <td>${b.turno}</td>
-                        <td>Q${b.ingresoDinero.toFixed(2)}</td>
-                        <td>${b.tipoGasto}</td>
-                        <td>Q${b.montoGasto.toFixed(2)}${hasReceipt}</td>
-                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td data-label="Fecha">${formatDateDDMMYYYY(b.fecha)}</td>
+                        <td data-label="Turno">${b.turno}</td>
+                        <td data-label="Ingreso (Q)">Q${b.ingresoDinero.toFixed(2)}</td>
+                        <td data-label="Gasto/Cobro">${b.tipoGasto}</td>
+                        <td data-label="Monto (Q)">Q${b.montoGasto.toFixed(2)}${hasReceipt}</td>
+                        <td data-label="Estado"><span class="status-badge ${statusClass}">${statusText}</span></td>
                     `;
                     fragmentBuses.appendChild(tr);
                 });
@@ -843,8 +897,14 @@
             if (usrAttendanceTable) usrAttendanceTable.classList.add('hidden');
             if (usrPieceworkTable) usrPieceworkTable.classList.remove('hidden');
             if (usrBusesTable) usrBusesTable.classList.add('hidden');
-
-            const history = window.AttendanceDB.getPieceworkByUser(currentUser.id);
+            const allHistory = window.AttendanceDB.getPieceworkByUser(currentUser.id);
+            populateUserHistoryMonthFilter(allHistory);
+            
+            const monthFilter = document.getElementById('usr-history-month-filter') ? document.getElementById('usr-history-month-filter').value : '';
+            let history = allHistory;
+            if (monthFilter) {
+                history = history.filter(rec => rec.fecha && rec.fecha.startsWith(monthFilter));
+            }
             usrPieceworkTable.innerHTML = '';
 
             if (history.length === 0) {
@@ -875,12 +935,12 @@
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><strong>${formatDateDDMMYYYY(rec.fecha)}</strong></td>
-                        <td>${rec.trabajo}</td>
-                        <td>Q${rec.precio.toFixed(2)}</td>
-                        <td>${rec.cantidad}</td>
-                        <td><strong>Q${rec.total.toFixed(2)}</strong></td>
-                        <td>${statusBadge}</td>
+                        <td data-label="Fecha"><strong>${formatDateDDMMYYYY(rec.fecha)}</strong></td>
+                        <td data-label="Trabajo">${rec.trabajo}</td>
+                        <td data-label="Precio (Q)">Q${rec.precio.toFixed(2)}</td>
+                        <td data-label="Cantidad">${rec.cantidad}</td>
+                        <td data-label="Total (Q)"><strong>Q${rec.total.toFixed(2)}</strong></td>
+                        <td data-label="Estado">${statusBadge}</td>
                     `;
                     fragmentPiecework.appendChild(tr);
                 });
@@ -920,8 +980,14 @@
             if (usrAttendanceTable) usrAttendanceTable.classList.remove('hidden');
             if (usrPieceworkTable) usrPieceworkTable.classList.add('hidden');
             if (usrBusesTable) usrBusesTable.classList.add('hidden');
-
-            const history = window.AttendanceDB.getAttendanceByUser(currentUser.id);
+            const allHistory = window.AttendanceDB.getAttendanceByUser(currentUser.id);
+            populateUserHistoryMonthFilter(allHistory);
+            
+            const monthFilter = document.getElementById('usr-history-month-filter') ? document.getElementById('usr-history-month-filter').value : '';
+            let history = allHistory;
+            if (monthFilter) {
+                history = history.filter(rec => rec.fecha && rec.fecha.startsWith(monthFilter));
+            }
             let totalHours = 0;
             let totalGross = 0;
 
@@ -978,17 +1044,17 @@
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                    <td><strong>${formatDateDDMMYYYY(rec.fecha)}</strong></td>
-                    <td>${rec.horaEntrada}</td>
-                    <td>${outTimeText}</td>
-                    <td>${horasDiurnasText}</td>
-                    <td>${horasNocturnasText}</td>
-                    <td>${justificacionHtml}</td>
-                    <td>${brutoText}</td>
-                    <td>${bonoText}</td>
-                    <td>${descuentoText}</td>
-                    <td><strong>${netoText}</strong></td>
-                    <td>${statusBadge}</td>
+                    <td data-label="Fecha"><strong>${formatDateDDMMYYYY(rec.fecha)}</strong></td>
+                    <td data-label="Entrada">${rec.horaEntrada}</td>
+                    <td data-label="Salida">${outTimeText}</td>
+                    <td data-label="H. Diurnas">${horasDiurnasText}</td>
+                    <td data-label="H. Nocturnas">${horasNocturnasText}</td>
+                    <td data-label="Justificación">${justificacionHtml}</td>
+                    <td data-label="Pago Bruto">${brutoText}</td>
+                    <td data-label="Extras">${bonoText}</td>
+                    <td data-label="Descuentos">${descuentoText}</td>
+                    <td data-label="Pago Neto"><strong>${netoText}</strong></td>
+                    <td data-label="Estado Pago">${statusBadge}</td>
                 `;
                     fragmentAttendance.appendChild(tr);
                 });
@@ -1121,4 +1187,13 @@
         });
     }
 
-
+    document.addEventListener('DOMContentLoaded', () => {
+        const monthFilter = document.getElementById('usr-history-month-filter');
+        if (monthFilter) {
+            monthFilter.addEventListener('change', () => {
+                if (typeof renderUserStatsAndTable === 'function') {
+                    renderUserStatsAndTable();
+                }
+            });
+        }
+    });

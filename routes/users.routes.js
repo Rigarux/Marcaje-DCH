@@ -490,18 +490,18 @@ router.post('/users/:id/loans/reset-cuota', async (req, res) => {
 });
 router.post('/users/:id/descansos/solicitar', async (req, res) => {
     const userId = parseInt(req.params.id);
-    const { dias } = req.body;
+    const { dias, fechas } = req.body;
     try {
         const user = await dbGet(`SELECT * FROM users WHERE id = ?`, [userId]);
         if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
         
         await dbRun(`
             UPDATE users 
-            SET descansoEstado = 'Pendiente de Autorizar', descansoDiasSolicitados = ?
+            SET descansoEstado = 'Pendiente de Autorizar', descansoDiasSolicitados = ?, descansoFechas = ?
             WHERE id = ?
-        `, [parseInt(dias) || 1, userId]);
+        `, [parseInt(dias) || 1, fechas, userId]);
         
-        await addLog(userId, `El usuario solicitó ${dias} día(s) de descanso (vacaciones)`);
+        await addLog(userId, `El usuario solicitó ${dias} día(s) de descanso (vacaciones): ${fechas}`);
         res.json({ success: true, descansoEstado: 'Pendiente de Autorizar' });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
@@ -516,30 +516,36 @@ router.post('/users/:id/descansos/autorizar', async (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
         
         const dias = parseInt(user.descansoDiasSolicitados) || 1;
-        const restantes = (parseInt(user.vacacionesRestantes) || 0) - dias;
+        const fechasStr = user.descansoFechas || '';
         
-        // Crear registro de asistencia de 8 horas por cada día solicitado
+        let vacacionesActuales = 15;
+        if (user.vacacionesRestantes !== null && user.vacacionesRestantes !== undefined) {
+            vacacionesActuales = parseInt(user.vacacionesRestantes);
+        }
+        const restantes = vacacionesActuales - dias;
+        
         const tarifaDiurna = parseFloat(user.tarifaDiurna) || 0;
         const montoBruto = 8 * tarifaDiurna;
-        const fecha = new Date().toISOString().split('T')[0];
+        
+        const fechasArr = fechasStr.split(',').map(f => f.trim()).filter(f => f);
 
-        for (let i=0; i<dias; i++) {
+        for (const fecha of fechasArr) {
             await dbRun(`
-                INSERT INTO attendance (usuarioId, fecha, horaEntrada, horaSalida, horasDiurnas, horasNocturnas, horasTrabajadas, montoBruto, descuento, montoNeto, aprobado)
-                VALUES (?, ?, '08:00:00', '16:00:00', 8, 0, 8, ?, 0, ?, 1)
+                INSERT INTO attendance (usuarioId, fecha, horaEntrada, horaSalida, horasDiurnas, horasNocturnas, horasTrabajadas, montoBruto, descuento, montoNeto, aprobado, justificacionMotivoEntrada)
+                VALUES (?, ?, '08:00:00', '16:00:00', 8, 0, 8, ?, 0, ?, 1, 'Descanso (Vacaciones)')
             `, [userId, fecha, montoBruto, montoBruto]);
         }
         
         await dbRun(`
             UPDATE users 
-            SET descansoEstado = 'Ninguno', descansoDiasSolicitados = 0, vacacionesRestantes = ?
+            SET descansoEstado = 'Ninguno', descansoDiasSolicitados = 0, descansoFechas = NULL, vacacionesRestantes = ?
             WHERE id = ?
         `, [restantes, userId]);
         
         const admin = await dbGet(`SELECT nombre FROM users WHERE id = ?`, [parseInt(adminId)]);
         const adminName = admin ? admin.nombre : 'Admin';
         
-        await addLog(adminId, `${adminName} autorizó ${dias} día(s) de descanso para ${user.nombre}. Se le agregaron 8 horas a su planilla.`);
+        await addLog(adminId, `${adminName} autorizó ${dias} día(s) de descanso para ${user.nombre}. Fechas: ${fechasStr}. Se agregaron 8 horas a su planilla por día.`);
         res.json({ success: true, vacacionesRestantes: restantes, descansoEstado: 'Ninguno' });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });

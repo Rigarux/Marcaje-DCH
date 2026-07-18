@@ -700,7 +700,7 @@ if (btnExportQuotePdf) {
                             </div>
                             <div style="text-align: right;">
                                 <div><strong>NÚMERO:</strong> ${currentQuoteData.id}</div>
-                                <div><strong>FECHA:</strong> ${currentQuoteData.fecha}</div>
+                                <div><strong>FECHA:</strong> ${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(currentQuoteData.fecha) : currentQuoteData.fecha}</div>
                                 <div><strong>VÁLIDO HASTA:</strong> ${currentQuoteData.validoHasta || '-'}</div>
                             </div>
                         </div>
