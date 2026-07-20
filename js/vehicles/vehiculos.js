@@ -80,14 +80,14 @@
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${v.placa}</strong></td>
-                <td>${v.marca}</td>
-                <td>${v.modelo}</td>
-                <td>${driverName}</td>
-                <td><span class="table-badge ${statusClass}">${v.estado}</span></td>
-                <td>${motivoText}</td>
-                <td>${fechaText}</td>
-                <td>
+                <td data-label="Placa"><strong>${v.placa}</strong></td>
+                <td data-label="Marca">${v.marca}</td>
+                <td data-label="Modelo">${v.modelo}</td>
+                <td data-label="Encargado">${driverName}</td>
+                <td data-label="Estado"><span class="table-badge ${statusClass}">${v.estado}</span></td>
+                <td data-label="Motivo de Uso">${motivoText}</td>
+                <td data-label="Fecha">${fechaText}</td>
+                <td data-label="Acciones">
                     <div style="display:flex; gap:5px;">
                         ${editBtn}
                         ${deleteBtn}
@@ -197,16 +197,16 @@
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${v.marca} ${v.modelo}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${v.placa}</span></td>
-                <td>
+                <td data-label="Vehículo"><strong>${v.marca} ${v.modelo}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${v.placa}</span></td>
+                <td data-label="Encargado">
                     <select class="form-control assignee-driver-select" data-id="${v.id}" style="font-size:0.8rem; padding: 4px 8px; height:auto;">
                         ${userOptions}
                     </select>
                 </td>
-                <td>
+                <td data-label="Motivo de Uso">
                     <input type="text" class="form-control assignee-reason-input" data-id="${v.id}" value="${v.motivoUso || ''}" placeholder="Motivo de uso" style="font-size:0.8rem; padding: 4px 8px; height:auto;">
                 </td>
-                <td>
+                <td data-label="Acciones">
                     <button class="btn-table-action approve save-assignee-btn" data-id="${v.id}" style="padding: 4px 8px; font-size: 0.75rem; width: auto;">Guardar</button>
                 </td>
             `;

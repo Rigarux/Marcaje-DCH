@@ -115,6 +115,7 @@
         const rateNocturnaWrapper = userRateNocturnaInput ? userRateNocturnaInput.closest('div') : null;
         const horasNormalesWrapper = userHorasNormalesInput ? userHorasNormalesInput.closest('.form-group') : null;
         const frequencyWrapper = userFrequencySelect ? userFrequencySelect.closest('.form-group') : null;
+        const descuentaAlmuerzoContainer = document.getElementById('user-descuenta-almuerzo-container');
 
         const busesGroup = document.getElementById('user-buses-group');
         const companyName = userCompanySelect ? userCompanySelect.value : '';
@@ -133,6 +134,7 @@
                 if (rateNocturnaWrapper) rateNocturnaWrapper.style.display = 'block';
                 if (horasNormalesWrapper) horasNormalesWrapper.style.display = 'block';
                 if (frequencyWrapper) frequencyWrapper.style.display = 'block';
+                if (descuentaAlmuerzoContainer) descuentaAlmuerzoContainer.style.display = 'flex';
 
                 if (userRateDiurnaInput) userRateDiurnaInput.required = true;
                 if (userRateNocturnaInput) userRateNocturnaInput.required = true;
@@ -321,14 +323,14 @@
 
             let mods = {};
             try { mods = JSON.parse(companyObj.modules || '{}'); } catch(e){}
-            document.getElementById('comp-perm-asistencia').checked = mods.asistencia !== false;
-            document.getElementById('comp-perm-trabajadores').checked = mods.trabajadores !== false;
-            document.getElementById('comp-perm-finanzas').checked = mods.finanzas !== false;
-            document.getElementById('comp-perm-inventario').checked = mods.inventario !== false;
-            document.getElementById('comp-perm-proyectos').checked = mods.proyectos !== false;
-            document.getElementById('comp-perm-prestamos').checked = mods.prestamos !== false;
-            document.getElementById('comp-perm-vehiculos').checked = mods.vehiculos !== false;
-            document.getElementById('comp-perm-descuentos').checked = mods.descuentos !== false;
+            
+            
+            
+            
+            
+            
+            
+            
             document.getElementById('comp-require-photo-checkin').checked = companyObj.require_photo === 1;
 
             document.getElementById('company-modal-title').textContent = 'Editar Empresa';
@@ -337,14 +339,14 @@
             if (companyNameInput) companyNameInput.value = '';
             if (companyManagerSelect) companyManagerSelect.value = '';
 
-            document.getElementById('comp-perm-asistencia').checked = true;
-            document.getElementById('comp-perm-trabajadores').checked = true;
-            document.getElementById('comp-perm-finanzas').checked = true;
-            document.getElementById('comp-perm-inventario').checked = true;
-            document.getElementById('comp-perm-proyectos').checked = true;
-            document.getElementById('comp-perm-prestamos').checked = true;
-            document.getElementById('comp-perm-vehiculos').checked = true;
-            document.getElementById('comp-perm-descuentos').checked = true;
+            
+            
+            
+            
+            
+            
+            
+            
             document.getElementById('comp-require-photo-checkin').checked = false;
 
             document.getElementById('company-modal-title').textContent = 'Crear Empresa';
@@ -407,17 +409,7 @@
                 });
             }
 
-            const modulesObj = {
-                asistencia: document.getElementById('comp-perm-asistencia').checked,
-                trabajadores: document.getElementById('comp-perm-trabajadores').checked,
-                finanzas: document.getElementById('comp-perm-finanzas').checked,
-                inventario: document.getElementById('comp-perm-inventario').checked,
-                proyectos: document.getElementById('comp-perm-proyectos').checked,
-                prestamos: document.getElementById('comp-perm-prestamos').checked,
-                vehiculos: document.getElementById('comp-perm-vehiculos').checked,
-                descuentos: document.getElementById('comp-perm-descuentos').checked
-            };
-            const modulesJson = JSON.stringify(modulesObj);
+            const modulesJson = '{}';
             const requirePhoto = document.getElementById('comp-require-photo-checkin').checked ? 1 : 0;
 
             if (!newName) {
@@ -633,10 +625,10 @@
                                 Object.assign(currentUser, updatedMe);
                             }
                         }
-                    } catch (err) { console.error(err); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger'); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger'); }
+                    } catch (err) { console.error(err); if(typeof window.showToast === 'function') window.showToast('Error', 'Ocurrió un problema de conexión', 'danger'); }
                 }
 
-                showToast('Operación EÉxitosa', 'Tienda guardada correctamente.', 'success');
+                showToast('Operación Exitosa', 'Tienda guardada correctamente.', 'success');
                 closeStoreModal();
                 renderAdminStoresTable();
             } else {
@@ -673,11 +665,39 @@
         const currentCompany = window.AttendanceDB.currentCompany;
         if (currentUser.rol === 'superadmin') {
             if (currentCompany && currentCompany !== 'Todas') {
-                allUsers = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+                allUsers = allUsers.filter(u => {
+                    let hasAssignedComps = false;
+                    try {
+                        let assigned = typeof u.empresas_asignadas === 'string' ? JSON.parse(u.empresas_asignadas) : u.empresas_asignadas;
+                        if (Array.isArray(assigned) && assigned.length > 0 && assigned[0] !== 'N/A') {
+                            hasAssignedComps = true;
+                        }
+                    } catch(e) {}
+
+                    if (currentCompany === 'N/A') {
+                        if (u.empresa === 'N/A' && hasAssignedComps) return false;
+                        return u.empresa === 'N/A' || u.empresas_asignadas?.includes('N/A');
+                    }
+                    return u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany);
+                });
             }
         } else {
             if (currentCompany && currentCompany !== 'Todas') {
-                allUsers = allUsers.filter(u => u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany));
+                allUsers = allUsers.filter(u => {
+                    let hasAssignedComps = false;
+                    try {
+                        let assigned = typeof u.empresas_asignadas === 'string' ? JSON.parse(u.empresas_asignadas) : u.empresas_asignadas;
+                        if (Array.isArray(assigned) && assigned.length > 0 && assigned[0] !== 'N/A') {
+                            hasAssignedComps = true;
+                        }
+                    } catch(e) {}
+
+                    if (currentCompany === 'N/A') {
+                        if (u.empresa === 'N/A' && hasAssignedComps) return false;
+                        return u.empresa === 'N/A' || u.empresas_asignadas?.includes('N/A');
+                    }
+                    return u.empresa === currentCompany || u.empresas_asignadas?.includes(currentCompany);
+                });
             } else {
                 allUsers = [];
             }
@@ -715,7 +735,6 @@
                 ? (user.frecuenciaPago === 'quincenal' ? 'Quincenal' : 'Semanal')
                 : '-';
 
-            // Nombre de rol legible
             let roleLabel = 'Usuario';
             if (user.rol === 'leader') roleLabel = 'Supervisor';
             if (user.rol === 'admin') roleLabel = 'Gerente';
@@ -822,6 +841,11 @@
             if (userHorasNormalesInput) userHorasNormalesInput.value = user.horasNormalesMax !== undefined ? user.horasNormalesMax : 8.0;
             if (userRangoMaximoHorasInput) userRangoMaximoHorasInput.value = user.rangoMaximoHoras !== undefined ? user.rangoMaximoHoras : 44.0;
             if (userTarifaExtraInput) userTarifaExtraInput.value = user.tarifaHoraExtra !== undefined ? user.tarifaHoraExtra : 0;
+            
+            const descuentaAlmuerzoEl = document.getElementById('user-descuenta-almuerzo-input');
+            if (descuentaAlmuerzoEl) {
+                descuentaAlmuerzoEl.checked = user.descuentaAlmuerzo == 1;
+            }
 
             const userPrecioDieselInput = document.getElementById('user-precio-diesel-input');
             const userSueldoAcumuladoInput = document.getElementById('user-sueldo-acumulado-input');
@@ -866,13 +890,29 @@
                     userPerms = typeof user.permisos === 'string' ? JSON.parse(user.permisos) : user.permisos;
                 } catch(e) { console.error("Error parsing permisos:", e); }
             }
-            const permsKeys = ['control_asistencia', 'mi_historial', 'prestamos', 'vehiculos', 'inventario', 'caja_chica', 'proyectos', 'ingresos_gastos'];
-            permsKeys.forEach(key => {
-                const chk = document.getElementById('perm-' + key.replace('_', '-'));
-                if (chk) {
-                    chk.checked = userPerms[key] !== undefined ? userPerms[key] : true;
-                }
-            });
+            let flatPerms = {};
+            if (userPerms.supervisor || userPerms.empleado) {
+                // If it was saved with the dual structure, flatten it by taking the union
+                const sup = userPerms.supervisor || {};
+                const emp = userPerms.empleado || {};
+                flatPerms = { ...emp, ...sup };
+            } else {
+                flatPerms = userPerms;
+            }
+
+            if(document.getElementById('user-perm-asistencia')) document.getElementById('user-perm-asistencia').checked = flatPerms.asistencia !== false && flatPerms.control_asistencia !== false;
+            if(document.getElementById('user-perm-trabajadores')) document.getElementById('user-perm-trabajadores').checked = flatPerms.trabajadores !== false;
+            if(document.getElementById('user-perm-finanzas')) document.getElementById('user-perm-finanzas').checked = flatPerms.finanzas !== false;
+            if(document.getElementById('user-perm-caja-chica')) document.getElementById('user-perm-caja-chica').checked = flatPerms.caja_chica !== false;
+            if(document.getElementById('user-perm-ingresos-gastos')) document.getElementById('user-perm-ingresos-gastos').checked = flatPerms.ingresos_gastos !== false;
+            if(document.getElementById('user-perm-inventario')) document.getElementById('user-perm-inventario').checked = flatPerms.inventario !== false;
+            if(document.getElementById('user-perm-proyectos')) document.getElementById('user-perm-proyectos').checked = flatPerms.proyectos !== false;
+            if(document.getElementById('user-perm-prestamos')) document.getElementById('user-perm-prestamos').checked = flatPerms.prestamos !== false;
+            if(document.getElementById('user-perm-prestamos-vacaciones')) document.getElementById('user-perm-prestamos-vacaciones').checked = flatPerms.prestamos_vacaciones !== false;
+            if(document.getElementById('user-perm-vacaciones')) document.getElementById('user-perm-vacaciones').checked = flatPerms.vacaciones !== false;
+            if(document.getElementById('user-perm-vehiculos')) document.getElementById('user-perm-vehiculos').checked = flatPerms.vehiculos !== false;
+            if(document.getElementById('user-perm-descuentos')) document.getElementById('user-perm-descuentos').checked = flatPerms.descuentos !== false;
+            if(document.getElementById('user-perm-dia-pago')) document.getElementById('user-perm-dia-pago').checked = flatPerms.dia_pago !== false;
 
             userModalTitle.textContent = 'Editar Usuario';
 
@@ -902,6 +942,11 @@
             if (userHorasNormalesInput) userHorasNormalesInput.value = 8.0;
             if (userRangoMaximoHorasInput) userRangoMaximoHorasInput.value = 44.0;
             if (userTarifaExtraInput) userTarifaExtraInput.value = 0;
+            
+            const descuentaAlmuerzoEl2 = document.getElementById('user-descuenta-almuerzo-input');
+            if (descuentaAlmuerzoEl2) {
+                descuentaAlmuerzoEl2.checked = false;
+            }
 
             const userPrecioDieselInput = document.getElementById('user-precio-diesel-input');
             const userSueldoAcumuladoInput = document.getElementById('user-sueldo-acumulado-input');
@@ -935,11 +980,29 @@
             if (loanStatusEl) loanStatusEl.value = 'Ninguno';
 
             // Limpiar Permisos (por defecto todos true)
-            const permsKeys = ['control_asistencia', 'mi_historial', 'prestamos', 'vehiculos', 'inventario', 'caja_chica', 'proyectos', 'ingresos_gastos'];
-            permsKeys.forEach(key => {
-                const chk = document.getElementById('perm-' + key.replace('_', '-'));
-                if (chk) chk.checked = true;
-            });
+            let flatPerms = {};
+            if (userPerms.supervisor || userPerms.empleado) {
+                // If it was saved with the dual structure, flatten it by taking the union
+                const sup = userPerms.supervisor || {};
+                const emp = userPerms.empleado || {};
+                flatPerms = { ...emp, ...sup };
+            } else {
+                flatPerms = userPerms;
+            }
+
+            if(document.getElementById('user-perm-asistencia')) document.getElementById('user-perm-asistencia').checked = flatPerms.asistencia !== false && flatPerms.control_asistencia !== false;
+            if(document.getElementById('user-perm-trabajadores')) document.getElementById('user-perm-trabajadores').checked = flatPerms.trabajadores !== false;
+            if(document.getElementById('user-perm-finanzas')) document.getElementById('user-perm-finanzas').checked = flatPerms.finanzas !== false;
+            if(document.getElementById('user-perm-caja-chica')) document.getElementById('user-perm-caja-chica').checked = flatPerms.caja_chica !== false;
+            if(document.getElementById('user-perm-ingresos-gastos')) document.getElementById('user-perm-ingresos-gastos').checked = flatPerms.ingresos_gastos !== false;
+            if(document.getElementById('user-perm-inventario')) document.getElementById('user-perm-inventario').checked = flatPerms.inventario !== false;
+            if(document.getElementById('user-perm-proyectos')) document.getElementById('user-perm-proyectos').checked = flatPerms.proyectos !== false;
+            if(document.getElementById('user-perm-prestamos')) document.getElementById('user-perm-prestamos').checked = flatPerms.prestamos !== false;
+            if(document.getElementById('user-perm-prestamos-vacaciones')) document.getElementById('user-perm-prestamos-vacaciones').checked = flatPerms.prestamos_vacaciones !== false;
+            if(document.getElementById('user-perm-vacaciones')) document.getElementById('user-perm-vacaciones').checked = flatPerms.vacaciones !== false;
+            if(document.getElementById('user-perm-vehiculos')) document.getElementById('user-perm-vehiculos').checked = flatPerms.vehiculos !== false;
+            if(document.getElementById('user-perm-descuentos')) document.getElementById('user-perm-descuentos').checked = flatPerms.descuentos !== false;
+            if(document.getElementById('user-perm-dia-pago')) document.getElementById('user-perm-dia-pago').checked = flatPerms.dia_pago !== false;
 
             userRoleSelect.disabled = false;
             userModalTitle.textContent = 'Crear Usuario';
@@ -1042,6 +1105,8 @@
 
             const dpi = document.getElementById('user-dpi') ? document.getElementById('user-dpi').value.trim() : '';
             const dpiFotoInput = document.getElementById('user-dpi-foto');
+            const descuentaAlmuerzoEl3 = document.getElementById('user-descuenta-almuerzo-input');
+            const descuentaAlmuerzo = (descuentaAlmuerzoEl3 && descuentaAlmuerzoEl3.checked) ? 1 : 0;
             let dpiFotoBase64 = null;
             if (dpiFotoInput && dpiFotoInput.files && dpiFotoInput.files.length > 0) {
                 const file = dpiFotoInput.files[0];
@@ -1054,14 +1119,19 @@
 
             // Recoger permisos
             const permisos = {
-                control_asistencia: document.getElementById('perm-control-asistencia') ? document.getElementById('perm-control-asistencia').checked : true,
-                mi_historial: document.getElementById('perm-mi-historial') ? document.getElementById('perm-mi-historial').checked : true,
-                prestamos: document.getElementById('perm-prestamos') ? document.getElementById('perm-prestamos').checked : true,
-                vehiculos: document.getElementById('perm-vehiculos') ? document.getElementById('perm-vehiculos').checked : true,
-                inventario: document.getElementById('perm-inventario') ? document.getElementById('perm-inventario').checked : true,
-                caja_chica: document.getElementById('perm-caja-chica') ? document.getElementById('perm-caja-chica').checked : true,
-                proyectos: document.getElementById('perm-proyectos') ? document.getElementById('perm-proyectos').checked : true,
-                ingresos_gastos: document.getElementById('perm-ingresos-gastos') ? document.getElementById('perm-ingresos-gastos').checked : true
+                asistencia: document.getElementById('user-perm-asistencia') ? document.getElementById('user-perm-asistencia').checked : false,
+                trabajadores: document.getElementById('user-perm-trabajadores') ? document.getElementById('user-perm-trabajadores').checked : false,
+                finanzas: document.getElementById('user-perm-finanzas') ? document.getElementById('user-perm-finanzas').checked : false,
+                caja_chica: document.getElementById('user-perm-caja-chica') ? document.getElementById('user-perm-caja-chica').checked : false,
+                ingresos_gastos: document.getElementById('user-perm-ingresos-gastos') ? document.getElementById('user-perm-ingresos-gastos').checked : false,
+                inventario: document.getElementById('user-perm-inventario') ? document.getElementById('user-perm-inventario').checked : false,
+                proyectos: document.getElementById('user-perm-proyectos') ? document.getElementById('user-perm-proyectos').checked : false,
+                prestamos: document.getElementById('user-perm-prestamos') ? document.getElementById('user-perm-prestamos').checked : false,
+                prestamos_vacaciones: document.getElementById('user-perm-prestamos-vacaciones') ? document.getElementById('user-perm-prestamos-vacaciones').checked : false,
+                vacaciones: document.getElementById('user-perm-vacaciones') ? document.getElementById('user-perm-vacaciones').checked : false,
+                vehiculos: document.getElementById('user-perm-vehiculos') ? document.getElementById('user-perm-vehiculos').checked : false,
+                descuentos: document.getElementById('user-perm-descuentos') ? document.getElementById('user-perm-descuentos').checked : false,
+                dia_pago: document.getElementById('user-perm-dia-pago') ? document.getElementById('user-perm-dia-pago').checked : false
             };
 
             // Recoger Ventas
@@ -1072,10 +1142,10 @@
             let result;
             if (id) {
                 // Guardar edicion
-                result = await window.AttendanceDB.updateUser(id, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, currentUser.id, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFotoBase64, hasVentasRole, assignedStores, precioDieselBuses, null, permisos, sueldoBusesDiario, empresas_asignadas_json);
+                result = await window.AttendanceDB.updateUser(id, username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, currentUser.id, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFotoBase64, hasVentasRole, assignedStores, precioDieselBuses, null, permisos, sueldoBusesDiario, empresas_asignadas_json, descuentaAlmuerzo);
             } else {
                 // Guardar creacion
-                result = await window.AttendanceDB.createUser(username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, currentUser.id, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFotoBase64, hasVentasRole, assignedStores, precioDieselBuses, 0.0, permisos, sueldoBusesDiario, empresas_asignadas_json);
+                result = await window.AttendanceDB.createUser(username, password, nombre, rol, grupo, empresa, tarifaDiurna, tarifaNocturna, frecuenciaPago, currentUser.id, préstamoTotal, préstamoCuota, préstamosaldo, préstamoEstadoCuota, tipoPago, horasNormalesMax, rangoMaximoHoras, tarifaHoraExtra, dpi, dpiFotoBase64, hasVentasRole, assignedStores, precioDieselBuses, 0.0, permisos, sueldoBusesDiario, empresas_asignadas_json, descuentaAlmuerzo);
             }
 
             if (result.success) {
@@ -1419,7 +1489,25 @@
         let workers = allUsers.filter(u => u.rol === 'usr' || (currentUser && currentUser.rol !== 'leader' && (u.rol === 'leader' || u.rol === 'admin')));
 
         if (filterValue) {
-            workers = workers.filter(u => u.empresa === filterValue || u.empresas_asignadas?.includes(filterValue));
+            workers = workers.filter(u => {
+                let hasAssignedComps = false;
+                try {
+                    let assigned = typeof u.empresas_asignadas === 'string' ? JSON.parse(u.empresas_asignadas) : u.empresas_asignadas;
+                    if (Array.isArray(assigned) && assigned.length > 0 && assigned[0] !== 'N/A') {
+                        hasAssignedComps = true;
+                    }
+                } catch(e) {}
+
+                if (filterValue === 'N/A') {
+                    // Si el filtro es N/A y el usuario (supervisor/admin) ya tiene empresas asignadas, no mostrarlo aquí
+                    if (u.empresa === 'N/A' && hasAssignedComps) {
+                        return false;
+                    }
+                    return u.empresa === 'N/A' || u.empresas_asignadas?.includes('N/A');
+                } else {
+                    return u.empresa === filterValue || u.empresas_asignadas?.includes(filterValue);
+                }
+            });
         }
 
         if (workers.length === 0) {

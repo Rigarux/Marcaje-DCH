@@ -349,10 +349,14 @@ function setupSidebarMenu() {
             menuItems.push({ id: 'nav-admin-empresas', label: 'Empresas', icon: '<rect x="2" y="2" width="20" height="20" rx="2" ry="2"></rect><path d="M10 22V14h4v8"></path><path d="M8 6h2v2H8V6zm8 0h2v2H8V6zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2zm-8 4h2v2H8v-2zm8 0h2v2h-2v-2z"></path>', subView: 'tab-empresas' });
         }
         
+        if (userPerms.vacaciones !== false && currentUser.rol === 'leader') {
+            menuItems.push({ id: 'nav-admin-vacaciones', label: 'Vacaciones', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>', subView: 'tab-vacaciones' });
+        }
+        
         if (compPerms.vehiculos !== false && userPerms.vehiculos !== false) menuItems.push({ id: 'nav-admin-vehículos', label: 'Vehículos', icon: '<rect x="1" y="3" width="22" height="13" rx="2" ry="2"></rect><path d="M7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>', subView: 'tab-vehículos' });
         if (compPerms.prestamos !== false && userPerms.prestamos !== false) menuItems.push({ id: 'nav-admin-préstamos', label: 'Préstamos', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 12h6"></path>', subView: 'tab-préstamos' });
         if (compPerms.proyectos !== false && userPerms.proyectos !== false) menuItems.push({ id: 'nav-admin-proyectos', label: 'Proyectos', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>', subView: 'tab-proyectos' });
-        if (compPerms.finanzas !== false && userPerms.ingresos_gastos !== false) menuItems.push({ id: 'nav-admin-finanzas', label: 'Finanzas', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'tab-finanzas' });
+        if (compPerms.finanzas !== false && userPerms.finanzas !== false) menuItems.push({ id: 'nav-admin-finanzas', label: 'Finanzas', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'tab-finanzas' });
         if (compPerms.finanzas !== false && userPerms.caja_chica !== false) menuItems.push({ id: 'nav-admin-cajachica', label: 'Caja Chica', icon: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>', subView: 'view-petty-cash' });
         if (compPerms.asistencia !== false && userPerms.control_asistencia !== false) menuItems.push({ id: 'nav-admin-diapago', label: 'Día de Pago', icon: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M12 14l2 2 4-4"></path>', subView: 'tab-asistencia', isSpecial: true });
     }
@@ -576,6 +580,7 @@ function loadRoleView() {
             viewTitle.textContent = 'Mi Préstamo';
             viewSubtitle.textContent = 'Estado de amortización y saldo pendiente de tu préstamo.';
             if (typeof setupUserLoanView === 'function') setupUserLoanView();
+            if (typeof setupUserVacationsView === 'function') window.setupUserVacationsView();
         } else if (activeTab === 'view-user-vehicles') {
             const vehiclesView = document.getElementById('view-user-vehicles');
             if (vehiclesView) vehiclesView.classList.remove('hidden');
@@ -637,6 +642,9 @@ function loadRoleView() {
         } else if (activeTab === 'tab-préstamos') {
             viewTitle.textContent = 'Gestión de Préstamos';
             viewSubtitle.textContent = 'Control de créditos otorgados y cobro de cuotas semanales.';
+        } else if (activeTab === 'tab-vacaciones') {
+            viewTitle.textContent = 'Vacaciones y Descansos';
+            viewSubtitle.textContent = 'Autorización y asignación de vacaciones o días de descanso.';
         } else if (activeTab === 'tab-finanzas') {
             viewTitle.textContent = 'Resumen Financiero';
             viewSubtitle.textContent = 'Histórico consolidado mensual de nóminas, ingresos, egresos y proyectos.';

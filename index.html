@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=36">
+    <link rel="stylesheet" href="styles.css?v=54">
     
     <!-- Chart.js for Dashboards -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -211,8 +211,34 @@
                         
                         <!-- Panel Derecho: Tabla de Ingresos/Gastos -->
                         <div class="card table-card">
-                            <div class="card-header">
+                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                                 <h3 id="global-incomes-table-title">Historial de Ingresos y Gastos</h3>
+                                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                    <select id="filter-incomes-period" class="form-control" style="width: auto;">
+                                        <option value="all">Todos</option>
+                                        <option value="day">Por Día</option>
+                                        <option value="month" selected>Por Mes</option>
+                                        <option value="year">Por Año</option>
+                                    </select>
+                                    <input type="date" id="filter-custom-day" class="form-control hidden" style="width: auto;">
+                                    <select id="filter-custom-month" class="form-control hidden" style="width: auto;"></select>
+                                    <input type="number" id="filter-custom-year" class="form-control hidden" placeholder="Año" min="2000" style="width: 100px;">
+                                </div>
+                            </div>
+                            
+                            <div class="summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; padding: 15px;">
+                                <div class="summary-card" style="background: var(--surface); padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid var(--success);">
+                                    <div style="font-size: 0.9rem; color: var(--text-muted);">Total Ingresos</div>
+                                    <div id="summary-ingresos" style="font-size: 1.5rem; font-weight: bold; color: var(--success);">Q0.00</div>
+                                </div>
+                                <div class="summary-card" style="background: var(--surface); padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid var(--danger);">
+                                    <div style="font-size: 0.9rem; color: var(--text-muted);">Total Gastos</div>
+                                    <div id="summary-gastos" style="font-size: 1.5rem; font-weight: bold; color: var(--danger);">Q0.00</div>
+                                </div>
+                                <div class="summary-card" style="background: var(--surface); padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid var(--primary);">
+                                    <div style="font-size: 0.9rem; color: var(--text-muted);">Balance Final</div>
+                                    <div id="summary-balance" style="font-size: 1.5rem; font-weight: bold; color: white;">Q0.00</div>
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table>
@@ -558,7 +584,7 @@
 
                     <div class="card bg-gradient-primary" style="max-width: 500px; margin: 20px auto; padding: 25px; border-radius: var(--radius-md); text-align: left;">
                         <span class="text-muted" style="font-size: 0.9rem; opacity: 0.9; color: #fff !important;">Vacaciones Restantes</span>
-                        <h4 id="usr-vacations-val" style="margin: 5px 0 0 0; font-size: 1.8rem; font-weight: 700;">15 Días</h4>
+                        <h4 id="usr-vacations-val" style="margin: 5px 0 0 0; font-size: 1.8rem; font-weight: 700;">0 Días</h4>
                         <span id="usr-vacations-status" style="font-size: 0.85rem; opacity: 0.9; display: block; margin-top: 5px;">Ninguna solicitud pendiente</span>
                     </div>
 
@@ -1041,12 +1067,53 @@
                                     </table>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="card table-card card-inner margin-top">
+                        <!-- TAB: VACACIONES Y DESCANSOS -->
+                        <div id="tab-vacaciones" class="tab-content">
+                            <div class="card table-card card-inner">
                                 <div class="card-header" style="border-bottom:none; margin-bottom:0;">
                                     <h3>Revisión de Vacaciones (Solicitudes de Descanso)</h3>
                                 </div>
-                                <div style="padding: 15px; border-bottom: 1px solid var(--border-color); background: var(--bg-alt);">
+                                <div id="admin-vacations-container">
+                                    <div class="table-responsive">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Colaborador</th>
+                                                    <th>Descanso Restante</th>
+                                                    <th>Días Gozados</th>
+                                                    <th>Días Solicitados</th>
+                                                    <th>Fechas Solicitadas</th>
+                                                    <th>Estado</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="admin-vacations-table">
+                                                <!-- Carga dinámica -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="card-header" style="border-bottom:none; margin-top: 20px;">
+                                        <h3>Historial de Descansos (Vacaciones) Gozados</h3>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Colaborador</th>
+                                                    <th>Empresa</th>
+                                                    <th>Fecha Gozada</th>
+                                                    <th>Monto Pagado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="admin-vacations-history-table">
+                                                <!-- Carga dinámica -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div style="padding: 15px; border-bottom: 1px solid var(--border-color); background: var(--bg-alt); margin-top: 20px;">
                                     <h4 style="margin-top: 0; font-size: 1.1rem; margin-bottom: 15px;">Asignar/Solicitar Descanso a Colaborador</h4>
                                     <form id="admin-assign-vacation-form" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
                                         <div class="form-group" style="flex: 1; min-width: 200px;">
@@ -1795,6 +1862,11 @@
                     </select>
                 </div>
 
+                <div class="form-group" id="user-descuenta-almuerzo-container" style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                    <input type="checkbox" id="user-descuenta-almuerzo-input" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="user-descuenta-almuerzo-input" style="margin-bottom: 0; cursor: pointer;">Descontar hora de almuerzo</label>
+                </div>
+
                 <div class="form-group">
                     <label for="user-horas-normales-max-input">Horas normales diarias *</label>
                     <input type="number" id="user-horas-normales-max-input" class="form-control" min="1" max="24" step="0.5" value="8.0" required>
@@ -1862,33 +1934,166 @@
                   <!-- SECCIÓN DE PERMISOS -->
                   <div class="form-group" style="border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius-md); background: rgba(0,0,0,0.1); margin-top: 15px;">
                       <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 0.95rem;">Permisos de Acceso</h4>
-                      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Selecciona los módulos a los que este usuario tendrá acceso:</p>
+                      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Selecciona a qué módulos de la aplicación tendrá acceso este usuario:</p>
                       
-                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem;">
-                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
-                              <input type="checkbox" id="perm-control-asistencia" checked> Control de Asistencia
-                          </label>
-                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
-                              <input type="checkbox" id="perm-mi-historial" checked> Mi Historial
-                          </label>
-                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
-                              <input type="checkbox" id="perm-prestamos" checked> Préstamos
-                          </label>
-                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
-                              <input type="checkbox" id="perm-vehiculos" checked> Encargados Vehículos
-                          </label>
-                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
-                              <input type="checkbox" id="perm-inventario" checked> Inventario
-                          </label>
-                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
-                              <input type="checkbox" id="perm-caja-chica" checked> Caja Chica
-                          </label>
-                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
-                              <input type="checkbox" id="perm-proyectos" checked> Proyectos
-                          </label>
-                          <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; margin-bottom: 0;">
-                              <input type="checkbox" id="perm-ingresos-gastos" checked> Ingresos y Gastos
-                          </label>
+                      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem;">
+                          
+                          <!-- Asistencia -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Asistencia</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-asistencia" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Trabajadores -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Trabajadores</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-trabajadores" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Finanzas General -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Finanzas General</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-finanzas" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Caja Chica -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Caja Chica</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-caja-chica" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Ingresos y Gastos -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Ingresos y Gastos</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-ingresos-gastos" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Inventario / Bodega -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Inventario / Bodega</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-inventario" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Proyectos -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Proyectos</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-proyectos" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Préstamos -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Préstamos</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-prestamos" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Adelantos -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Adelantos</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-prestamos-vacaciones" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Vacaciones / Descansos -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Vacaciones / Descansos</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-vacaciones" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Vehículos -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Vehículos</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-vehiculos" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Descuentos -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Descuentos</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-descuentos" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
+                          <!-- Día de Pago -->
+                          <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-md); display: flex; flex-wrap: wrap; align-items: center; background: var(--bg-color);">
+                              <div style="width: 180px; font-weight: bold; margin-bottom: 5px;">Día de Pago</div>
+                              <div style="display: flex; gap: 20px; flex: 1; flex-wrap: wrap; align-items: center;">
+                                    <label class="custom-checkbox" style="margin: 0;">
+                                        <input type="checkbox" id="user-perm-dia-pago" checked>
+                                        <span class="checkmark"></span>
+                                        Habilitar Acceso
+                                    </label>
+                                </div>
+                          </div>
+
                       </div>
                   </div>
  
@@ -2374,51 +2579,7 @@
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top: 15px;">
-                    <label>Permisos de Módulos para esta Empresa</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="comp-perm-asistencia" checked>
-                            <span class="checkmark"></span>
-                            Asistencia
-                        </label>
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="comp-perm-trabajadores" checked>
-                            <span class="checkmark"></span>
-                            Trabajadores
-                        </label>
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="comp-perm-finanzas" checked>
-                            <span class="checkmark"></span>
-                            Finanzas (Caja Chica/Gastos)
-                        </label>
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="comp-perm-inventario" checked>
-                            <span class="checkmark"></span>
-                            Inventario / Bodega
-                        </label>
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="comp-perm-proyectos" checked>
-                            <span class="checkmark"></span>
-                            Proyectos
-                        </label>
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="comp-perm-prestamos" checked>
-                            <span class="checkmark"></span>
-                            Préstamos
-                        </label>
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="comp-perm-vehiculos" checked>
-                            <span class="checkmark"></span>
-                            Vehículos
-                        </label>
-                        <label class="custom-checkbox">
-                            <input type="checkbox" id="comp-perm-descuentos" checked>
-                            <span class="checkmark"></span>
-                            Descuentos
-                        </label>
-                    </div>
-                </div>
+
 
                 <div class="modal-footer">
                     <button type="button" id="btn-cancel-company" class="btn-secondary">Cancelar</button>
@@ -2607,35 +2768,34 @@
 
     <!-- Cargar lógica de la app conectada a la API SQL con cache buster -->
     <!-- Core -->
-    <script src="js/core/db-client.js?v=45" defer></script>
-    <script src="js/core/app-core.js?v=46" defer></script>
-    <script src="js/core/exportacion.js?v=46" defer></script>
+    <script src="js/core/db-client.js?v=54" defer></script>
+    <script src="js/core/app-core.js?v=54" defer></script>
+    <script src="js/core/exportacion.js?v=54" defer></script>
     
     <!-- Users & Permissions -->
-    <script src="js/users/gestion-usuarios.js?v=47" defer></script>
-    <script src="js/users/prestamos.js?v=46" defer></script>
+    <script src="js/users/gestion-usuarios.js?v=54" defer></script>
+    <script src="js/users/prestamos.js?v=54" defer></script>
 
     <!-- Finances -->
-    <script src="js/finances/ingresos.js?v=45" defer></script>
-    <script src="js/finances/caja-chica.js?v=45" defer></script>
+    <script src="js/finances/ingresos.js?v=54" defer></script>
+    <script src="js/finances/caja-chica.js?v=54" defer></script>
 
     <!-- Inventory -->
-    <script src="js/inventory/inventarios.js?v=45" defer></script>
-    <script src="js/inventory/materiales.js?v=45" defer></script>
+    <script src="js/inventory/inventarios.js?v=54" defer></script>
+    <script src="js/inventory/materiales.js?v=54" defer></script>
 
     <!-- Sales & Projects -->
-
-    <script src="js/sales/cotizaciones.js?v=45" defer></script>
-    <script src="js/sales/proyectos.js?v=46" defer></script>
+    <script src="js/sales/cotizaciones.js?v=54" defer></script>
+    <script src="js/sales/proyectos.js?v=54" defer></script>
 
     <!-- Vehicles -->
-    <script src="js/vehicles/vehiculos.js?v=45" defer></script>
+    <script src="js/vehicles/vehiculos.js?v=54" defer></script>
 
     <!-- Views -->
-    <script src="js/views/vista-usuario.js?v=48" defer></script>
-    <script src="js/views/vista-lider.js?v=45" defer></script>
-    <script src="js/views/vista-admin.js?v=45" defer></script>
-    <script src="js/finances/admin-finanzas.js?v=48" defer></script>
+    <script src="js/views/vista-usuario.js?v=54" defer></script>
+    <script src="js/views/vista-lider.js?v=54" defer></script>
+    <script src="js/views/vista-admin.js?v=54" defer></script>
+    <script src="js/finances/admin-finanzas.js?v=54" defer></script>
 
 
     <!-- ==================== MODAL NUEVA VENTA ==================== -->

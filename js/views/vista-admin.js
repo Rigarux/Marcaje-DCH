@@ -598,9 +598,17 @@
                 brutoText = `Q${group.totalBruto.toFixed(2)}`;
                 netText = `Q${netFinal.toFixed(2)}`;
             } else if (isPiecework) {
+                let totalTrabajos = 0;
+                let totalUnidades = 0;
+                group.records.forEach(rec => {
+                    if (rec.horaSalida) {
+                        totalTrabajos++;
+                        totalUnidades += parseFloat(rec.trabajoCantidad) || 0;
+                    }
+                });
                 const netFinal = Math.max(0, group.totalNeto - loanDeduction);
-                diurnasText = 'N/A';
-                nocturnasText = 'N/A';
+                diurnasText = `${totalTrabajos} Trabajos`;
+                nocturnasText = `${totalUnidades} Unidades`;
                 brutoText = `Q${group.totalBruto.toFixed(2)}`;
                 netText = `Q${netFinal.toFixed(2)}`;
             } else {
@@ -647,8 +655,8 @@
                         <strong>${nombre}</strong>
                     </div>
                 </td>
-                <td data-label="H. Diurnas">${diurnasText}</td>
-                <td data-label="H. Nocturnas">${nocturnasText}</td>
+                <td data-label="${isPiecework ? 'Trabajos' : (isBuses ? 'Días' : 'H. Diurnas')}">${diurnasText}</td>
+                <td data-label="${isPiecework ? 'Unidades' : (isBuses ? 'Ganancia' : 'H. Nocturnas')}">${nocturnasText}</td>
                 <td data-label="Bruto Acumulado">${brutoText}</td>
                 <td class="text-success" data-label="Bonos (+)">${bonoText}</td>
                 <td class="text-danger" data-label="Descuentos (-)">${descuentoText}</td>
@@ -745,31 +753,62 @@ fragment.appendChild(trMain);
                     `;
                 }, 6);
             } else if (isPiecework) {
-                subrowsHtml = generateGroupedRows(group.pieceworkRecords, (rec) => rec.fecha.split(' ')[0], (rec) => {
+                subrowsHtml = generateGroupedRows(group.records, (rec) => rec.fecha, (rec) => {
                     let subAction = '';
-                    if (rec.estado === 'Confirmado') {
+                    if (rec.aprobado) {
                         subAction = `
                             <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content: flex-end;">
                                 <span class="table-badge approved" style="font-size:0.65rem; padding: 2px 4px;">Aprobado</span>
-                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework-att" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
                             </div>
                         `;
+                    } else if (!rec.horaSalida) {
+                         subAction = `<span class="text-muted" style="font-size:0.65rem;">En Curso</span>`;
                     } else {
                         subAction = `
                             <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content: flex-end;">
                                 <button class="btn-table-action approve approve-single-piecework-admin" data-recid="${rec.id}" data-uid="${group.userId}" style="padding: 2px 4px; font-size: 0.65rem; width: auto;">Aprobar</button>
-                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                                <button class="btn-table-action warning btn-correct-record" data-rectype="piecework-att" data-recid="${rec.id}" style="padding: 2px 4px; font-size: 0.65rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
                             </div>
                         `;
                     }
 
+                    // Precios
+                    let qty = parseFloat(rec.trabajoCantidad) || 0;
+                    let total = parseFloat(rec.montoBruto) || 0;
+                    let precio = (qty > 0) ? (total / qty) : 0;
+                    
+                    let precioCol = `Q${precio.toFixed(2)}`;
+                    let totalCol = `<strong>Q${total.toFixed(2)}</strong>`;
+                    
+                    if (!rec.aprobado && rec.horaSalida) {
+                        precioCol = `<div style="display: flex; align-items: center; gap: 4px;"><span>Q</span><input type="number" step="0.01" class="form-control inline-piecework-price" data-recid="${rec.id}" data-qty="${qty}" value="${precio > 0 ? precio : ''}" placeholder="0.00" style="width: 70px; padding: 2px 4px; font-size: 0.8rem; height: 26px;"></div>`;
+                        totalCol = `<strong class="inline-piecework-total" id="inline-pw-total-${rec.id}">Q${total.toFixed(2)}</strong>`;
+                    }
+
+                    // Fotos
+                    let photosHtml = '';
+                    if (rec.fotoAntes) {
+                        photosHtml += `<a href="${rec.fotoAntes}" target="_blank" style="margin-right:4px;"><img src="${rec.fotoAntes}" style="width:30px; height:30px; border-radius:4px; object-fit:cover; display:inline-block;" title="Foto ANTES"></a>`;
+                    }
+                    if (rec.fotoDespues) {
+                        photosHtml += `<a href="${rec.fotoDespues}" target="_blank"><img src="${rec.fotoDespues}" style="width:30px; height:30px; border-radius:4px; object-fit:cover; display:inline-block;" title="Foto DESPUÉS"></a>`;
+                    }
+
+                    let jobDesc = rec.trabajoDescripcion || '<span class="text-muted">Sin descripción</span>';
+
                     return `
                         <tr>
                             <td data-label="Fecha">${formatDateDDMMYYYY(rec.fecha)}</td>
-                            <td data-label="Trabajo">${rec.trabajo}</td>
-                            <td data-label="Costo por unidad">Q${(rec.precio || 0).toFixed(2)}</td>
-                            <td data-label="Cantidad">${rec.cantidad}</td>
-                            <td data-label="Cantidad total"><strong>Q${(rec.total || 0).toFixed(2)}</strong></td>
+                            <td data-label="Trabajo">
+                                <div style="display:flex; flex-direction:column; gap:4px;">
+                                    <span>${jobDesc}</span>
+                                    <div style="display:flex; gap:4px; margin-top:2px;">${photosHtml}</div>
+                                </div>
+                            </td>
+                            <td data-label="Cantidad">${qty}</td>
+                            <td data-label="Precio">${precioCol}</td>
+                            <td data-label="Total">${totalCol}</td>
                             <td data-label="Estado/Acción">${subAction}</td>
                         </tr>
                     `;
@@ -918,6 +957,35 @@ fragment.appendChild(trMain);
                         <td data-label="Tipo de pago">-</td>
                     </tr>
                 `;
+            } else if (isPiecework) {
+                let totalTrabajos = 0;
+                let todosAprobados = true;
+                let tieneTrabajos = false;
+                
+                group.records.forEach(rec => {
+                    if (rec.horaSalida) {
+                        totalTrabajos++;
+                        tieneTrabajos = true;
+                        if (!rec.aprobado) todosAprobados = false;
+                    }
+                });
+                
+                const estado = (tieneTrabajos && todosAprobados) ? '<span class="text-success">Aprobado</span>' : '<span class="text-warning">Pendiente</span>';
+                const loanDeductVal = isDeducted ? (parseFloat(user.préstamoCuota) || 0) : 0;
+                const descuentosTotales = group.totalDescuento + loanDeductVal;
+                const finalNeto = group.totalBruto + group.totalBono - descuentosTotales;
+
+                subrowsHtml += `
+                    <tr style="background: rgba(255, 255, 255, 0.08); font-weight: bold; border-top: 2px solid var(--border-color);">
+                        <td colspan="2" style="text-align: right; color: var(--primary);" data-label="Resumen">Suma Final:</td>
+                        <td data-label="Total de trabajos">${totalTrabajos} Trabajos</td>
+                        <td data-label="Total bruto">Q${group.totalBruto.toFixed(2)}</td>
+                        <td class="text-danger" data-label="Descuentos">-Q${descuentosTotales.toFixed(2)}</td>
+                        <td class="text-success" data-label="Bonos">+Q${group.totalBono.toFixed(2)}</td>
+                        <td data-label="Total final"><span style="font-size: 0.95rem; color: var(--primary);">Q${finalNeto.toFixed(2)}</span></td>
+                        <td data-label="Estado">${estado}</td>
+                    </tr>
+                `;
             } else {
                 let totalDiurnas = 0;
                 let totalNocturnas = 0;
@@ -968,9 +1036,9 @@ fragment.appendChild(trMain);
                     <tr>
                         <th>Fecha</th>
                         <th>Trabajo</th>
-                        <th>Costo por unidad</th>
                         <th>Cantidad</th>
-                        <th>Cantidad total</th>
+                        <th>Precio</th>
+                        <th>Total</th>
                         <th>Estado/Acción</th>
                     </tr>
                 `;
@@ -1092,23 +1160,50 @@ fragment.appendChild(trMain);
             });
         });
 
+        // Real-time calculation for piecework price inputs
+        adminAttendanceTable.querySelectorAll('.inline-piecework-price').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const qty = parseFloat(e.target.getAttribute('data-qty')) || 0;
+                const price = parseFloat(e.target.value) || 0;
+                const total = qty * price;
+                const recid = e.target.getAttribute('data-recid');
+                const totalDisplay = document.getElementById(`inline-pw-total-${recid}`);
+                if (totalDisplay) {
+                    totalDisplay.textContent = `Q${total.toFixed(2)}`;
+                }
+            });
+        });
+
         adminAttendanceTable.querySelectorAll('.approve-single-piecework-admin').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const recid = e.target.getAttribute('data-recid');
-                const price = prompt('Ingrese el precio unitario para autorizar este trabajo:', '');
-                if (price !== null && price.trim() !== '') {
+                const inputEl = document.querySelector(`.inline-piecework-price[data-recid="${recid}"]`);
+                let price = null;
+                
+                if (inputEl) {
+                    price = inputEl.value;
+                    if (!price || price.trim() === '') {
+                        alert('Por favor, define un precio válido antes de aprobar.');
+                        inputEl.focus();
+                        return;
+                    }
+                } else {
+                    price = prompt('Ingrese el precio unitario para autorizar este trabajo:', '');
+                }
+
+                if (price !== null && price.toString().trim() !== '') {
                     const parsedPrice = parseFloat(price);
-                    if (!isNaN(parsedPrice) && parsedPrice > 0) {
+                    if (!isNaN(parsedPrice) && parsedPrice >= 0) {
                         const confirmId = currentUser.id;
-                        const res = await window.AttendanceDB.approvePiecework(recid, confirmId, parsedPrice);
+                        const res = await window.AttendanceDB.approvePieceworkAttendance(recid, confirmId, parsedPrice);
                         if (res.success) {
-                            showToast('Autorizado', 'El trabajo ha sido autorizado con el nuevo precio.', 'success');
+                            showToast('Autorizado', 'El trabajo ha sido autorizado con el precio definido.', 'success');
                             setupAdminView();
                         } else {
                             showToast('Error', res.message, 'danger');
                         }
                     } else {
-                        alert('Precio inválido.');
+                        alert('Precio inválido. Debe ser un número mayor o igual a 0.');
                     }
                 }
             });
@@ -1279,11 +1374,11 @@ fragment.appendChild(trMain);
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${nombre}</strong></td>
-                <td>${formatDateDDMMYYYY(pen.fecha)}</td>
-                <td>${pen.motivo}${fotoLink}</td>
-                <td><strong class="text-danger">Q${pen.monto.toFixed(2)}</strong></td>
-                <td>${deleteButton}</td>
+                <td data-label="Colaborador"><strong>${nombre}</strong></td>
+                <td data-label="Fecha">${formatDateDDMMYYYY(pen.fecha)}</td>
+                <td data-label="Motivo de Descuento">${pen.motivo}${fotoLink}</td>
+                <td data-label="Descuento (Q)"><strong class="text-danger">Q${pen.monto.toFixed(2)}</strong></td>
+                <td data-label="Acciones">${deleteButton}</td>
             `;
             fragmentPenalties.appendChild(tr);
         });
@@ -1336,11 +1431,11 @@ fragment.appendChild(trMain);
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${nombre}</strong></td>
-                <td>${formatDateDDMMYYYY(bon.fecha)}</td>
-                <td>${bon.motivo}</td>
-                <td><strong class="text-success">Q${bon.monto.toFixed(2)}</strong></td>
-                <td>${deleteButton}</td>
+                <td data-label="Colaborador"><strong>${nombre}</strong></td>
+                <td data-label="Fecha">${formatDateDDMMYYYY(bon.fecha)}</td>
+                <td data-label="Motivo del Bono">${bon.motivo}</td>
+                <td data-label="Monto (Q)"><strong class="text-success">Q${bon.monto.toFixed(2)}</strong></td>
+                <td data-label="Acciones">${deleteButton}</td>
             `;
             fragmentBonuses.appendChild(tr);
         });
@@ -1951,6 +2046,21 @@ fragment.appendChild(trMain);
                     document.getElementById('corr-pw-precio').value = rec.precio || 0;
                     document.getElementById('corr-pw-cantidad').value = rec.cantidad || 0;
                 }
+            } else if (type === 'piecework-att') {
+                document.getElementById('correction-form-piecework').classList.remove('hidden');
+                document.getElementById('correction-form-attendance').classList.add('hidden');
+                
+                const records = window.AttendanceDB._state?.attendance || [];
+                const rec = records.find(r => r.id === parseInt(id));
+                if(rec){
+                    document.getElementById('corr-pw-fecha').value = rec.fecha ? rec.fecha.split(' ')[0] : '';
+                    document.getElementById('corr-pw-trabajo').value = rec.trabajoDescripcion || '';
+                    document.getElementById('corr-pw-cantidad').value = rec.trabajoCantidad || 0;
+                    
+                    let qty = parseFloat(rec.trabajoCantidad) || 1;
+                    let total = parseFloat(rec.montoBruto) || 0;
+                    document.getElementById('corr-pw-precio').value = (total / qty).toFixed(2);
+                }
             } else if (type === 'attendance') {
                 document.getElementById('correction-form-piecework').classList.add('hidden');
                 document.getElementById('correction-form-attendance').classList.remove('hidden');
@@ -1989,6 +2099,22 @@ fragment.appendChild(trMain);
                     adminId: currentUser?.id || 0
                 };
                 const res = await window.AttendanceDB.correctPieceworkRecord(id, data);
+                if(res.success){
+                    showToast('Éxito', res.message, 'success');
+                    document.getElementById('correction-modal').classList.add('hidden');
+                    setupAdminView();
+                } else {
+                    showToast('Error', res.message, 'danger');
+                }
+            } else if (type === 'piecework-att') {
+                const data = {
+                    fecha: document.getElementById('corr-pw-fecha').value,
+                    trabajoDescripcion: document.getElementById('corr-pw-trabajo').value,
+                    precio: document.getElementById('corr-pw-precio').value,
+                    trabajoCantidad: document.getElementById('corr-pw-cantidad').value,
+                    adminId: currentUser?.id || 0
+                };
+                const res = await window.AttendanceDB.correctPieceworkAttendanceRecord(id, data);
                 if(res.success){
                     showToast('Éxito', res.message, 'success');
                     document.getElementById('correction-modal').classList.add('hidden');

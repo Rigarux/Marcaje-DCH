@@ -81,12 +81,12 @@
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${l.nombreEmpleado || 'Colaborador'}</strong></td>
-                <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(l.fecha) : l.fecha}</td>
-                <td>Q${(l.monto || 0).toFixed(2)}</td>
-                <td>Q${(l.cuotaMonto || (l.monto / l.cuotas)).toFixed(2)} / pago</td>
-                <td><span class="table-badge ${statusClass}">${l.estado}</span></td>
-                <td>
+                <td data-label="Colaborador"><strong>${l.nombreEmpleado || 'Colaborador'}</strong></td>
+                <td data-label="Fecha">${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(l.fecha) : l.fecha}</td>
+                <td data-label="Monto Solicitado">Q${(l.monto || 0).toFixed(2)}</td>
+                <td data-label="Cuota Sugerida">Q${(l.cuotaMonto || (l.monto / l.cuotas)).toFixed(2)} / pago</td>
+                <td data-label="Estado"><span class="table-badge ${statusClass}">${l.estado}</span></td>
+                <td data-label="Acciones">
                     <div style="display:flex; align-items:center; gap:5px;">
                         ${actions}
                     </div>
@@ -166,12 +166,12 @@
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><strong>${u.nombre}</strong></td>
-                        <td>Q${(u.préstamoTotal || 0).toFixed(2)}</td>
-                        <td><strong>Q${(u.préstamosaldo || 0).toFixed(2)}</strong></td>
-                        <td>Q${(u.préstamoCuota || 0).toFixed(2)}</td>
-                        <td><span class="table-badge ${statusClass}">${u.préstamoEstadoCuota || 'Ninguno'}</span></td>
-                        <td>${actions}</td>
+                        <td data-label="Colaborador"><strong>${u.nombre}</strong></td>
+                        <td data-label="Préstamo Total">Q${(u.préstamoTotal || 0).toFixed(2)}</td>
+                        <td data-label="Saldo Pendiente"><strong>Q${(u.préstamosaldo || 0).toFixed(2)}</strong></td>
+                        <td data-label="Cuota de Cobro">Q${(u.préstamoCuota || 0).toFixed(2)}</td>
+                        <td data-label="Estado del Cobro"><span class="table-badge ${statusClass}">${u.préstamoEstadoCuota || 'Ninguno'}</span></td>
+                        <td data-label="Acciones">${actions}</td>
                     `;
                     activeLoansTable.appendChild(tr);
                 });
@@ -216,52 +216,63 @@
             allUsers = allUsers.filter(u => u.empresa === currentComp);
         }
 
-        adminVacationsTable.innerHTML = '';
-        const pendingUsers = allUsers.filter(u => u.descansoEstado === 'Pendiente de Autorizar');
-        
-        if (allUsers.length === 0) {
-            adminVacationsTable.innerHTML = `<tr><td colspan="5" class="text-muted" style="text-align:center; padding:20px;">No hay usuarios.</td></tr>`;
-            return;
+        const container = document.getElementById('admin-vacations-container');
+        if (container) {
+            container.style.display = (typeof currentUser !== 'undefined' && currentUser && currentUser.rol === 'leader') ? 'none' : 'block';
         }
 
-        let attendanceRecords = window.AttendanceDB.getAttendance();
-
-        allUsers.forEach(u => {
-            let statusClass = u.descansoEstado === 'Pendiente de Autorizar' ? 'pending' : 'approved';
-            let actions = '';
+        if (adminVacationsTable) {
+            adminVacationsTable.innerHTML = '';
             
-            if (u.descansoEstado === 'Pendiente de Autorizar') {
-                actions = `<button class="btn-table-action approve authorize-vacation-btn" data-userid="${u.id}">Autorizar</button>`;
-            } else {
-                actions = `<span class="text-muted">-</span>`;
+            if (allUsers.length === 0) {
+                adminVacationsTable.innerHTML = `<tr><td colspan="5" class="text-muted" style="text-align:center; padding:20px;">No hay usuarios.</td></tr>`;
             }
+            
+            let attendanceRecords = window.AttendanceDB.getAttendance();
 
-            let userPastVacations = attendanceRecords.filter(a => a.usuarioId === u.id && a.justificacionMotivoEntrada === 'Descanso (Vacaciones)');
-            let datesEnjoyed = userPastVacations.map((a, idx) => `${idx + 1}. ${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(a.fecha) : a.fecha}`).join('<br>');
-            let daysEnjoyedHtml = userPastVacations.length > 0 ? `<strong>${userPastVacations.length} Días</strong><div style="font-size:0.75em; color:var(--text-muted); margin-top:5px;">${datesEnjoyed}</div>` : '0 Días';
+            allUsers.forEach(u => {
+                let statusClass = u.descansoEstado === 'Pendiente de Autorizar' ? 'pending' : 'approved';
+                let actions = '';
+                
+                if (u.descansoEstado === 'Pendiente de Autorizar') {
+                    actions = `
+                        <div style="display:flex; flex-direction:column; gap:5px; align-items:center;">
+                            <button class="btn-table-action approve authorize-vacation-btn" data-userid="${u.id}" style="width: 100%;">Autorizar (Con Goce)</button>
+                            <button class="btn-table-action authorize-sin-goce-btn" data-userid="${u.id}" style="background-color: var(--warning); color: black; border-color: var(--warning); width: 100%;">Autorizar (Sin Goce)</button>
+                            <button class="btn-table-action penalize reject-vacation-btn" data-userid="${u.id}" style="width: 100%;">Rechazar</button>
+                        </div>
+                    `;
+                } else {
+                    actions = `<span class="text-muted">-</span>`;
+                }
 
-            let datesRequestedHtml = '-';
-            if (u.descansoFechas) {
-                let requestedDates = u.descansoFechas.split(',').map(f => f.trim()).filter(f => f);
-                datesRequestedHtml = requestedDates.map((d, idx) => `${idx + 1}. ${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(d) : d}`).join('<br>');
-            }
+                let userPastVacations = attendanceRecords.filter(a => a.usuarioId === u.id && a.justificacionMotivoEntrada === 'Descanso (Vacaciones)');
+                let datesEnjoyed = userPastVacations.map((a, idx) => `${idx + 1}. ${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(a.fecha) : a.fecha}`).join('<br>');
+                let daysEnjoyedHtml = userPastVacations.length > 0 ? `<strong>${userPastVacations.length} Días</strong><div style="font-size:0.75em; color:var(--text-muted); margin-top:5px;">${datesEnjoyed}</div>` : '0 Días';
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${u.nombre}</strong></td>
-                <td>${u.vacacionesRestantes !== undefined ? u.vacacionesRestantes : 15} Días</td>
-                <td>${daysEnjoyedHtml}</td>
-                <td>${u.descansoDiasSolicitados || 0} Días</td>
-                <td style="max-width:200px; white-space:normal; font-size:0.85em;">${datesRequestedHtml}</td>
-                <td><span class="table-badge ${statusClass}">${u.descansoEstado || 'Ninguno'}</span></td>
-                <td>${actions}</td>
-            `;
-            // Highlight row if pending
-            if (u.descansoEstado === 'Pendiente de Autorizar') {
-                tr.style.backgroundColor = 'rgba(255, 152, 0, 0.1)';
-            }
-            adminVacationsTable.appendChild(tr);
-        });
+                let datesRequestedHtml = '-';
+                if (u.descansoFechas) {
+                    let requestedDates = u.descansoFechas.split(',').map(f => f.trim()).filter(f => f);
+                    datesRequestedHtml = requestedDates.map((d, idx) => `${idx + 1}. ${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(d) : d}`).join('<br>');
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td data-label="Colaborador"><strong>${u.nombre}</strong></td>
+                    <td data-label="Descanso Restante">${u.vacacionesRestantes !== undefined ? u.vacacionesRestantes : 0} Días</td>
+                    <td data-label="Días Gozados">${daysEnjoyedHtml}</td>
+                    <td data-label="Días Solicitados">${u.descansoDiasSolicitados || 0} Días</td>
+                    <td data-label="Fechas Solicitadas" style="max-width:200px; white-space:normal; font-size:0.85em;">${datesRequestedHtml}</td>
+                    <td data-label="Estado"><span class="table-badge ${statusClass}">${u.descansoEstado || 'Ninguno'}</span></td>
+                    <td data-label="Acciones">${actions}</td>
+                `;
+                // Highlight row if pending
+                if (u.descansoEstado === 'Pendiente de Autorizar') {
+                    tr.style.backgroundColor = 'rgba(255, 152, 0, 0.1)';
+                }
+                adminVacationsTable.appendChild(tr);
+            });
+        }
 
         const historyTable = document.getElementById('admin-vacations-history-table');
         if (historyTable) {
@@ -280,10 +291,10 @@
                     const usr = allUsers.find(u => u.id === rec.usuarioId);
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><strong>${usr ? usr.nombre : 'Desconocido'}</strong></td>
-                        <td>${usr ? usr.empresa : '-'}</td>
-                        <td>${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(rec.fecha) : rec.fecha}</td>
-                        <td>Q${parseFloat(rec.montoNeto || 0).toFixed(2)}</td>
+                        <td data-label="Colaborador"><strong>${usr ? usr.nombre : 'Desconocido'}</strong></td>
+                        <td data-label="Empresa">${usr ? usr.empresa : '-'}</td>
+                        <td data-label="Fecha Gozada">${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(rec.fecha) : rec.fecha}</td>
+                        <td data-label="Monto Pagado">Q${parseFloat(rec.montoNeto || 0).toFixed(2)}</td>
                     `;
                     historyTable.appendChild(tr);
                 });
@@ -321,6 +332,68 @@
             });
         });
 
+        adminVacationsTable.querySelectorAll('.authorize-sin-goce-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const uid = parseInt(btn.getAttribute('data-userid'));
+                
+                const confirmAdmin = confirm("¿Estás seguro de autorizar esta solicitud SIN GOCE DE SALARIO? Solo dejará constancia y no pagará el día.");
+                if (!confirmAdmin) return;
+                
+                const loggedInUserStr = sessionStorage.getItem('dch_current_user');
+                const loggedInUser = loggedInUserStr ? JSON.parse(loggedInUserStr) : null;
+                const adminId = loggedInUser ? loggedInUser.id : 0;
+
+                try {
+                    const res = await fetch(`/api/users/${uid}/descansos/autorizar-sin-goce`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ adminId })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('Se ha autorizado el permiso sin goce de salario.');
+                        window.location.reload();
+                    } else {
+                        alert('Error al autorizar: ' + (data.message || ''));
+                    }
+                } catch(err) {
+                    console.error(err);
+                    showToast('Error', 'Error de red', 'danger');
+                }
+            });
+        });
+
+        adminVacationsTable.querySelectorAll('.reject-vacation-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const uid = parseInt(btn.getAttribute('data-userid'));
+                
+                const confirmAdmin = confirm("¿Estás seguro de RECHAZAR esta solicitud?");
+                if (!confirmAdmin) return;
+                
+                const loggedInUserStr = sessionStorage.getItem('dch_current_user');
+                const loggedInUser = loggedInUserStr ? JSON.parse(loggedInUserStr) : null;
+                const adminId = loggedInUser ? loggedInUser.id : 0;
+
+                try {
+                    const res = await fetch(`/api/users/${uid}/descansos/rechazar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ adminId })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('Solicitud rechazada.');
+                        window.location.reload();
+                    } else {
+                        alert('Error al rechazar: ' + (data.message || ''));
+                    }
+                } catch(err) {
+                    console.error(err);
+                    showToast('Error', 'Error de red', 'danger');
+                }
+            });
+        });
+
         // Configurar formulario de asignación manual de vacaciones por el Gerente
         const adminAssignForm = document.getElementById('admin-assign-vacation-form');
         const adminUserSelect = document.getElementById('admin-vacation-user');
@@ -332,13 +405,14 @@
             // Poblar select
             adminUserSelect.innerHTML = '<option value="">Seleccionar...</option>';
             allUsers.forEach(u => {
-                // Solo si no tienen solicitud pendiente, para no sobrescribir, o dejar que sobrescriba
-                if (u.descansoEstado !== 'Pendiente de Autorizar') {
-                    const opt = document.createElement('option');
-                    opt.value = u.id;
-                    opt.textContent = `${u.nombre} (Restantes: ${u.vacacionesRestantes !== undefined ? u.vacacionesRestantes : 15})`;
-                    adminUserSelect.appendChild(opt);
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                let textContent = `${u.nombre} (Restantes: ${u.vacacionesRestantes !== undefined ? u.vacacionesRestantes : 0})`;
+                if (u.descansoEstado === 'Pendiente de Autorizar') {
+                    textContent += ' - PENDIENTE';
                 }
+                opt.textContent = textContent;
+                adminUserSelect.appendChild(opt);
             });
 
             if (!window.adminVacationDatesArr) window.adminVacationDatesArr = [];
@@ -586,11 +660,15 @@
                 }
             });
         }
+    };
+
+
+window.setupUserVacationsView = function() {
 
         const usrVacationsVal = document.getElementById('usr-vacations-val');
         const usrVacationsStatus = document.getElementById('usr-vacations-status');
         if (usrVacationsVal) {
-            usrVacationsVal.textContent = `${currentUser.vacacionesRestantes !== undefined ? currentUser.vacacionesRestantes : 15} Días`;
+            usrVacationsVal.textContent = `${currentUser.vacacionesRestantes !== undefined ? currentUser.vacacionesRestantes : 0} Días`;
             if (currentUser.descansoEstado === 'Pendiente de Autorizar') {
                 usrVacationsStatus.textContent = `Tienes una solicitud de ${currentUser.descansoDiasSolicitados || 1} día(s) pendiente`;
                 usrVacationsStatus.style.color = 'var(--warning)';
@@ -710,5 +788,4 @@
                 }
             });
         }
-    };
-
+};

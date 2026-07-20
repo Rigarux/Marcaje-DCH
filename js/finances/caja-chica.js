@@ -42,7 +42,7 @@
             const funds = await fundsRes.json();
             const users = await usersRes.json();
 
-            const isSupervisor = ['admin', 'leader'].includes(currentUser.rol);
+            const isSupervisor = ['superadmin', 'admin', 'leader'].includes(currentUser.rol);
 
             // Renderizar header actions
             headerActions.innerHTML = '';

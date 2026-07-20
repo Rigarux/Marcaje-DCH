@@ -201,9 +201,23 @@ router.post('/attendance/checkout', async (req, res) => {
             secondsNocturnas = minutesNocturnas * 60;
         }
 
-        const horasDiurnas = parseFloat((secondsDiurnas / 3600).toFixed(4));
-        const horasNocturnas = parseFloat((secondsNocturnas / 3600).toFixed(4));
-        const horas = parseFloat(((secondsDiurnas + secondsNocturnas) / 3600).toFixed(4));
+        let horasDiurnas = parseFloat((secondsDiurnas / 3600).toFixed(4));
+        let horasNocturnas = parseFloat((secondsNocturnas / 3600).toFixed(4));
+        let horas = parseFloat(((secondsDiurnas + secondsNocturnas) / 3600).toFixed(4));
+
+        if (user.descuentaAlmuerzo === 1 && user.tipoPago === 'Por Horas' && horas >= 1.0) {
+            horas -= 1.0;
+            if (horasDiurnas >= 1.0) {
+                horasDiurnas -= 1.0;
+            } else {
+                let remaining = 1.0 - horasDiurnas;
+                horasDiurnas = 0;
+                horasNocturnas = Math.max(0, horasNocturnas - remaining);
+            }
+            horasDiurnas = parseFloat(horasDiurnas.toFixed(4));
+            horasNocturnas = parseFloat(horasNocturnas.toFixed(4));
+            horas = parseFloat(horas.toFixed(4));
+        }
 
         const tarifaDiurna = user.tarifaDiurna !== undefined ? user.tarifaDiurna : 0;
         const tarifaNocturna = user.tarifaNocturna !== undefined ? user.tarifaNocturna : 0;
@@ -256,29 +270,102 @@ router.post('/attendance/checkout', async (req, res) => {
 
         const neto = Math.max(0, parseFloat((bruto + bonos - descuentos).toFixed(2)));
 
-        // Procesar Foto Salida
-        let fotoSalidaPath = null;
-        if (fotoSalida && fotoSalida.startsWith('data:image')) {
-            const base64Data = fotoSalida.replace(/^data:image\/\w+;base64,/, "");
-            const matchExt = fotoSalida.split(';')[0].match(/jpeg|png|gif/);
-            const ext = matchExt ? matchExt[0] : 'jpg';
-            const filename = `salida_${user.id}_${Date.now()}.${ext}`;
-            const { filepath, publicUrl } = getUploadPath(__dirname, 'attendance', user.id, filename);
-            fs.writeFileSync(filepath, base64Data, 'base64');
-            fotoSalidaPath = publicUrl;
-        }
+        const processImage = (base64Img, prefix) => {
+            if (base64Img && base64Img.startsWith('data:image')) {
+                const base64Data = base64Img.replace(/^data:image\/\w+;base64,/, "");
+                const matchExt = base64Img.split(';')[0].match(/jpeg|png|gif/);
+                const ext = matchExt ? matchExt[0] : 'jpg';
+                const filename = `${prefix}_${user.id}_${Date.now()}.${ext}`;
+                const { filepath, publicUrl } = getUploadPath(__dirname, 'attendance', user.id, filename);
+                fs.writeFileSync(filepath, base64Data, 'base64');
+                return publicUrl;
+            }
+            return null;
+        };
+
+        const fotoSalidaPath = processImage(fotoSalida, 'salida');
+        const fotoAntesPath = processImage(fotoAntes, 'antes');
+        const fotoDespuesPath = processImage(fotoDespues, 'despues');
 
         await dbRun(`
             UPDATE attendance 
             SET horaSalida = ?, horasDiurnas = ?, horasNocturnas = ?, horasTrabajadas = ?, montoBruto = ?, descuento = ?, bono = ?, montoNeto = ?, latSalida = ?, lngSalida = ?, justificacionLugarSalida = ?, justificacionMotivoSalida = ?, trabajoDescripcion = ?, trabajoCantidad = ?, fotoAntes = ?, fotoDespues = ?, fotoSalida = ?
             WHERE id = ?
-        `, [timeStr, horasDiurnas, horasNocturnas, horas, bruto, descuentos, bonos, neto, lat || null, lng || null, justificacionLugar || null, justificacionMotivo || null, trabajoDescripcion || null, trabajoCantidad || 0, fotoAntes || null, fotoDespues || null, fotoSalidaPath, record.id]);
+        `, [timeStr, horasDiurnas, horasNocturnas, horas, bruto, descuentos, bonos, neto, lat || null, lng || null, justificacionLugar || null, justificacionMotivo || null, trabajoDescripcion || null, trabajoCantidad || 0, fotoAntesPath || fotoAntes || null, fotoDespuesPath || fotoDespues || null, fotoSalidaPath || fotoSalida || null, record.id]);
 
         let extraLog = user.tipoPago === 'Por Trato' ? `Trato: ${trabajoCantidad} unidades.` : `Total: ${horas}h,`;
         await addLog(user.id, `${user.nombre} registró salida (Check-out) a las ${timeStr}. ${extraLog} Bruto: Q${bruto}. Ubicación: "${justificacionLugar || 'N/A'}"`);
 
         const updatedRecord = await dbGet(`SELECT * FROM attendance WHERE id = ?`, [record.id]);
         res.json({ success: true, record: updatedRecord });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+router.post('/attendance/approve-piecework/:id', async (req, res) => {
+    const asistenciaId = parseInt(req.params.id);
+    const { confirmadoPor, precio } = req.body;
+    try {
+        const record = await dbGet('SELECT * FROM attendance WHERE id = ?', [asistenciaId]);
+        if (!record) return res.status(404).json({ success: false, message: 'Marcaje no encontrado.' });
+        
+        const parsedPrice = parseFloat(precio);
+        if (isNaN(parsedPrice) || parsedPrice < 0) return res.status(400).json({ success: false, message: 'Precio inválido.' });
+
+        const qty = parseFloat(record.trabajoCantidad) || 1;
+        const bruto = parseFloat((parsedPrice * qty).toFixed(2));
+
+        const pens = await dbAll(`SELECT monto FROM penalizations WHERE asistenciaId = ?`, [record.id]);
+        const descuentos = pens.reduce((acc, curr) => acc + curr.monto, 0);
+
+        const bons = await dbAll(`SELECT monto FROM bonuses WHERE asistenciaId = ?`, [record.id]);
+        const bonos = bons.reduce((acc, curr) => acc + curr.monto, 0);
+
+        const neto = Math.max(0, parseFloat((bruto + bonos - descuentos).toFixed(2)));
+
+        const fechaStr = new Date().toLocaleDateString('es-GT', { timeZone: 'America/Guatemala' }) + ' ' + new Date().toLocaleTimeString('es-GT', { timeZone: 'America/Guatemala', hour12: false });
+
+        await dbRun(`
+            UPDATE attendance 
+            SET montoBruto = ?, montoNeto = ?, aprobado = 1, aprobadoPor = ?, aprobadoFecha = ?
+            WHERE id = ?
+        `, [bruto, neto, confirmadoPor, fechaStr, record.id]);
+
+        await addLog(confirmadoPor, `Administrador aprobó trabajo por trato (ID: ${record.id}) con precio Q${parsedPrice}. Total Bruto: Q${bruto}`);
+
+        res.json({ success: true, message: 'Trabajo aprobado.' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+router.post('/attendance/correct-piecework/:id', async (req, res) => {
+    const asistenciaId = parseInt(req.params.id);
+    const { fecha, trabajoDescripcion, precio, trabajoCantidad, adminId } = req.body;
+    try {
+        const record = await dbGet('SELECT * FROM attendance WHERE id = ?', [asistenciaId]);
+        if (!record) return res.status(404).json({ success: false, message: 'Marcaje no encontrado.' });
+        
+        const parsedQty = parseFloat(trabajoCantidad) || 0;
+        const parsedPrice = parseFloat(precio) || 0;
+        const bruto = parseFloat((parsedPrice * parsedQty).toFixed(2));
+
+        const pens = await dbAll(`SELECT monto FROM penalizations WHERE asistenciaId = ?`, [record.id]);
+        const descuentos = pens.reduce((acc, curr) => acc + curr.monto, 0);
+
+        const bons = await dbAll(`SELECT monto FROM bonuses WHERE asistenciaId = ?`, [record.id]);
+        const bonos = bons.reduce((acc, curr) => acc + curr.monto, 0);
+
+        const neto = Math.max(0, parseFloat((bruto + bonos - descuentos).toFixed(2)));
+
+        await dbRun(`
+            UPDATE attendance 
+            SET fecha = ?, trabajoDescripcion = ?, trabajoCantidad = ?, montoBruto = ?, montoNeto = ?
+            WHERE id = ?
+        `, [fecha, trabajoDescripcion, parsedQty, bruto, neto, record.id]);
+
+        await addLog(adminId, `Administrador corrigió trabajo por trato (ID: ${record.id}). Nuevo Bruto: Q${bruto}`);
+
+        res.json({ success: true, message: 'Registro de trato corregido.' });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }

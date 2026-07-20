@@ -31,15 +31,7 @@
 
     // Cierre de sesión
     btnLogout.addEventListener('click', async () => {
-        if (currentUser && currentUser.rol === 'leader') {
-            const monto = await appPrompt('Cierre de Turno', 'Declara el monto total en penalizaciones del turno (Q):', 'number');
-            if (monto === null || monto === '') {
-                showToast('Aviso', 'Debes declarar el monto para poder cerrar sesión.', 'warning');
-                return; // Cancel logout
-            }
-            await window.AttendanceDB.addLog(currentUser.id, `Cierre de sesión de Supervisor. Penalizaciones declaradas: Q${parseFloat(monto).toFixed(2)}`);
-            showToast('Sesión Cerrada', 'Has salido del sistema de forma segura.', 'info');
-        } else if (currentUser) {
+        if (currentUser) {
             await window.AttendanceDB.addLog(currentUser.id, 'Cierre de sesión voluntario');
             showToast('Sesión Cerrada', 'Has salido del sistema de forma segura.', 'info');
         }
@@ -403,10 +395,35 @@
         if (e.target === locationModal) closeLocationModal();
     });
 
-    const fileToBase64 = file => new Promise((resolve, reject) => {
+    const compressImageToBase64 = (file, maxWidth = 800, quality = 0.6) => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth || height > maxWidth) {
+                    if (width > height) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    } else {
+                        width = Math.round((width * maxWidth) / height);
+                        height = maxWidth;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = error => reject(error);
+        };
         reader.onerror = error => reject(error);
     });
 
@@ -437,7 +454,7 @@
                 showToast('Foto Requerida', 'La empresa requiere que tomes una fotografía para registrar tu marcaje.', 'warning');
                 return;
             }
-            fotoAsistenciaB64 = await fileToBase64(fotoAsistenciaEl.files[0]);
+            fotoAsistenciaB64 = await compressImageToBase64(fotoAsistenciaEl.files[0]);
         }
 
         let trabajoDescripcion = null;
@@ -471,8 +488,8 @@
                 return;
             }
 
-            fotoAntesB64 = await fileToBase64(fotoAntesEl.files[0]);
-            fotoDespuesB64 = await fileToBase64(fotoDespuesEl.files[0]);
+            fotoAntesB64 = await compressImageToBase64(fotoAntesEl.files[0]);
+            fotoDespuesB64 = await compressImageToBase64(fotoDespuesEl.files[0]);
         }
 
         btnConfirmLocation.disabled = true;
@@ -489,31 +506,40 @@
             }
         }
 
-        if (isCheckInAction) {
-            // Hacer check-in
-            const projectSelect = document.getElementById('location-project-select');
-            const proyectoId = projectSelect ? projectSelect.value : null;
-            // Pasamos fotoAsistenciaB64 como fotoEntrada
-            const record = await window.AttendanceDB.checkIn(currentUser.id, lat, lng, whereValue, whyValue, proyectoId, fotoAsistenciaB64);
-            if (record) {
-                showToast('Entrada Registrada', `Marcaje de entrada exitoso a las ${record.horaEntrada}`, 'success');
-                closeLocationModal();
-                setupUserView();
+        try {
+            if (isCheckInAction) {
+                // Hacer check-in
+                const projectSelect = document.getElementById('location-project-select');
+                const proyectoId = projectSelect ? projectSelect.value : null;
+                // Pasamos fotoAsistenciaB64 como fotoEntrada
+                const record = await window.AttendanceDB.checkIn(currentUser.id, lat, lng, whereValue, whyValue, proyectoId, fotoAsistenciaB64);
+                if (record) {
+                    showToast('Entrada Registrada', `Marcaje de entrada exitoso a las ${record.horaEntrada}`, 'success');
+                    closeLocationModal();
+                    setupUserView();
+                } else {
+                    showToast('Error', 'No se pudo registrar la entrada. Intenta nuevamente.', 'danger');
+                }
+            } else {
+                // Hacer check-out
+                // Para checkOut, necesitamos pasar fotoAsistenciaB64 como fotoSalida. 
+                // Vamos a tener que editar AttendanceDB.checkOut en db-client.js para que reciba fotoSalida
+                const record = await window.AttendanceDB.checkOut(currentUser.id, lat, lng, whereValue, whyValue, trabajoDescripcion, trabajoCantidad, fotoAntesB64, fotoDespuesB64, fotoAsistenciaB64);
+                if (record) {
+                    showToast('Salida Registrada', `Marcaje de salida exitoso. Horas: ${record.horasTrabajadas}`, 'success');
+                    closeLocationModal();
+                    setupUserView();
+                } else {
+                    showToast('Error', 'No se pudo registrar la salida. Intenta nuevamente.', 'danger');
+                }
             }
-        } else {
-            // Hacer check-out
-            // Para checkOut, necesitamos pasar fotoAsistenciaB64 como fotoSalida. 
-            // Vamos a tener que editar AttendanceDB.checkOut en db-client.js para que reciba fotoSalida
-            const record = await window.AttendanceDB.checkOut(currentUser.id, lat, lng, whereValue, whyValue, trabajoDescripcion, trabajoCantidad, fotoAntesB64, fotoDespuesB64, fotoAsistenciaB64);
-            if (record) {
-                showToast('Salida Registrada', `Marcaje de salida exitoso. Horas: ${record.horasTrabajadas}`, 'success');
-                closeLocationModal();
-                setupUserView();
-            }
+        } catch (error) {
+            console.error(error);
+            showToast('Error de conexión', 'Ocurrió un error al enviar el marcaje. Revisa tu conexión a internet o el tamaño de las imágenes.', 'danger');
+        } finally {
+            btnConfirmLocation.disabled = false;
+            btnConfirmLocation.textContent = 'Confirmar y Marcar';
         }
-        
-        btnConfirmLocation.disabled = false;
-        btnConfirmLocation.textContent = 'Confirmar y Marcar';
     });
 
     // --- FLUJO DE MODAL DE ENTREGAR TRABAJO (POR TRATO) ---
@@ -1081,6 +1107,8 @@
     }
 
     // --- NUEVO MÓDULO DE DETALLES DE DESCUENTOS (USUARIO) ---
+    // La funcionalidad de click se ha eliminado a petición del usuario
+    /*
     btnViewPenaltiesDetail.addEventListener('click', () => {
         // Ocultar vista principal de usuario y mostrar descuentos
         viewUser.classList.add('hidden');
@@ -1090,6 +1118,7 @@
 
         loadUserPenaltiesView();
     });
+    */
 
     btnBackToUser.addEventListener('click', () => {
         // En lugar de forzar la vista de asistencia (a la cual podrían no tener acceso),

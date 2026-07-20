@@ -149,7 +149,31 @@ window.renderAdminFinances = async function() {
             payrollByUser[a.usuarioId] = (payrollByUser[a.usuarioId] || 0) + amount;
             
             if (!window.currentPayrollDetailsByUser[a.usuarioId]) window.currentPayrollDetailsByUser[a.usuarioId] = [];
-            window.currentPayrollDetailsByUser[a.usuarioId].push({ fecha: a.fecha, tipo: 'Asistencia Regular', monto: amount });
+            
+            let parts = [];
+            if (a.justificacionMotivoEntrada) parts.push(a.justificacionMotivoEntrada);
+            else if (a.justificacionLugarEntrada) parts.push(a.justificacionLugarEntrada);
+            
+            if (a.justificacionMotivoSalida) parts.push(a.justificacionMotivoSalida);
+            else if (a.justificacionLugarSalida) parts.push(a.justificacionLugarSalida);
+            
+            let existing = window.currentPayrollDetailsByUser[a.usuarioId].find(d => d.fecha === a.fecha && d.esAsistencia);
+            
+            if (existing) {
+                existing.monto += amount;
+                if (parts.length > 0) {
+                    existing.justificaciones.push(...parts);
+                }
+            } else {
+                let justificaciones = parts.length > 0 ? parts : [];
+                window.currentPayrollDetailsByUser[a.usuarioId].push({ 
+                    fecha: a.fecha, 
+                    tipo: 'Asistencia Regular', 
+                    justificaciones: justificaciones, 
+                    monto: amount, 
+                    esAsistencia: true 
+                });
+            }
         }
     });
     piecework.forEach(p => {
@@ -159,7 +183,12 @@ window.renderAdminFinances = async function() {
             payrollByUser[p.usuarioId] = (payrollByUser[p.usuarioId] || 0) + amount;
             
             if (!window.currentPayrollDetailsByUser[p.usuarioId]) window.currentPayrollDetailsByUser[p.usuarioId] = [];
-            window.currentPayrollDetailsByUser[p.usuarioId].push({ fecha: p.fecha, tipo: 'Trabajo por Trato', monto: amount });
+            let existingPiecework = window.currentPayrollDetailsByUser[p.usuarioId].find(d => d.fecha === p.fecha && d.tipo === 'Trabajo por Trato');
+            if (existingPiecework) {
+                existingPiecework.monto += amount;
+            } else {
+                window.currentPayrollDetailsByUser[p.usuarioId].push({ fecha: p.fecha, tipo: 'Trabajo por Trato', monto: amount });
+            }
         }
     });
     const allUsers = window.AttendanceDB?.getUsers() || [];
@@ -173,7 +202,12 @@ window.renderAdminFinances = async function() {
             payrollByUser[b.usuarioId] = (payrollByUser[b.usuarioId] || 0) + amount;
             
             if (!window.currentPayrollDetailsByUser[b.usuarioId]) window.currentPayrollDetailsByUser[b.usuarioId] = [];
-            window.currentPayrollDetailsByUser[b.usuarioId].push({ fecha: b.fecha, tipo: 'Turno de Buses', monto: amount });
+            let existingBus = window.currentPayrollDetailsByUser[b.usuarioId].find(d => d.fecha === b.fecha && d.tipo === 'Turno de Buses');
+            if (existingBus) {
+                existingBus.monto += amount;
+            } else {
+                window.currentPayrollDetailsByUser[b.usuarioId].push({ fecha: b.fecha, tipo: 'Turno de Buses', monto: amount });
+            }
         }
     });
 
@@ -274,7 +308,7 @@ window.renderAdminFinances = async function() {
 
         // Calculate cycle days
         attendance.forEach(a => {
-            if (a.horaSalida && (a.aprobado || a.archivado)) {
+            if (a.horaSalida && (a.aprobado || a.archivado) && a.justificacionMotivoEntrada !== 'Permiso Sin Goce de Salario') {
                 if (!daysByUser[a.usuarioId]) daysByUser[a.usuarioId] = { monthDays: 0, bono14Days: 0, aguiDays: 0, totalDays: 0 };
                 
                 const recDate = parseDate(a.fecha);
@@ -308,13 +342,19 @@ window.renderAdminFinances = async function() {
                 const minWageInput = document.getElementById('fin-min-wage');
                 const salarioMinimoMensual = minWageInput ? parseFloat(minWageInput.value) || 4252.28 : 4252.28;
                 
+                const vacacionesRestantes = userObj && userObj.vacacionesRestantes !== undefined ? parseFloat(userObj.vacacionesRestantes) : 0;
+                const pagoVacaciones = (salarioMinimoMensual / 30) * vacacionesRestantes;
                 const bono14Amount = salarioMinimoMensual * (data.bono14Days / 365);
                 const aguiAmount = salarioMinimoMensual * (data.aguiDays / 365);
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td data-label="Colaborador"><strong>${userName}</strong></td>
-                    <td data-label="Descanso Restante" style="text-align: center; color: var(--text-color); font-weight: bold;">${userObj && userObj.vacacionesRestantes !== undefined ? userObj.vacacionesRestantes : 15} días</td>
+                    <td data-label="Descanso Restante" style="text-align: center; color: var(--text-color); font-weight: bold;">${vacacionesRestantes} días</td>
+                    <td data-label="Vacaciones a Pagar" style="text-align: center;">
+                        <span style="display:block; margin-bottom: 5px; color: var(--primary); font-weight: bold;">Q${pagoVacaciones.toLocaleString('es-GT', {minimumFractionDigits:2})}</span>
+                        <button class="btn-table-action" style="padding: 4px 8px; font-size: 0.75rem; background: var(--success); color: white; border-radius: 4px; border: none; cursor: pointer;" onclick="window.payVacations('${uid}', '${pagoVacaciones.toFixed(2)}', '${userName.replace(/'/g, "\\'")}')">Pagar</button>
+                    </td>
                     <td data-label="Día total laborados" style="text-align: center; color: var(--primary); font-weight: bold;">${data.totalDays} días</td>
                     <td data-label="Días Bono 14 (Jul-Jun)" style="text-align: center; color: var(--success); font-weight: bold;">${data.bono14Days} días</td>
                     <td data-label="Pago Bono 14 (Q)" style="text-align: right; color: var(--success);">Q${bono14Amount.toLocaleString('es-GT', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
@@ -348,14 +388,14 @@ window.renderAdminFinances = async function() {
             
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${p.nombre}</strong> <span class="badge ${p.estado === 'Cerrado' ? 'bg-danger' : 'bg-success'}" style="font-size: 0.6rem; margin-left: 5px;">${p.estado || 'Activo'}</span></td>
-                <td>Q${presupuesto.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
-                <td style="color: var(--success); font-weight: bold;">Q${totalIngresos.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
-                <td>Q${gastosMateriales.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
-                <td>Q${gastosPersonal.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
-                <td class="text-danger">Q${gastosTotales.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
-                <td class="${color} font-bold">Q${gananciaReal.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
-                <td><span class="badge ${gananciaReal < 0 ? 'bg-danger' : 'bg-primary'}">${gananciaReal < 0 ? 'Pérdida' : 'Estable'}</span></td>
+                <td data-label="Nombre del Proyecto"><strong>${p.nombre}</strong> <span class="badge ${p.estado === 'Cerrado' ? 'bg-danger' : 'bg-success'}" style="font-size: 0.6rem; margin-left: 5px;">${p.estado || 'Activo'}</span></td>
+                <td data-label="Presupuesto (Cotizado)">Q${presupuesto.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td data-label="Ingresos (Pagado)" style="color: var(--success); font-weight: bold;">Q${totalIngresos.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td data-label="Gastos (Materiales)">Q${gastosMateriales.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td data-label="Gastos (Personal)">Q${gastosPersonal.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td data-label="Gastos (Total)" class="text-danger">Q${gastosTotales.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td data-label="Ganancia Real" class="${color} font-bold">Q${gananciaReal.toLocaleString('es-GT', {minimumFractionDigits:2})}</td>
+                <td data-label="Estado"><span class="badge ${gananciaReal < 0 ? 'bg-danger' : 'bg-primary'}">${gananciaReal < 0 ? 'Pérdida' : 'Estable'}</span></td>
             `;
             tbody.appendChild(tr);
         });
@@ -371,8 +411,54 @@ window.renderAdminFinances = async function() {
 window.showPayrollDetails = function(uid, userName) {
     const details = window.currentPayrollDetailsByUser[uid] || [];
     
+    const monthSelect = document.getElementById('finance-month-select');
+    const selectedMonth = monthSelect ? monthSelect.value : null;
+    
+    if (selectedMonth) {
+        const workedDaysSet = new Set(details.map(d => {
+            let f = d.fecha.split(' ')[0];
+            if (f.includes('/')) {
+                const p = f.split('/');
+                return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+            }
+            return f;
+        }));
+        
+        const [yy, mm] = selectedMonth.split('-');
+        const year = parseInt(yy);
+        const month = parseInt(mm) - 1; 
+        const dateIterator = new Date(year, month, 1);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        while (dateIterator.getMonth() === month && dateIterator <= today) {
+            if (dateIterator.getDay() !== 0) { // Not Sunday
+                const yStr = dateIterator.getFullYear();
+                const mStr = (dateIterator.getMonth() + 1).toString().padStart(2, '0');
+                const dStr = dateIterator.getDate().toString().padStart(2, '0');
+                const fechaStr = `${yStr}-${mStr}-${dStr}`;
+                
+                if (!workedDaysSet.has(fechaStr)) {
+                    details.push({
+                        fecha: fechaStr,
+                        tipo: 'FALTA (No trabajó)',
+                        monto: 0,
+                        esFalta: true
+                    });
+                }
+            }
+            dateIterator.setDate(dateIterator.getDate() + 1);
+        }
+    }
+    
     // Sort by date ascending
-    details.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+    details.sort((a, b) => {
+        let fA = a.fecha.split(' ')[0];
+        let fB = b.fecha.split(' ')[0];
+        if (fA.includes('/')) fA = `${fA.split('/')[2]}-${fA.split('/')[1]}-${fA.split('/')[0]}`;
+        if (fB.includes('/')) fB = `${fB.split('/')[2]}-${fB.split('/')[1]}-${fB.split('/')[0]}`;
+        return new Date(fA) - new Date(fB);
+    });
     
     let html = `
     <div style="max-height: 300px; overflow-y: auto; text-align: left; margin-top: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2);">
@@ -387,19 +473,32 @@ window.showPayrollDetails = function(uid, userName) {
             <tbody>
     `;
     
-    if (details.length === 0) {
+            if (details.length === 0) {
         html += `<tr><td colspan="3" class="text-center text-muted" style="padding: 15px;">No hay detalles disponibles</td></tr>`;
     } else {
         details.forEach(d => {
             let colorMonto = 'var(--primary)';
-            if (d.tipo.toLowerCase().includes('préstamo') || d.tipo.toLowerCase().includes('descuento')) {
+            let displayTipo = d.tipo;
+            
+            if (d.tipo && typeof d.tipo.toLowerCase === 'function' && (d.tipo.toLowerCase().includes('préstamo') || d.tipo.toLowerCase().includes('descuento') || d.tipo.toLowerCase().includes('falta'))) {
                 colorMonto = 'var(--danger)';
             }
+            
+            if (d.justificaciones && d.justificaciones.length > 0) {
+                if (d.justificaciones.length === 1) {
+                    displayTipo = d.justificaciones[0];
+                } else {
+                    displayTipo = d.justificaciones.map((j, i) => `<b>${i + 1}.</b> ${j}`).join('<br>');
+                }
+            } else if (d.esAsistencia) {
+                displayTipo = 'Asistencia Regular';
+            }
+
             html += `
                 <tr>
-                    <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(d.fecha) : d.fecha}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">${d.tipo}</td>
-                    <td style="padding: 10px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.05); color: ${colorMonto};">Q${d.monto.toFixed(2)}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); white-space: nowrap; vertical-align: top;">${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(d.fecha) : d.fecha}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); white-space: normal; word-break: break-word; line-height: 1.4; vertical-align: top;">${displayTipo}</td>
+                    <td style="padding: 10px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.05); color: ${colorMonto}; white-space: nowrap; vertical-align: middle; font-weight: bold;">Q${d.monto.toFixed(2)}</td>
                 </tr>
             `;
         });
@@ -418,6 +517,29 @@ window.showPayrollDetails = function(uid, userName) {
         });
     } else {
         alert("No se pudo cargar SweetAlert, pero los detalles son: " + JSON.stringify(details));
+    }
+};
+
+window.payVacations = async function(uid, amountStr, userName) {
+    if (!confirm(`¿Estás seguro de que deseas registrar el pago de Q${amountStr} por vacaciones a ${userName}? Esto reseteará sus días de descanso a 0.`)) return;
+    
+    try {
+        const currentUser = window.AttendanceDB?.currentUser || { id: 0 };
+        const res = await fetch(`/api/users/${uid}/pay-vacations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminId: currentUser.id })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('Vacaciones pagadas correctamente.');
+            window.location.reload();
+        } else {
+            alert(data.message || 'Error al procesar el pago.');
+        }
+    } catch (e) {
+        alert('Error de conexión.');
+        console.error(e);
     }
 };
 

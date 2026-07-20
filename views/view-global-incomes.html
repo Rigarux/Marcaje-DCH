@@ -39,8 +39,17 @@
                         
                         <!-- Panel Derecho: Tabla de Ingresos/Gastos -->
                         <div class="card table-card">
-                            <div class="card-header">
-                                <h3 id="global-incomes-table-title">Mis Movimientos Recientes (Últimas 24h)</h3>
+                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                <h3 id="global-incomes-table-title" style="margin: 0;">Movimientos</h3>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <label for="filter-incomes-period" style="margin: 0; font-size: 0.9rem;">Filtrar:</label>
+                                    <select id="filter-incomes-period" class="form-control" style="width: auto; padding: 4px 8px; font-size: 0.9rem;">
+                                        <option value="today">Día (Hoy)</option>
+                                        <option value="week">Esta Semana</option>
+                                        <option value="month" selected>Este Mes</option>
+                                        <option value="all">Todos</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table>

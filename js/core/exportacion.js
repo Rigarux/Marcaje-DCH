@@ -44,12 +44,24 @@
                 data.cuts.forEach(cut => {
                     const tr = document.createElement('tr');
                     const badgeClass = cut.estado === 'Pendiente' ? 'bg-warning' : 'bg-success';
+                    
+                    let dateDisplay = cut.fechaGenerado;
+                    if(dateDisplay) {
+                        const p = dateDisplay.split(/[- :]/);
+                        if(p.length >= 3) {
+                            dateDisplay = p[2] + '/' + p[1] + '/' + p[0] + (p[3] ? ' ' + p[3] + ':' + p[4] : '');
+                        }
+                    }
+
                     tr.innerHTML = `
                         <td><strong>#${cut.id}</strong></td>
-                        <td>${cut.fechaGenerado}</td>
+                        <td>${dateDisplay}</td>
                         <td><span class="role-badge" style="background-color: var(--${cut.estado === 'Pendiente' ? 'warning' : 'success'}); color:white;">${cut.estado}</span></td>
                         <td>
-                            <button class="btn-primary btn-sm btn-view-cut" data-id="${cut.id}" data-estado="${cut.estado}">Ver Detalles</button>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button class="btn-primary btn-sm btn-view-cut" data-id="${cut.id}" data-estado="${cut.estado}">Ver Detalles</button>
+                                <button class="btn-secondary btn-sm btn-export-pdf-direct" data-id="${cut.id}">Exportar a PDF</button>
+                            </div>
                         </td>
                     `;
                     cutsBody.appendChild(tr);
@@ -60,6 +72,41 @@
                         const id = e.target.getAttribute('data-id');
                         const estado = e.target.getAttribute('data-estado');
                         openCutDetails(id, estado);
+                    });
+                });
+
+                document.querySelectorAll('.btn-export-pdf-direct').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = e.target.getAttribute('data-id');
+                        const originalText = e.target.textContent;
+                        e.target.textContent = 'Generando...';
+                        e.target.disabled = true;
+                        try {
+                            const res = await fetch(`/api/attendance/cuts/${id}/records`);
+                            const data = await res.json();
+                            
+                            let signatures = [];
+                            try {
+                                const sigRes = await fetch(`/api/attendance/cuts/${id}/signatures`);
+                                const sigData = await sigRes.json();
+                                if (sigData.success) signatures = sigData.signatures;
+                            } catch(err) { console.error('Error signatures:', err); }
+                            
+                            if (data.success) {
+                                const allUsers = window.AttendanceDB.getUsers();
+                                const oldId = currentCutId;
+                                currentCutId = id; 
+                                await generatePayrollPDF(allUsers, data.attendance, data.busRecords, signatures);
+                                currentCutId = oldId;
+                                showToast('PDF Generado', 'El PDF se ha descargado.', 'success');
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            showToast('Error', 'Error al generar el PDF.', 'danger');
+                        } finally {
+                            e.target.textContent = originalText;
+                            e.target.disabled = false;
+                        }
                     });
                 });
             }
@@ -280,19 +327,35 @@
                         photosHtml += `<a href="${a.fotoSalida}" target="_blank"><img src="${a.fotoSalida}" style="width:24px; height:24px; border-radius:4px; object-fit:cover; display:inline-block;" title="Foto Salida"></a>`;
                     }
                     
-                    subHtml += `<tr>
-                        <td data-label="Fecha" style="font-size: 0.8rem; padding: 6px;">${formattedDate}</td>
-                        <td data-label="Entrada" style="font-size: 0.8rem; padding: 6px;">${a.horaEntrada || '-'}</td>
-                        <td data-label="Salida" style="font-size: 0.8rem; padding: 6px;">${a.horaSalida || '-'}</td>
-                        <td data-label="Horas" style="font-size: 0.8rem; padding: 6px;">${(a.horasTrabajadas || 0).toFixed(2)} h</td>
-                        <td data-label="Monto Bruto" style="font-size: 0.8rem; padding: 6px;">Q${(a.montoBruto || 0).toFixed(2)}</td>
-                        <td data-label="Acciones" style="font-size: 0.8rem; padding: 6px; text-align: center;">
-                            <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; flex-wrap:wrap;">
-                                ${photosHtml}
-                                <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${a.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
-                            </div>
-                        </td>
-                    </tr>`;
+                    const isPiecework = group.userObj && (group.userObj.tipoPago === 'Destajo' || group.userObj.tipoPago === 'Por Trato');
+                    if (isPiecework) {
+                        subHtml += `<tr>
+                            <td data-label="Fecha" style="font-size: 0.8rem; padding: 6px;">${formattedDate}</td>
+                            <td data-label="Trabajo" style="font-size: 0.8rem; padding: 6px;" colspan="2">${a.trabajoDescripcion || 'N/A'}</td>
+                            <td data-label="Cantidad" style="font-size: 0.8rem; padding: 6px;">${a.trabajoCantidad || 0} Und.</td>
+                            <td data-label="Total" style="font-size: 0.8rem; padding: 6px;">Q${(a.montoBruto || 0).toFixed(2)}</td>
+                            <td data-label="Acciones" style="font-size: 0.8rem; padding: 6px; text-align: center;">
+                                <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; flex-wrap:wrap;">
+                                    ${photosHtml}
+                                    <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${a.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    } else {
+                        subHtml += `<tr>
+                            <td data-label="Fecha" style="font-size: 0.8rem; padding: 6px;">${formattedDate}</td>
+                            <td data-label="Entrada" style="font-size: 0.8rem; padding: 6px;">${a.horaEntrada || '-'}</td>
+                            <td data-label="Salida" style="font-size: 0.8rem; padding: 6px;">${a.horaSalida || '-'}</td>
+                            <td data-label="Horas" style="font-size: 0.8rem; padding: 6px;">${(a.horasTrabajadas || 0).toFixed(2)} h</td>
+                            <td data-label="Monto Bruto" style="font-size: 0.8rem; padding: 6px;">Q${(a.montoBruto || 0).toFixed(2)}</td>
+                            <td data-label="Acciones" style="font-size: 0.8rem; padding: 6px; text-align: center;">
+                                <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; flex-wrap:wrap;">
+                                    ${photosHtml}
+                                    <button class="btn-table-action warning btn-correct-record" data-rectype="attendance" data-recid="${a.id}" style="padding: 2px 6px; font-size: 0.7rem; width: auto; background-color: var(--warning); border-color: var(--warning); color: black;">Corrección</button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    }
                 });
                 group.busRecords.forEach(a => {
                     subHtml += `<tr>
@@ -449,6 +512,14 @@
         return hoursDec.toFixed(2) + ' hrs';
     }
 
+    const pdfFormatDate = (dateStr) => {
+        if(!dateStr) return '';
+        let f = dateStr.split('T')[0];
+        let p = f.split('-');
+        if(p.length === 3) return `${p[2]}-${p[1]}-${p[0]}`;
+        return f;
+    };
+
     async function generatePayrollPDF(allUsers, filteredAttendance, filteredBuses, signatures = []) {
         const today = new Date();
         const dateString = today.toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -546,88 +617,152 @@
                 <div style="margin-bottom: 30px; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; page-break-inside: avoid;">
                     <div style="background-color: #f3f4f6; padding: 12px 15px; border-bottom: 1px solid #d1d5db; display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <h3 style="margin: 0; color: #111827; font-size: 16px;">${group.userName}</h3>
+                            <h3 style="margin: 0; color: #111827; font-size: 16px;">${group.userName} ${group.userObj && group.userObj.descuentaAlmuerzo == 1 ? '<span style="color:#b91c1c; font-size: 12px; margin-left: 10px;">(Descuento de Almuerzo)</span>' : ''}</h3>
                             <span style="font-size: 12px; color: #6b7280;">Grupo: ${group.grupo} &nbsp;|&nbsp; Tipo: ${group.tipoPago}</span>
                         </div>
                         <div style="text-align: right;">
                             <span style="font-size: 12px; color: #6b7280;">Neto a Pagar</span>
                             <div style="font-size: 18px; font-weight: bold; color: #000000;">Q${netFinal.toFixed(2)}</div>
                         </div>
-                    </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                        <tbody>
-                            <tr style="background-color: #f3f4f6; border-bottom: 1px solid #d1d5db; color: #000000; font-weight: bold;">
-                                <td style="padding: 8px; text-align: left;">Fecha</td>
-                                <td style="padding: 8px; text-align: center;">In/Out</td>
-                                <td style="padding: 8px; text-align: center;">H. Diurnas</td>
-                                <td style="padding: 8px; text-align: center;">H. Noct.</td>
-                                <td style="padding: 8px; text-align: right;">Monto Bruto</td>
-                                <td style="padding: 8px; text-align: right;">Bono</td>
-                                <td style="padding: 8px; text-align: right;">Descuento</td>
-                                <td style="padding: 8px; text-align: right;">Monto Neto</td>
+                    </div>`;
+            let tableHtml = '';
+            const isPiecework = group.tipoPago === 'Destajo' || group.tipoPago === 'Por Trato';
+
+            if (isPiecework) {
+                tableHtml += `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; margin-bottom: 0;">
+                        <thead>
+                            <tr style="background-color: #f3f4f6; border-bottom: 2px solid #d1d5db; color: #1f2937; font-weight: bold;">
+                                <th style="padding: 10px 8px; text-align: left; width: 14%;">Fecha</th>
+                                <th style="padding: 10px 8px; text-align: left; width: 36%;">Trabajo Justificado</th>
+                                <th style="padding: 10px 8px; text-align: center; width: 14%;">Cantidad</th>
+                                <th style="padding: 10px 8px; text-align: right; width: 12%;">Bono</th>
+                                <th style="padding: 10px 8px; text-align: right; width: 12%;">Descuento</th>
+                                <th style="padding: 10px 8px; text-align: right; width: 12%;">Total Trabajo</th>
                             </tr>
-            `;
-
-            group.records.forEach(rec => {
-                html += `
-                    <tr style="border-bottom: 1px solid #f3f4f6;">
-                        <td style="padding: 8px;">${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(rec.fecha) : rec.fecha}</td>
-                        <td style="padding: 8px; text-align: center;">${rec.horaEntrada} - ${rec.horaSalida || 'N/A'}</td>
-                        <td style="padding: 8px; text-align: center;">${rec.horaSalida ? formatDecimalHours(rec.horasDiurnas) : '-'}</td>
-                        <td style="padding: 8px; text-align: center;">${rec.horaSalida ? formatDecimalHours(rec.horasNocturnas) : '-'}</td>
-                        <td style="padding: 8px; text-align: right;">${rec.horaSalida ? 'Q' + rec.montoBruto.toFixed(2) : '-'}</td>
-                        <td style="padding: 8px; text-align: right; color: #000000;">${rec.horaSalida && rec.bono > 0 ? '+Q' + rec.bono.toFixed(2) : 'Q0.00'}</td>
-                        <td style="padding: 8px; text-align: right; color: #000000;">${rec.horaSalida && rec.descuento > 0 ? '-Q' + rec.descuento.toFixed(2) : 'Q0.00'}</td>
-                        <td style="padding: 8px; text-align: right; font-weight: bold;">${rec.horaSalida ? 'Q' + (rec.montoNeto || 0).toFixed(2) : '-'}</td>
-                    </tr>
+                        </thead>
+                        <tbody>
                 `;
-            });
+                group.records.forEach((rec, idx) => {
+                    const bg = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
+                    tableHtml += `
+                        <tr style="background-color: ${bg}; border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 8px;">${pdfFormatDate(rec.fecha)}</td>
+                            <td style="padding: 8px; text-align: left; color: #4b5563;">${rec.trabajoDescripcion || 'N/A'}</td>
+                            <td style="padding: 8px; text-align: center; color: #4b5563;">${rec.trabajoCantidad || 0} Und.</td>
+                            <td style="padding: 8px; text-align: right; color: #047857;">${rec.horaSalida && rec.bono > 0 ? '+Q' + rec.bono.toFixed(2) : '-'}</td>
+                            <td style="padding: 8px; text-align: right; color: #b91c1c;">${rec.horaSalida && rec.descuento > 0 ? '-Q' + rec.descuento.toFixed(2) : '-'}</td>
+                            <td style="padding: 8px; text-align: right; font-weight: bold; color: #111827;">Q${(rec.montoBruto || 0).toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
 
-            group.busRecords.forEach(rec => {
-                const gananciaLocal = (rec.ingresoDinero || 0) - (rec.montoGasto || 0);
-                html += `
-                    <tr style="border-bottom: 1px solid #f3f4f6;">
-                        <td style="padding: 8px;">${typeof formatDateDDMMYYYY === 'function' ? formatDateDDMMYYYY(rec.fecha) : rec.fecha}</td>
-                        <td style="padding: 8px; text-align: center;" colspan="3">Bus / Ruta (${rec.turno || 'Día'})</td>
-                        <td style="padding: 8px; text-align: right;">Q${(rec.ingresoDinero || 0).toFixed(2)}</td>
-                        <td style="padding: 8px; text-align: right; color: #000000;">Q0.00</td>
-                        <td style="padding: 8px; text-align: right; color: #000000;">${rec.montoGasto > 0 ? '-Q' + rec.montoGasto.toFixed(2) : 'Q0.00'}</td>
-                        <td style="padding: 8px; text-align: right; font-weight: bold;">Q${gananciaLocal.toFixed(2)}</td>
-                    </tr>
-                `;
-            });
+                if (loanCuota > 0) {
+                    tableHtml += `
+                        <tr style="background-color: #fffbeb; border-bottom: 2px solid #e5e7eb;">
+                            <td style="padding: 10px 8px; color: #b45309; font-weight: bold;" colspan="2">Préstamo / Adelanto</td>
+                            <td style="padding: 10px 8px; color: #b45309; text-align: center;" colspan="2">(Saldo: Q${saldoActual.toFixed(2)})</td>
+                            <td style="padding: 10px 8px; text-align: right; color: #b91c1c; font-weight: bold;">-Q${loanCuota.toFixed(2)}</td>
+                            <td style="padding: 10px 8px; text-align: right; color: #111827; font-weight: bold;">-Q${loanCuota.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }
 
-            if (loanCuota > 0) {
-                html += `
-                    <tr style="background-color: #fffbeb; border-bottom: 2px solid #e5e7eb;">
-                        <td style="padding: 10px 8px; color: #b45309; font-weight: bold;" colspan="6">
-                            Préstamo / Adelanto (Saldo Pendiente: Q${saldoActual.toFixed(2)})
-                        </td>
-                        <td style="padding: 10px 8px; text-align: right; color: #000000; font-weight: bold;">
-                            -Q${loanCuota.toFixed(2)}
-                        </td>
-                        <td style="padding: 10px 8px; text-align: right; color: #000000; font-weight: bold;">
-                            -Q${loanCuota.toFixed(2)}
-                        </td>
-                    </tr>
-                `;
-            }
-
-            html += `
+                tableHtml += `
                         </tbody>
                         <tfoot>
-                            <tr style="background-color: #e5e7eb; font-weight: bold; color: #111827;">
-                                <td style="padding: 10px 8px;" colspan="2">Suma Final:</td>
-                                <td style="padding: 10px 8px; text-align: center;">${formatDecimalHours(group.totalDiurnas)}</td>
-                                <td style="padding: 10px 8px; text-align: center;">${formatDecimalHours(group.totalNocturnas)}</td>
-                                <td style="padding: 10px 8px; text-align: right;">Q${group.totalBruto.toFixed(2)}</td>
-                                <td style="padding: 10px 8px; text-align: right; color: #000000;">${group.totalBono > 0 ? '+Q' + group.totalBono.toFixed(2) : 'Q0.00'}</td>
-                                <td style="padding: 10px 8px; text-align: right; color: #000000;">${(group.totalDescuento + loanCuota) > 0 ? '-Q' + (group.totalDescuento + loanCuota).toFixed(2) : 'Q0.00'}</td>
-                                <td style="padding: 10px 8px; text-align: right; color: #000000;">Q${netFinal.toFixed(2)}</td>
+                            <tr style="background-color: #e5e7eb; font-weight: bold; color: #111827; border-top: 2px solid #9ca3af;">
+                                <td style="padding: 12px 8px;">Suma Final:</td>
+                                <td></td>
+                                <td></td>
+                                <td style="padding: 12px 8px; text-align: right; color: #047857;">${group.totalBono > 0 ? '+Q' + group.totalBono.toFixed(2) : 'Q0.00'}</td>
+                                <td style="padding: 12px 8px; text-align: right; color: #b91c1c;">${(group.totalDescuento + loanCuota) > 0 ? '-Q' + (group.totalDescuento + loanCuota).toFixed(2) : 'Q0.00'}</td>
+                                <td style="padding: 12px 8px; text-align: right; font-size: 13px;">Q${netFinal.toFixed(2)}</td>
                             </tr>
                         </tfoot>
                     </table>
-            `;
+                `;
+            } else {
+                tableHtml += `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; margin-bottom: 0;">
+                        <thead>
+                            <tr style="background-color: #f3f4f6; border-bottom: 2px solid #d1d5db; color: #1f2937; font-weight: bold;">
+                                <th style="padding: 10px 8px; text-align: left; width: 14%;">Fecha</th>
+                                <th style="padding: 10px 8px; text-align: center; width: 16%;">In/Out</th>
+                                <th style="padding: 10px 8px; text-align: center; width: 10%;">H. Diurnas</th>
+                                <th style="padding: 10px 8px; text-align: center; width: 10%;">H. Noct.</th>
+                                <th style="padding: 10px 8px; text-align: right; width: 12%;">Monto Bruto</th>
+                                <th style="padding: 10px 8px; text-align: right; width: 12%;">Bono</th>
+                                <th style="padding: 10px 8px; text-align: right; width: 12%;">Descuento</th>
+                                <th style="padding: 10px 8px; text-align: right; width: 14%;">Monto Neto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                let rowCount = 0;
+                group.records.forEach(rec => {
+                    const bg = rowCount % 2 === 0 ? '#ffffff' : '#f9fafb';
+                    rowCount++;
+                    tableHtml += `
+                        <tr style="background-color: ${bg}; border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 8px;">${pdfFormatDate(rec.fecha)}</td>
+                            <td style="padding: 8px; text-align: center; color: #4b5563;">${rec.horaEntrada} - ${rec.horaSalida || 'N/A'}</td>
+                            <td style="padding: 8px; text-align: center; color: #4b5563;">${rec.horaSalida ? formatDecimalHours(rec.horasDiurnas) : '-'}</td>
+                            <td style="padding: 8px; text-align: center; color: #4b5563;">${rec.horaSalida ? formatDecimalHours(rec.horasNocturnas) : '-'}</td>
+                            <td style="padding: 8px; text-align: right; color: #111827;">${rec.horaSalida ? 'Q' + rec.montoBruto.toFixed(2) : '-'}</td>
+                            <td style="padding: 8px; text-align: right; color: #047857;">${rec.horaSalida && rec.bono > 0 ? '+Q' + rec.bono.toFixed(2) : '-'}</td>
+                            <td style="padding: 8px; text-align: right; color: #b91c1c;">${rec.horaSalida && rec.descuento > 0 ? '-Q' + rec.descuento.toFixed(2) : '-'}</td>
+                            <td style="padding: 8px; text-align: right; font-weight: bold; color: #111827;">${rec.horaSalida ? 'Q' + (rec.montoNeto || 0).toFixed(2) : '-'}</td>
+                        </tr>
+                    `;
+                });
+
+                group.busRecords.forEach(rec => {
+                    const bg = rowCount % 2 === 0 ? '#ffffff' : '#f9fafb';
+                    rowCount++;
+                    const gananciaLocal = (rec.ingresoDinero || 0) - (rec.montoGasto || 0);
+                    tableHtml += `
+                        <tr style="background-color: ${bg}; border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 8px;">${pdfFormatDate(rec.fecha)}</td>
+                            <td style="padding: 8px; text-align: center; color: #4b5563;" colspan="3">Bus / Ruta (${rec.turno || 'Día'})</td>
+                            <td style="padding: 8px; text-align: right; color: #111827;">Q${(rec.ingresoDinero || 0).toFixed(2)}</td>
+                            <td style="padding: 8px; text-align: right; color: #047857;">-</td>
+                            <td style="padding: 8px; text-align: right; color: #b91c1c;">${rec.montoGasto > 0 ? '-Q' + rec.montoGasto.toFixed(2) : '-'}</td>
+                            <td style="padding: 8px; text-align: right; font-weight: bold; color: #111827;">Q${gananciaLocal.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+
+                if (loanCuota > 0) {
+                    tableHtml += `
+                        <tr style="background-color: #fffbeb; border-bottom: 2px solid #e5e7eb;">
+                            <td style="padding: 10px 8px; color: #b45309; font-weight: bold;" colspan="2">Préstamo / Adelanto</td>
+                            <td style="padding: 10px 8px; color: #b45309; text-align: center;" colspan="4">(Saldo Pendiente: Q${saldoActual.toFixed(2)})</td>
+                            <td style="padding: 10px 8px; text-align: right; color: #b91c1c; font-weight: bold;">-Q${loanCuota.toFixed(2)}</td>
+                            <td style="padding: 10px 8px; text-align: right; color: #111827; font-weight: bold;">-Q${loanCuota.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }
+
+                tableHtml += `
+                        </tbody>
+                        <tfoot>
+                            <tr style="background-color: #e5e7eb; font-weight: bold; color: #111827; border-top: 2px solid #9ca3af;">
+                                <td style="padding: 12px 8px;">Suma Final:</td>
+                                <td></td>
+                                <td style="padding: 12px 8px; text-align: center;">${formatDecimalHours(group.totalDiurnas)}</td>
+                                <td style="padding: 12px 8px; text-align: center;">${formatDecimalHours(group.totalNocturnas)}</td>
+                                <td style="padding: 12px 8px; text-align: right;">Q${group.totalBruto.toFixed(2)}</td>
+                                <td style="padding: 12px 8px; text-align: right; color: #047857;">${group.totalBono > 0 ? '+Q' + group.totalBono.toFixed(2) : 'Q0.00'}</td>
+                                <td style="padding: 12px 8px; text-align: right; color: #b91c1c;">${(group.totalDescuento + loanCuota) > 0 ? '-Q' + (group.totalDescuento + loanCuota).toFixed(2) : 'Q0.00'}</td>
+                                <td style="padding: 12px 8px; text-align: right; font-size: 13px;">Q${netFinal.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+            }
+
+            html += tableHtml;
 
             const userSig = signatures.find(s => s.user_id === group.userObj?.id);
             if (userSig && userSig.signature_base64) {
@@ -649,22 +784,38 @@
             margin:       10,
             filename:     `Planilla_DCH_Corte${currentCutId}_${dateString.replace(/\//g, '-')}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
         };
 
         const finalHtml = `
-            <div id="pdf-report-container" style="font-family: Arial, sans-serif; background: #fff; width: 100%; box-sizing: border-box;">
+            <div id="pdf-report-container" style="font-family: Arial, sans-serif; background: #fff; width: 1024px; max-width: 1024px; box-sizing: border-box;">
                 <style>
                     #pdf-report-container, #pdf-report-container * {
                         color: #000000 !important;
                     }
-                    #pdf-report-container th {
-                        background-color: #f3f4f6 !important;
-                        border-bottom: 1px solid #d1d5db !important;
+                    #pdf-report-container table {
+                        border-collapse: collapse !important;
+                        border-spacing: 0 !important;
+                        width: 100% !important;
+                        table-layout: fixed !important;
+                        background-color: transparent !important;
                     }
-                    #pdf-report-container td {
+                    #pdf-report-container tr {
+                        display: table-row !important;
+                        background-color: transparent !important;
+                        border: none !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    #pdf-report-container td, #pdf-report-container th {
+                        display: table-cell !important;
+                        border: none !important;
                         border-bottom: 1px solid #e5e7eb !important;
+                        border-radius: 0 !important;
+                        background-color: transparent !important;
                     }
                 </style>
                 ${html}
